@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 135c362ab2a863541a9f793eded4169f
+timeCreated: 1482020078
+licenseType: Store
+TextScriptImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 78595
+  packageName: FireHydrant_Set
+  packageVersion: 1.0
+  assetPath: Assets/FireHydrant_Set/fbx/FH_Textures2/Pipes.json
+  uploadId: 152025

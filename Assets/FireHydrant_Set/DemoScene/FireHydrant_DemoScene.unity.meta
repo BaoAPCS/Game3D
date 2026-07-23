@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: f184964c872ca77479c255858e299bf1
+timeCreated: 1482022002
+licenseType: Store
+DefaultImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 78595
+  packageName: FireHydrant_Set
+  packageVersion: 1.0
+  assetPath: Assets/FireHydrant_Set/DemoScene/FireHydrant_DemoScene.unity
+  uploadId: 152025

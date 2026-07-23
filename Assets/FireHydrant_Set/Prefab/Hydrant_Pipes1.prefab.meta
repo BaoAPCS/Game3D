@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 315b42124e5812149a055319c404b269
+timeCreated: 1482022685
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 78595
+  packageName: FireHydrant_Set
+  packageVersion: 1.0
+  assetPath: Assets/FireHydrant_Set/Prefab/Hydrant_Pipes1.prefab
+  uploadId: 152025
