@@ -1,0 +1,58 @@
+# Unity-generated folders
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
+/[Cc]aptures/
+
+# Unity-generated IDE files
+*.csproj
+*.unityproj
+*.sln
+*.slnx
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# IDE and editor settings
+/.vs/
+/.vscode/
+/.idea/
+*.sln.iml
+
+# Build and package outputs
+*.apk
+*.aab
+*.app
+*.unitypackage
+
+# Gradle and exported Unity projects
+/.gradle/
+/[Ee]xported[Oo]bj/
+/.consulo/
+
+# Crash reports and diagnostics
+sysinfo.txt
+crashlytics-build.properties
+
+# Operating-system files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Local Codex workspace metadata
+/.agents/
+/.codex/
