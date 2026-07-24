@@ -17,7 +17,7 @@ namespace DormitoryMystery.Chapter1.Editor
 {
     public static class Chapter1InteractionInventoryBuilder
     {
-        private const string PlayerPrefabPath = "Assets/Chapter1/Prefabs/Characters/Player_Minh_Prototype.prefab";
+        private const string PlayerPrefabPath = "Assets/Chapter1/Prefabs/Characters/Player.prefab";
         private const string CameraPrefabPath = "Assets/Chapter1/Prefabs/Gameplay/ThirdPersonCameraRig.prefab";
         private const string ScenePath = "Assets/Chapter1/Scenes/Chapter1_PlayerPrototype.unity";
         private const string GameplayPrefabFolder = "Assets/Chapter1/Prefabs/Gameplay";
@@ -76,7 +76,7 @@ namespace DormitoryMystery.Chapter1.Editor
 
             if (!UpdatePlayerPrefab())
             {
-                ShowFailure("Failed to update Player_Minh_Prototype prefab.");
+                ShowFailure("Failed to update Player prefab.");
                 return;
             }
 
@@ -96,7 +96,7 @@ namespace DormitoryMystery.Chapter1.Editor
 
             if (player == null)
             {
-                ShowFailure("Scene is missing Player_Minh.");
+                ShowFailure("Scene is missing Player.");
                 return;
             }
 
@@ -162,7 +162,7 @@ namespace DormitoryMystery.Chapter1.Editor
 
             if (!UpdatePlayerPrefab())
             {
-                ShowFailure("Failed to update Player_Minh_Prototype prefab.");
+                ShowFailure("Failed to update Player prefab.");
                 return;
             }
 
@@ -182,7 +182,7 @@ namespace DormitoryMystery.Chapter1.Editor
 
             if (player == null)
             {
-                ShowFailure("Scene is missing Player_Minh.");
+                ShowFailure("Scene is missing Player.");
                 return;
             }
 
@@ -864,7 +864,7 @@ namespace DormitoryMystery.Chapter1.Editor
 
         private static GameObject FindScenePlayer(Scene scene)
         {
-            return FindSceneObject(scene, "Player_Minh") ?? GetFirstSceneComponent<Chapter1InputReader>(scene)?.gameObject;
+            return FindSceneObject(scene, "Player") ?? GetFirstSceneComponent<Chapter1InputReader>(scene)?.gameObject;
         }
 
         private static GameObject CreateSceneRoot(Scene scene, string name)

@@ -17,7 +17,9 @@ namespace DormitoryMystery.Chapter1.Editor
     {
         private const string InputActionsPath = "Assets/Chapter1/Settings/Chapter1Controls.inputactions";
         private const string InputReferencesFolderPath = "Assets/Chapter1/Settings/InputReferences";
-        private const string PlayerPrefabPath = "Assets/Chapter1/Prefabs/Characters/Player_Minh_Prototype.prefab";
+        private const string PlayerPrefabPath = "Assets/Chapter1/Prefabs/Characters/Player.prefab";
+        private const string PlayerModelPrefabPath = "Assets/Prefab/main_character/Man relax.prefab";
+        private const string PlayerModelFbxPath = "Assets/project upload edit/character man relax/Man relax.FBX";
         private const string CameraPrefabPath = "Assets/Chapter1/Prefabs/Gameplay/ThirdPersonCameraRig.prefab";
         private const string ScenePath = "Assets/Chapter1/Scenes/Chapter1_PlayerPrototype.unity";
         private const string PlayerMaterialPath = "Assets/Chapter1/Materials/M_Player_Prototype.mat";
@@ -133,13 +135,13 @@ namespace DormitoryMystery.Chapter1.Editor
             GameObject savedPlayerPrefab = SavePlayerPrefab(playerPrefabSource);
             if (savedPlayerPrefab == null)
             {
-                ShowFailureDialog("Build Player Prototype", "Failed to save Player_Minh_Prototype prefab.");
+                ShowFailureDialog("Build Player Prototype", "Failed to save Player prefab.");
                 return;
             }
 
             if (!ValidateSavedPlayerPrefab(inputReferences))
             {
-                ShowFailureDialog("Build Player Prototype", "Saved Player_Minh_Prototype prefab failed input reference validation.");
+                ShowFailureDialog("Build Player Prototype", "Saved Player prefab failed input reference validation.");
                 return;
             }
 
@@ -153,7 +155,7 @@ namespace DormitoryMystery.Chapter1.Editor
             GameObject player = InstantiatePlayerPrefab(sceneRoot.transform, scene);
             if (player == null)
             {
-                ShowFailureDialog("Build Player Prototype", "Failed to instantiate Player_Minh_Prototype into the prototype scene.");
+                ShowFailureDialog("Build Player Prototype", "Failed to instantiate Player into the prototype scene.");
                 return;
             }
 
@@ -172,9 +174,9 @@ namespace DormitoryMystery.Chapter1.Editor
             LinkCameraReferences(cameraRig, player);
             SaveCameraPrefab(cameraRig);
 
-            if (!ValidatePlayerInputReferences(player, inputReferences, "scene Player_Minh before save"))
+            if (!ValidatePlayerInputReferences(player, inputReferences, "scene Player before save"))
             {
-                ShowFailureDialog("Build Player Prototype", "Scene Player_Minh failed input reference validation before scene save.");
+                ShowFailureDialog("Build Player Prototype", "Scene Player failed input reference validation before scene save.");
                 return;
             }
 
@@ -184,7 +186,7 @@ namespace DormitoryMystery.Chapter1.Editor
             AssetDatabase.Refresh();
 
             Scene reloadedScene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
-            if (!ValidateScenePlayerInputReferences(reloadedScene, inputReferences, "scene Player_Minh after reload"))
+            if (!ValidateScenePlayerInputReferences(reloadedScene, inputReferences, "scene Player after reload"))
             {
                 ShowFailureDialog("Build Player Prototype", "Saved prototype scene failed input reference validation after reload.");
                 return;
@@ -289,8 +291,6 @@ namespace DormitoryMystery.Chapter1.Editor
         private static void DeleteExistingGeneratedAssets()
         {
             DeleteAssetIfExists(InputActionsPath);
-            DeleteAssetIfExists(PlayerPrefabPath);
-            DeleteAssetIfExists(CameraPrefabPath);
             DeleteAssetIfExists(ScenePath);
             DeleteAssetIfExists(PlayerMaterialPath);
             DeleteAssetIfExists(GroundMaterialPath);
@@ -494,9 +494,8 @@ namespace DormitoryMystery.Chapter1.Editor
 
         private static GameObject CreatePlayerPrototype(Transform parent, Material playerMaterial)
         {
-            GameObject player = CreateChild(parent, "Player_Minh");
+            GameObject player = CreateChild(parent, "Player");
             TryAssignTag(player, "Player");
-            SetLayerRecursively(player, LayerMask.NameToLayer("Player"));
 
             CharacterController characterController = player.AddComponent<CharacterController>();
             characterController.height = 1.8f;
@@ -516,28 +515,119 @@ namespace DormitoryMystery.Chapter1.Editor
             GameObject visual = CreateChild(player.transform, "Visual");
             PlayerVisualController visualController = player.AddComponent<PlayerVisualController>();
 
-            GameObject body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            Undo.RegisterCreatedObjectUndo(body, "Tạo visual Player");
-            body.name = "Body";
-            body.transform.SetParent(visual.transform);
-            body.transform.localPosition = new Vector3(0f, 0.9f, 0f);
-            body.transform.localRotation = Quaternion.identity;
-            body.transform.localScale = new Vector3(0.65f, 0.9f, 0.65f);
-            RemoveCollider(body);
-            ApplyMaterial(body, playerMaterial);
+            GameObject modelAnchor = CreateChild(visual.transform, "ModelAnchor");
+            GameObject playerModelPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(PlayerModelPrefabPath);
+            GameObject modelInstance = playerModelPrefab != null
+                ? PrefabUtility.InstantiatePrefab(playerModelPrefab, modelAnchor.transform) as GameObject
+                : null;
 
-            GameObject head = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            Undo.RegisterCreatedObjectUndo(head, "Tạo visual Player");
-            head.name = "Head";
-            head.transform.SetParent(visual.transform);
-            head.transform.localPosition = new Vector3(0f, 1.65f, 0f);
-            head.transform.localRotation = Quaternion.identity;
-            head.transform.localScale = new Vector3(0.42f, 0.42f, 0.42f);
-            RemoveCollider(head);
-            ApplyMaterial(head, playerMaterial);
+            if (modelInstance == null)
+            {
+                LogBuilderError($"Missing or invalid player model prefab: {PlayerModelPrefabPath}.");
+            }
+            else
+            {
+                modelInstance.name = "Man relax";
+                modelInstance.transform.localPosition = Vector3.zero;
+                modelInstance.transform.localRotation = Quaternion.identity;
+                modelInstance.transform.localScale = Vector3.one * 1.8485f;
+                AlignModelToAnchor(modelInstance, modelAnchor.transform);
+                PrefabUtility.RecordPrefabInstancePropertyModifications(modelInstance.transform);
+
+                Animation legacyAnimation = modelInstance.GetComponentInChildren<Animation>(true);
+                if (legacyAnimation != null)
+                {
+                    legacyAnimation.playAutomatically = false;
+                    legacyAnimation.Stop();
+                    PrefabUtility.RecordPrefabInstancePropertyModifications(legacyAnimation);
+                }
+                else
+                {
+                    Debug.LogWarning($"[Chapter1 Builder] Player model '{PlayerModelPrefabPath}' does not contain a Legacy Animation component.");
+                }
+
+                AnimationClip walkClip = LoadPlayerAnimationClip("walk 1");
+                AnimationClip runClip = LoadPlayerAnimationClip("run");
+                SetSerializedObjectReference(visualController, "legacyAnimation", legacyAnimation);
+                SetSerializedObjectReference(visualController, "animatedModelRoot", modelInstance.transform);
+                SetSerializedObjectReference(visualController, "walkClip", walkClip);
+                SetSerializedObjectReference(visualController, "runClip", runClip);
+            }
 
             SetSerializedObjectReference(visualController, "visualRoot", visual.transform);
+            SetLayerRecursively(player, LayerMask.NameToLayer("Player"));
             return player;
+        }
+
+        private static AnimationClip LoadPlayerAnimationClip(string clipName)
+        {
+            AnimationClip clip = AssetDatabase.LoadAllAssetsAtPath(PlayerModelFbxPath)
+                .OfType<AnimationClip>()
+                .FirstOrDefault(candidate =>
+                    !candidate.name.StartsWith("__preview__", StringComparison.OrdinalIgnoreCase)
+                    && string.Equals(candidate.name.Trim(), clipName.Trim(), StringComparison.OrdinalIgnoreCase));
+
+            if (clip == null)
+            {
+                Debug.LogWarning($"[Chapter1 Builder] Could not find animation clip '{clipName}' in '{PlayerModelFbxPath}'.");
+            }
+
+            return clip;
+        }
+
+        private static void AlignModelToAnchor(GameObject modelInstance, Transform modelAnchor)
+        {
+            Renderer[] renderers = modelInstance.GetComponentsInChildren<Renderer>(true);
+            if (!TryCalculateBoundsRelativeTo(modelAnchor, renderers, out Bounds bounds))
+            {
+                Debug.LogWarning($"[Chapter1 Builder] Could not calculate renderer bounds for '{modelInstance.name}'.");
+                return;
+            }
+
+            modelInstance.transform.localPosition += new Vector3(-bounds.center.x, -bounds.min.y, -bounds.center.z);
+        }
+
+        private static bool TryCalculateBoundsRelativeTo(Transform relativeTo, Renderer[] renderers, out Bounds combinedBounds)
+        {
+            combinedBounds = default;
+            bool hasBounds = false;
+
+            foreach (Renderer renderer in renderers)
+            {
+                if (renderer == null)
+                {
+                    continue;
+                }
+
+                Bounds worldBounds = renderer.bounds;
+                Vector3 min = worldBounds.min;
+                Vector3 max = worldBounds.max;
+                for (int x = 0; x < 2; x++)
+                {
+                    for (int y = 0; y < 2; y++)
+                    {
+                        for (int z = 0; z < 2; z++)
+                        {
+                            Vector3 worldCorner = new Vector3(
+                                x == 0 ? min.x : max.x,
+                                y == 0 ? min.y : max.y,
+                                z == 0 ? min.z : max.z);
+                            Vector3 localCorner = relativeTo.InverseTransformPoint(worldCorner);
+                            if (!hasBounds)
+                            {
+                                combinedBounds = new Bounds(localCorner, Vector3.zero);
+                                hasBounds = true;
+                            }
+                            else
+                            {
+                                combinedBounds.Encapsulate(localCorner);
+                            }
+                        }
+                    }
+                }
+            }
+
+            return hasBounds;
         }
 
         private static GameObject CreateCameraRig(Transform parent, GameObject player)
@@ -911,7 +1001,7 @@ namespace DormitoryMystery.Chapter1.Editor
                 return null;
             }
 
-            player.name = "Player_Minh";
+            player.name = "Player";
             player.transform.SetParent(parent);
             player.transform.localPosition = Vector3.zero;
             player.transform.localRotation = Quaternion.identity;
@@ -934,12 +1024,12 @@ namespace DormitoryMystery.Chapter1.Editor
             try
             {
                 Chapter1InputReader inputReader = prefabRoot.GetComponent<Chapter1InputReader>();
-                if (!AssignInputActionReferences(inputReader, inputReferences, "Player_Minh_Prototype prefab"))
+                if (!AssignInputActionReferences(inputReader, inputReferences, "Player prefab"))
                 {
                     return false;
                 }
 
-                if (!ValidatePlayerInputReferences(prefabRoot, inputReferences, "Player_Minh_Prototype prefab before save"))
+                if (!ValidatePlayerInputReferences(prefabRoot, inputReferences, "Player prefab before save"))
                 {
                     return false;
                 }
@@ -994,7 +1084,7 @@ namespace DormitoryMystery.Chapter1.Editor
                 }
 
                 Chapter1InputReader inputReader = player.GetComponent<Chapter1InputReader>();
-                if (!AssignInputActionReferences(inputReader, inputReferences, "scene Player_Minh"))
+                if (!AssignInputActionReferences(inputReader, inputReferences, "scene Player"))
                 {
                     return false;
                 }
@@ -1015,12 +1105,12 @@ namespace DormitoryMystery.Chapter1.Editor
                 {
                     EditorSceneManager.CloseScene(scene, true);
                     Scene reloadedScene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Additive);
-                    success = ValidateScenePlayerInputReferences(reloadedScene, inputReferences, "scene Player_Minh after reload");
+                    success = ValidateScenePlayerInputReferences(reloadedScene, inputReferences, "scene Player after reload");
                     EditorSceneManager.CloseScene(reloadedScene, true);
                 }
                 else
                 {
-                    success = ValidatePlayerInputReferences(player, inputReferences, "scene Player_Minh after save")
+                    success = ValidatePlayerInputReferences(player, inputReferences, "scene Player after save")
                         && ValidateSerializedFileHasInputReferences(ScenePath, "prototype scene file");
                 }
             }
@@ -1043,7 +1133,7 @@ namespace DormitoryMystery.Chapter1.Editor
         {
             AssetDatabase.ImportAsset(PlayerPrefabPath, ImportAssetOptions.ForceUpdate | ImportAssetOptions.ForceSynchronousImport);
             GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PlayerPrefabPath);
-            return ValidatePlayerInputReferences(prefab, inputReferences, "saved Player_Minh_Prototype prefab")
+            return ValidatePlayerInputReferences(prefab, inputReferences, "saved Player prefab")
                 && ValidateSerializedFileHasInputReferences(PlayerPrefabPath, "player prefab file");
         }
 
@@ -1124,7 +1214,7 @@ namespace DormitoryMystery.Chapter1.Editor
 
         private static GameObject FindScenePlayer(Scene scene)
         {
-            GameObject namedPlayer = FindSceneObject(scene, "Player_Minh");
+            GameObject namedPlayer = FindSceneObject(scene, "Player");
             if (namedPlayer != null)
             {
                 return namedPlayer;
@@ -1133,11 +1223,11 @@ namespace DormitoryMystery.Chapter1.Editor
             List<Chapter1InputReader> inputReaders = GetSceneComponents<Chapter1InputReader>(scene);
             if (inputReaders.Count == 1)
             {
-                Debug.LogWarning("[Chapter1 Builder] Scene player named 'Player_Minh' was not found; using the only Chapter1InputReader in the scene.");
+                Debug.LogWarning("[Chapter1 Builder] Scene player named 'Player' was not found; using the only Chapter1InputReader in the scene.");
                 return inputReaders[0].gameObject;
             }
 
-            LogBuilderError($"Could not find a unique Player_Minh in scene '{ScenePath}'. Found {inputReaders.Count} Chapter1InputReader components.");
+            LogBuilderError($"Could not find a unique Player in scene '{ScenePath}'. Found {inputReaders.Count} Chapter1InputReader components.");
             return null;
         }
 
@@ -1302,6 +1392,11 @@ namespace DormitoryMystery.Chapter1.Editor
             }
 
             gameObject.layer = layer;
+            if (PrefabUtility.IsPartOfPrefabInstance(gameObject))
+            {
+                PrefabUtility.RecordPrefabInstancePropertyModifications(gameObject);
+            }
+
             foreach (Transform child in gameObject.transform)
             {
                 SetLayerRecursively(child.gameObject, layer);

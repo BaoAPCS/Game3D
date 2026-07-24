@@ -23,7 +23,7 @@ namespace DormitoryMystery.Chapter1.Editor
         private const string ExpectedUnityVersion = "6000.5.0f1";
         private const string InputActionsPath = "Assets/Chapter1/Settings/Chapter1Controls.inputactions";
         private const string InputReferencesFolderPath = "Assets/Chapter1/Settings/InputReferences";
-        private const string PlayerPrefabPath = "Assets/Chapter1/Prefabs/Characters/Player_Minh_Prototype.prefab";
+        private const string PlayerPrefabPath = "Assets/Chapter1/Prefabs/Characters/Player.prefab";
         private const string CameraPrefabPath = "Assets/Chapter1/Prefabs/Gameplay/ThirdPersonCameraRig.prefab";
         private const string ScenePath = "Assets/Chapter1/Scenes/Chapter1_PlayerPrototype.unity";
         private const string GameplayMapName = "Gameplay";
