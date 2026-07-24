@@ -84,7 +84,7 @@ Sau khi Unity compile xong, chạy:
 Builder sẽ tạo/cập nhật:
 
 - `Assets/Chapter1/Settings/Chapter1Controls.inputactions`
-- `Assets/Chapter1/Prefabs/Characters/Player_Minh_Prototype.prefab`
+- `Assets/Chapter1/Prefabs/Characters/Player.prefab`
 - `Assets/Chapter1/Prefabs/Gameplay/ThirdPersonCameraRig.prefab`
 - `Assets/Chapter1/Scenes/Chapter1_PlayerPrototype.unity`
 - `Assets/Chapter1/Materials/M_Player_Prototype.mat`

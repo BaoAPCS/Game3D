@@ -166,7 +166,7 @@ namespace DormitoryMystery.Chapter1.Editor
             GameObject uiRoot = FindSceneObject(scene, "UI");
             EventSystem eventSystem = GetSceneComponents<EventSystem>(scene).Count == 1 ? GetSceneComponents<EventSystem>(scene)[0] : null;
 
-            ValidateNamedObject(player, "Player_Minh", reporter);
+            ValidateNamedObject(player, "Player", reporter);
             ValidateNamedObject(cameraRig, "CameraRig", reporter);
             ValidateNamedObject(mainCamera != null ? mainCamera.gameObject : null, "Main Camera", reporter);
             ValidateNamedObject(testGroup, "InteractionInventoryTest", reporter);
@@ -204,32 +204,32 @@ namespace DormitoryMystery.Chapter1.Editor
                 return;
             }
 
-            ValidateSingleComponent<CharacterController>(player, "Player_Minh", reporter);
-            ValidateSingleComponent<Chapter1InputReader>(player, "Player_Minh", reporter);
-            ValidateSingleComponent<PlayerInputLock>(player, "Player_Minh", reporter);
-            ValidateSingleComponent<PlayerStamina>(player, "Player_Minh", reporter);
-            ValidateSingleComponent<Chapter1PlayerMotor>(player, "Player_Minh", reporter);
-            ValidateSingleComponent<PlayerInventory>(player, "Player_Minh", reporter);
-            ValidateSingleComponent<Chapter1InteractionController>(player, "Player_Minh", reporter);
-            ValidateSingleComponent<FlashlightController>(player, "Player_Minh", reporter);
+            ValidateSingleComponent<CharacterController>(player, "Player", reporter);
+            ValidateSingleComponent<Chapter1InputReader>(player, "Player", reporter);
+            ValidateSingleComponent<PlayerInputLock>(player, "Player", reporter);
+            ValidateSingleComponent<PlayerStamina>(player, "Player", reporter);
+            ValidateSingleComponent<Chapter1PlayerMotor>(player, "Player", reporter);
+            ValidateSingleComponent<PlayerInventory>(player, "Player", reporter);
+            ValidateSingleComponent<Chapter1InteractionController>(player, "Player", reporter);
+            ValidateSingleComponent<FlashlightController>(player, "Player", reporter);
 
             if (string.Equals(player.tag, "Player", StringComparison.Ordinal))
             {
-                reporter.Pass("Player_Minh có tag Player.");
+                reporter.Pass("Player có tag Player.");
             }
             else
             {
-                reporter.Error($"Player_Minh tag là '{player.tag}', yêu cầu Player.");
+                reporter.Error($"Player tag là '{player.tag}', yêu cầu Player.");
             }
 
             int playerLayer = LayerMask.NameToLayer("Player");
             if (playerLayer >= 0 && player.layer == playerLayer)
             {
-                reporter.Pass("Player_Minh ở layer Player.");
+                reporter.Pass("Player ở layer Player.");
             }
             else
             {
-                reporter.Error("Player_Minh chưa ở layer Player.");
+                reporter.Error("Player chưa ở layer Player.");
             }
 
             CharacterController characterController = player.GetComponent<CharacterController>();
@@ -244,29 +244,29 @@ namespace DormitoryMystery.Chapter1.Editor
 
             if (player.activeInHierarchy)
             {
-                reporter.Pass("Player_Minh active trong scene.");
+                reporter.Pass("Player active trong scene.");
             }
             else
             {
-                reporter.Error("Player_Minh không active trong scene.");
+                reporter.Error("Player không active trong scene.");
             }
 
             if (player.GetComponent<Rigidbody>() == null)
             {
-                reporter.Pass("Player_Minh root không có Rigidbody.");
+                reporter.Pass("Player root không có Rigidbody.");
             }
             else
             {
-                reporter.Error("Player_Minh root không được có Rigidbody.");
+                reporter.Error("Player root không được có Rigidbody.");
             }
 
             if (player.GetComponent<NavMeshAgent>() == null)
             {
-                reporter.Pass("Player_Minh root không có NavMeshAgent.");
+                reporter.Pass("Player root không có NavMeshAgent.");
             }
             else
             {
-                reporter.Error("Player_Minh root không được có NavMeshAgent.");
+                reporter.Error("Player root không được có NavMeshAgent.");
             }
         }
 
@@ -274,7 +274,7 @@ namespace DormitoryMystery.Chapter1.Editor
         {
             if (inputReader == null)
             {
-                reporter.Error("Không thể kiểm tra input references vì Player_Minh thiếu Chapter1InputReader.");
+                reporter.Error("Không thể kiểm tra input references vì Player thiếu Chapter1InputReader.");
                 return;
             }
 
@@ -1154,7 +1154,7 @@ namespace DormitoryMystery.Chapter1.Editor
 
         private static GameObject FindScenePlayer(Scene scene)
         {
-            GameObject namedPlayer = FindSceneObject(scene, "Player_Minh");
+            GameObject namedPlayer = FindSceneObject(scene, "Player");
             if (namedPlayer != null)
             {
                 return namedPlayer;

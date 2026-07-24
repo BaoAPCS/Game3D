@@ -94,6 +94,7 @@ namespace DormitoryMystery.Chapter1
             if (!movementEnabled || inputLock.IsLocked)
             {
                 StopHorizontalMovement();
+                UpdateVisualState();
                 playerStamina.TickRegeneration(Time.deltaTime);
                 MoveWithGravityOnly();
                 return;

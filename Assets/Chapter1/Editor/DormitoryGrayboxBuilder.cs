@@ -13,7 +13,7 @@ namespace DormitoryMystery.Chapter1.Editor
     {
         private const string PrototypeScenePath = "Assets/Chapter1/Scenes/Chapter1_PlayerPrototype.unity";
         private const string DormitoryScenePath = "Assets/Chapter1/Scenes/Chapter1_Dormitory.unity";
-        private const string PlayerPrefabPath = "Assets/Chapter1/Prefabs/Characters/Player_Minh_Prototype.prefab";
+        private const string PlayerPrefabPath = "Assets/Chapter1/Prefabs/Characters/Player.prefab";
         private const string CameraRigPrefabPath = "Assets/Chapter1/Prefabs/Gameplay/ThirdPersonCameraRig.prefab";
         private const string MaterialFolderPath = "Assets/Chapter1/Materials/Graybox";
         private const string TmpDefaultFontPath = "Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF.asset";
@@ -259,7 +259,7 @@ namespace DormitoryMystery.Chapter1.Editor
                     }
                 }
 
-                GameObject player = FindSceneObject(scene, "Player_Minh");
+                GameObject player = FindSceneObject(scene, "Player");
                 Check(player != null, "Player found", ref passed, ref failed);
                 Check(player != null && PrefabUtility.GetCorrespondingObjectFromSource(player) != null, "Player is a prefab instance", ref passed, ref failed);
                 Check(player != null && player.GetComponent<Chapter1PlayerMotor>() != null, "Player has Chapter1PlayerMotor", ref passed, ref failed);
@@ -762,7 +762,7 @@ namespace DormitoryMystery.Chapter1.Editor
                 throw new InvalidOperationException("Failed to instantiate player prefab.");
             }
 
-            player.name = "Player_Minh";
+            player.name = "Player";
             player.transform.SetParent(context.PlayerSetup, true);
             player.transform.position = new Vector3(-10f, 0.05f, 3.4f);
             player.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
