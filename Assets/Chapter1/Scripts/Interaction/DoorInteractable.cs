@@ -43,13 +43,30 @@ namespace DormitoryMystery.Chapter1
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void InstallDoorRoomNamInteraction()
         {
-            GameObject hinge = GameObject.Find(DoorRoomNamHingeName);
-            if (hinge == null)
+            int interactableLayer = LayerMask.NameToLayer(InteractableLayerName);
+            if (interactableLayer < 0)
             {
-                return;
+                Debug.LogWarning(
+                    $"[DoorInteractable] Layer '{InteractableLayerName}' does not exist.");
             }
 
-            int interactableLayer = LayerMask.NameToLayer(InteractableLayerName);
+            Transform[] sceneTransforms =
+                FindObjectsByType<Transform>(FindObjectsSortMode.None);
+            foreach (Transform candidate in sceneTransforms)
+            {
+                if (candidate.name != DoorRoomNamHingeName)
+                {
+                    continue;
+                }
+
+                InstallInteractionOnHinge(candidate.gameObject, interactableLayer);
+            }
+        }
+
+        private static void InstallInteractionOnHinge(
+            GameObject hinge,
+            int interactableLayer)
+        {
             if (interactableLayer >= 0)
             {
                 Transform[] hierarchy = hinge.GetComponentsInChildren<Transform>(true);
@@ -57,12 +74,6 @@ namespace DormitoryMystery.Chapter1
                 {
                     item.gameObject.layer = interactableLayer;
                 }
-            }
-            else
-            {
-                Debug.LogWarning(
-                    $"[DoorInteractable] Layer '{InteractableLayerName}' does not exist.",
-                    hinge);
             }
 
             Transform fixedInteractionPoint =
