@@ -70,7 +70,7 @@ namespace DormitoryMystery.Chapter1
             return result;
         }
 
-        public Transform GetInteractionTransform()
+        public virtual Transform GetInteractionTransform()
         {
             return interactionPoint != null ? interactionPoint : transform;
         }
