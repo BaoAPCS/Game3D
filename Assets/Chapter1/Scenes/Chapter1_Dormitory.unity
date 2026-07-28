@@ -13542,7 +13542,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 8128668236925612103, guid: 014ba8387ee762d4fac8821b6a5b618e, type: 3}
       propertyPath: m_Name
-      value: boy_sitting
+      value: Minh
       objectReference: {fileID: 0}
     - target: {fileID: 8897093224900880590, guid: 014ba8387ee762d4fac8821b6a5b618e, type: 3}
       propertyPath: m_LocalScale.x
