@@ -80,7 +80,7 @@ namespace DormitoryMystery.Chapter1
 
         public override string GetInteractionPrompt(InteractionContext context)
         {
-            return "[E] Bắt đầu trò chuyện với Minh";
+            return "[E] Trò chuyện với Minh";
         }
 
         protected override InteractionResult PerformInteraction(
