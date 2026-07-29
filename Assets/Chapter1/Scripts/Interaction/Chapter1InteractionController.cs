@@ -213,11 +213,35 @@ namespace DormitoryMystery.Chapter1
                 talkCandidate.Interactable != null
                     ? talkCandidate
                     : interactCandidate;
+            string combinedPrompt = CombinePrompts(
+                talkCandidate.Prompt,
+                interactCandidate.Prompt);
 
             SetLastHit(nearestCandidateCollider, nearestCandidateDistance);
             SetFocusedInteractable(
                 displayedCandidate.Interactable,
-                displayedCandidate.Prompt);
+                combinedPrompt);
+        }
+
+        private static string CombinePrompts(
+            string talkPrompt,
+            string interactPrompt)
+        {
+            bool hasTalkPrompt = !string.IsNullOrWhiteSpace(talkPrompt);
+            bool hasInteractPrompt =
+                !string.IsNullOrWhiteSpace(interactPrompt);
+
+            if (hasTalkPrompt && hasInteractPrompt)
+            {
+                return $"{talkPrompt}\n{interactPrompt}";
+            }
+
+            if (hasTalkPrompt)
+            {
+                return talkPrompt;
+            }
+
+            return hasInteractPrompt ? interactPrompt : string.Empty;
         }
 
         private void ConsiderCandidate(
