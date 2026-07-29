@@ -73,6 +73,7 @@ namespace DormitoryMystery.Chapter1.Editor
             "Sprint",
             "Crouch",
             "Interact",
+            "Talk",
             "ToggleFlashlight",
             "ThrowCan",
             "Pause"
@@ -85,6 +86,7 @@ namespace DormitoryMystery.Chapter1.Editor
             new InputReferenceValidationEntry("Sprint", "sprintActionReference"),
             new InputReferenceValidationEntry("Crouch", "crouchActionReference"),
             new InputReferenceValidationEntry("Interact", "interactActionReference"),
+            new InputReferenceValidationEntry("Talk", "talkActionReference"),
             new InputReferenceValidationEntry("ToggleFlashlight", "toggleFlashlightActionReference"),
             new InputReferenceValidationEntry("ThrowCan", "throwCanActionReference"),
             new InputReferenceValidationEntry("Pause", "pauseActionReference")

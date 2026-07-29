@@ -43,6 +43,7 @@ namespace DormitoryMystery.Chapter1.Editor
             new InputReferenceBinding("Sprint", "sprintActionReference"),
             new InputReferenceBinding("Crouch", "crouchActionReference"),
             new InputReferenceBinding("Interact", "interactActionReference"),
+            new InputReferenceBinding("Talk", "talkActionReference"),
             new InputReferenceBinding("ToggleFlashlight", "toggleFlashlightActionReference"),
             new InputReferenceBinding("ThrowCan", "throwCanActionReference"),
             new InputReferenceBinding("Pause", "pauseActionReference")
@@ -427,6 +428,10 @@ namespace DormitoryMystery.Chapter1.Editor
             InputAction interact = gameplayMap.AddAction("Interact", InputActionType.Button);
             interact.AddBinding("<Keyboard>/f");
             interact.AddBinding("<Gamepad>/buttonSouth");
+
+            InputAction talk = gameplayMap.AddAction("Talk", InputActionType.Button);
+            talk.AddBinding("<Keyboard>/e");
+            talk.AddBinding("<Gamepad>/buttonNorth");
 
             InputAction toggleFlashlight = gameplayMap.AddAction("ToggleFlashlight", InputActionType.Button);
             toggleFlashlight.AddBinding("<Keyboard>/t");

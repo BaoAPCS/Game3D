@@ -25,9 +25,19 @@ namespace DormitoryMystery.Chapter1
 
         private readonly Collider[] overlapBuffer = new Collider[24];
         private IChapter1Interactable currentFocusedInteractable;
+        private IChapter1Interactable currentInteractTarget;
+        private IChapter1Interactable currentTalkTarget;
         private string currentPrompt = string.Empty;
         private float nextAllowedInteractionTime;
         private int lastInteractionFrame = -1;
+
+        private struct InteractionCandidate
+        {
+            public IChapter1Interactable Interactable;
+            public string Prompt;
+            public float Distance;
+            public float Priority;
+        }
 
         public event Action<IChapter1Interactable> FocusChanged;
         public event Action<string> PromptChanged;
@@ -65,6 +75,7 @@ namespace DormitoryMystery.Chapter1
             if (inputReader != null)
             {
                 inputReader.InteractPressed += HandleInteractPressed;
+                inputReader.TalkPressed += HandleTalkPressed;
             }
         }
 
@@ -73,8 +84,11 @@ namespace DormitoryMystery.Chapter1
             if (inputReader != null)
             {
                 inputReader.InteractPressed -= HandleInteractPressed;
+                inputReader.TalkPressed -= HandleTalkPressed;
             }
 
+            currentInteractTarget = null;
+            currentTalkTarget = null;
             SetFocusedInteractable(null, string.Empty);
         }
 
@@ -135,10 +149,8 @@ namespace DormitoryMystery.Chapter1
         {
             Vector3 origin = transform.position;
             InteractionContext context = CreateContext();
-            IChapter1Interactable bestInteractable = null;
-            string bestPrompt = string.Empty;
-            float bestDistance = float.MaxValue;
-            float bestPriority = float.MinValue;
+            InteractionCandidate interactCandidate = default;
+            InteractionCandidate talkCandidate = default;
             Collider nearestCandidateCollider = null;
             float nearestCandidateDistance = float.MaxValue;
 
@@ -172,24 +184,71 @@ namespace DormitoryMystery.Chapter1
                 }
 
                 float priority = interactable is Chapter1Interactable chapterInteractable ? chapterInteractable.InteractionPriority : 0f;
-                bool nearer = targetDistance < bestDistance;
-                bool sameDistanceHigherPriority = Mathf.Approximately(targetDistance, bestDistance) && priority > bestPriority;
-                if (bestInteractable == null || nearer || sameDistanceHigherPriority)
+                if (interactable.InteractionInput == Chapter1InteractionInput.Talk)
                 {
-                    if (IsObstructed(targetPosition))
-                    {
-                        continue;
-                    }
-
-                    bestInteractable = interactable;
-                    bestPrompt = interactable.GetInteractionPrompt(context);
-                    bestDistance = targetDistance;
-                    bestPriority = priority;
+                    ConsiderCandidate(
+                        ref talkCandidate,
+                        interactable,
+                        context,
+                        targetPosition,
+                        targetDistance,
+                        priority);
+                }
+                else
+                {
+                    ConsiderCandidate(
+                        ref interactCandidate,
+                        interactable,
+                        context,
+                        targetPosition,
+                        targetDistance,
+                        priority);
                 }
             }
 
+            currentInteractTarget = interactCandidate.Interactable;
+            currentTalkTarget = talkCandidate.Interactable;
+
+            InteractionCandidate displayedCandidate =
+                talkCandidate.Interactable != null
+                    ? talkCandidate
+                    : interactCandidate;
+
             SetLastHit(nearestCandidateCollider, nearestCandidateDistance);
-            SetFocusedInteractable(bestInteractable, bestPrompt);
+            SetFocusedInteractable(
+                displayedCandidate.Interactable,
+                displayedCandidate.Prompt);
+        }
+
+        private void ConsiderCandidate(
+            ref InteractionCandidate bestCandidate,
+            IChapter1Interactable interactable,
+            InteractionContext context,
+            Vector3 targetPosition,
+            float targetDistance,
+            float priority)
+        {
+            bool nearer = targetDistance < bestCandidate.Distance;
+            bool sameDistanceHigherPriority =
+                Mathf.Approximately(targetDistance, bestCandidate.Distance) &&
+                priority > bestCandidate.Priority;
+
+            if (bestCandidate.Interactable != null &&
+                !nearer &&
+                !sameDistanceHigherPriority)
+            {
+                return;
+            }
+
+            if (IsObstructed(targetPosition))
+            {
+                return;
+            }
+
+            bestCandidate.Interactable = interactable;
+            bestCandidate.Prompt = interactable.GetInteractionPrompt(context);
+            bestCandidate.Distance = targetDistance;
+            bestCandidate.Priority = priority;
         }
 
         private bool IsObstructed(Vector3 targetPosition)
@@ -252,6 +311,26 @@ namespace DormitoryMystery.Chapter1
 
         private void HandleInteractPressed()
         {
+            TryPerformInteraction(Chapter1InteractionInput.Interact);
+        }
+
+        private void HandleTalkPressed()
+        {
+            TryPerformInteraction(Chapter1InteractionInput.Talk);
+        }
+
+        private void TryPerformInteraction(Chapter1InteractionInput pressedInput)
+        {
+            IChapter1Interactable target = pressedInput ==
+                Chapter1InteractionInput.Talk
+                    ? currentTalkTarget
+                    : currentInteractTarget;
+
+            if (target == null)
+            {
+                return;
+            }
+
             if (lastInteractionFrame == Time.frameCount || Time.unscaledTime < nextAllowedInteractionTime)
             {
                 return;
@@ -266,13 +345,8 @@ namespace DormitoryMystery.Chapter1
                 return;
             }
 
-            if (currentFocusedInteractable == null)
-            {
-                return;
-            }
-
             InteractionContext context = CreateContext();
-            InteractionResult result = currentFocusedInteractable.Interact(context);
+            InteractionResult result = target.Interact(context);
             if (!result.ConsumeInteractionInput)
             {
                 return;
@@ -283,7 +357,7 @@ namespace DormitoryMystery.Chapter1
                 Chapter1EventBus.RaiseNotification(result.Message);
             }
 
-            InteractionPerformed?.Invoke(currentFocusedInteractable, result);
+            InteractionPerformed?.Invoke(target, result);
             ScanForInteractable();
         }
 
