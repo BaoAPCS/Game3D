@@ -36,6 +36,9 @@ namespace DormitoryMystery.Chapter1
         private bool interactionControllerWasEnabled;
         private bool dialogueLockHeld;
         private bool generatedDialogueCanvas;
+        private GameObject dialoguePlayer;
+        private Renderer[] hiddenPlayerRenderers;
+        private bool[] playerRendererEnabledStates;
 
         public override Chapter1InteractionInput InteractionInput =>
             Chapter1InteractionInput.Talk;
@@ -104,6 +107,7 @@ namespace DormitoryMystery.Chapter1
                     "Chưa thiết lập đủ camera cho hội thoại với Minh.");
             }
 
+            dialoguePlayer = context.PlayerObject;
             StartCoroutine(PlayDialogue());
             return InteractionResult.Succeeded();
         }
@@ -125,6 +129,7 @@ namespace DormitoryMystery.Chapter1
                 interactionController.enabled = false;
             }
 
+            HidePlayerVisuals();
             PositionDialogueCamera();
             SetCamera(gameplayCamera, false);
             SetCamera(minhCamera, true);
@@ -209,6 +214,7 @@ namespace DormitoryMystery.Chapter1
         {
             SetDialogueVisible(false);
             SetCamera(minhCamera, false);
+            RestorePlayerVisuals();
             SetCamera(gameplayCamera, true);
 
             if (interactionController != null && interactionControllerWasEnabled)
@@ -224,6 +230,60 @@ namespace DormitoryMystery.Chapter1
             interactionControllerWasEnabled = false;
             dialogueLockHeld = false;
             dialogueRunning = false;
+            dialoguePlayer = null;
+        }
+
+        private void HidePlayerVisuals()
+        {
+            RestorePlayerVisuals();
+
+            if (dialoguePlayer == null)
+            {
+                return;
+            }
+
+            hiddenPlayerRenderers =
+                dialoguePlayer.GetComponentsInChildren<Renderer>(true);
+            playerRendererEnabledStates =
+                new bool[hiddenPlayerRenderers.Length];
+
+            for (int i = 0; i < hiddenPlayerRenderers.Length; i++)
+            {
+                Renderer playerRenderer = hiddenPlayerRenderers[i];
+                if (playerRenderer == null)
+                {
+                    continue;
+                }
+
+                playerRendererEnabledStates[i] = playerRenderer.enabled;
+                playerRenderer.enabled = false;
+            }
+        }
+
+        private void RestorePlayerVisuals()
+        {
+            if (hiddenPlayerRenderers == null ||
+                playerRendererEnabledStates == null)
+            {
+                return;
+            }
+
+            int rendererCount = Mathf.Min(
+                hiddenPlayerRenderers.Length,
+                playerRendererEnabledStates.Length);
+
+            for (int i = 0; i < rendererCount; i++)
+            {
+                Renderer playerRenderer = hiddenPlayerRenderers[i];
+                if (playerRenderer != null)
+                {
+                    playerRenderer.enabled =
+                        playerRendererEnabledStates[i];
+                }
+            }
+
+            hiddenPlayerRenderers = null;
+            playerRendererEnabledStates = null;
         }
 
         private void ResolveMinhCamera()
