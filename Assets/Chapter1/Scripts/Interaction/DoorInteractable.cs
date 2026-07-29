@@ -26,7 +26,7 @@ namespace DormitoryMystery.Chapter1
         [SerializeField] private Transform interactionTarget;
 
         [Header("Interaction")]
-        [SerializeField, Min(0.1f)] private float maximumDistanceFromDoor = 1.5f;
+        [SerializeField, Min(0.5f)] private float maximumDistanceFromDoor = 0.5f;
 
         [Header("Animation")]
         [SerializeField, Min(0.01f)] private float animationDuration = 0.6f;
@@ -350,7 +350,7 @@ namespace DormitoryMystery.Chapter1
         private void OnValidate()
         {
             maximumDistanceFromDoor =
-                Mathf.Max(0.1f, maximumDistanceFromDoor);
+                Mathf.Max(0.5f, maximumDistanceFromDoor);
             animationDuration = Mathf.Max(0.01f, animationDuration);
             openAngle = Mathf.Clamp(Mathf.Abs(openAngle), 1f, 179f);
             ResolveReferences();
