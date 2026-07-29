@@ -326,6 +326,7 @@ MonoBehaviour:
   sprintActionReference: {fileID: 11400000, guid: d69616eb44ad2c94ca6fab46550fa894, type: 2}
   crouchActionReference: {fileID: 11400000, guid: 13165b71b28062f4abfaab27c175a8a0, type: 2}
   interactActionReference: {fileID: 11400000, guid: e68fb0fb0e3257f418cbdbfdf0dc0f56, type: 2}
+  talkActionReference: {fileID: 11400000, guid: 4d0de1f85d834570bbf3cf9cbb7cab11, type: 2}
   toggleFlashlightActionReference: {fileID: 11400000, guid: 484212b3ba609db43a22e3b088547c1a, type: 2}
   throwCanActionReference: {fileID: 11400000, guid: 5f35fd39fe7f0d94b93d36228d8411c8, type: 2}
   pauseActionReference: {fileID: 11400000, guid: a0b496e02d588ac45888b07a0befb512, type: 2}

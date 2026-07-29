@@ -12,6 +12,7 @@ namespace DormitoryMystery.Chapter1
         [SerializeField] private InputActionReference sprintActionReference;
         [SerializeField] private InputActionReference crouchActionReference;
         [SerializeField] private InputActionReference interactActionReference;
+        [SerializeField] private InputActionReference talkActionReference;
         [SerializeField] private InputActionReference toggleFlashlightActionReference;
         [SerializeField] private InputActionReference throwCanActionReference;
         [SerializeField] private InputActionReference pauseActionReference;
@@ -27,6 +28,7 @@ namespace DormitoryMystery.Chapter1
 
         public event Action CrouchPressed;
         public event Action InteractPressed;
+        public event Action TalkPressed;
         public event Action ToggleFlashlightPressed;
         public event Action ThrowCanPressed;
         public event Action PausePressed;
@@ -73,6 +75,7 @@ namespace DormitoryMystery.Chapter1
             RegisterValueCallbacks(sprintActionReference, OnSprintPerformed, OnSprintCanceled);
             RegisterButtonCallback(crouchActionReference, OnCrouchPerformed);
             RegisterButtonCallback(interactActionReference, OnInteractPerformed);
+            RegisterButtonCallback(talkActionReference, OnTalkPerformed);
             RegisterButtonCallback(toggleFlashlightActionReference, OnToggleFlashlightPerformed);
             RegisterButtonCallback(throwCanActionReference, OnThrowCanPerformed);
             RegisterButtonCallback(pauseActionReference, OnPausePerformed);
@@ -92,6 +95,7 @@ namespace DormitoryMystery.Chapter1
             UnregisterValueCallbacks(sprintActionReference, OnSprintPerformed, OnSprintCanceled);
             UnregisterButtonCallback(crouchActionReference, OnCrouchPerformed);
             UnregisterButtonCallback(interactActionReference, OnInteractPerformed);
+            UnregisterButtonCallback(talkActionReference, OnTalkPerformed);
             UnregisterButtonCallback(toggleFlashlightActionReference, OnToggleFlashlightPerformed);
             UnregisterButtonCallback(throwCanActionReference, OnThrowCanPerformed);
             UnregisterButtonCallback(pauseActionReference, OnPausePerformed);
@@ -201,6 +205,7 @@ namespace DormitoryMystery.Chapter1
             ValidateReference(sprintActionReference, "Sprint");
             ValidateReference(crouchActionReference, "Crouch");
             ValidateReference(interactActionReference, "Interact");
+            ValidateReference(talkActionReference, "Talk");
             ValidateReference(toggleFlashlightActionReference, "ToggleFlashlight");
             ValidateReference(throwCanActionReference, "ThrowCan");
             ValidateReference(pauseActionReference, "Pause");
@@ -273,6 +278,14 @@ namespace DormitoryMystery.Chapter1
             if (gameplayInputEnabled)
             {
                 InteractPressed?.Invoke();
+            }
+        }
+
+        private void OnTalkPerformed(InputAction.CallbackContext context)
+        {
+            if (gameplayInputEnabled)
+            {
+                TalkPressed?.Invoke();
             }
         }
 

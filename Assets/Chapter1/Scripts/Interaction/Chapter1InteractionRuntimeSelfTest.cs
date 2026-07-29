@@ -8,6 +8,7 @@ namespace DormitoryMystery.Chapter1
     public sealed class Chapter1InteractionRuntimeSelfTest : MonoBehaviour
     {
         private static readonly FieldInfo InteractActionReferenceField = typeof(Chapter1InputReader).GetField("interactActionReference", BindingFlags.Instance | BindingFlags.NonPublic);
+        private static readonly FieldInfo TalkActionReferenceField = typeof(Chapter1InputReader).GetField("talkActionReference", BindingFlags.Instance | BindingFlags.NonPublic);
 
         [SerializeField] private bool runOnStart = true;
         [SerializeField] private bool showDetailedLogs = true;
@@ -36,6 +37,7 @@ namespace DormitoryMystery.Chapter1
             Check(interactionController != null, "InteractionController tồn tại.", ref errors);
             Check(inputReader != null, "InputReader tồn tại.", ref errors);
             Check(IsInteractActionEnabled(inputReader), "Interact action tồn tại và enabled.", ref errors);
+            Check(IsTalkActionEnabled(inputReader), "Talk action tồn tại và enabled.", ref errors);
             Check(GetGameplayCamera(interactionController) != null, "Gameplay Camera tồn tại.", ref errors);
             Check(InteractionMaskHasInteractable(interactionController), "Interaction mask có Interactable.", ref errors);
             Check(promptUI != null, "UI Prompt tồn tại.", ref errors);
@@ -82,6 +84,20 @@ namespace DormitoryMystery.Chapter1
 
             InputActionReference actionReference = InteractActionReferenceField.GetValue(inputReader) as InputActionReference;
             return actionReference != null && actionReference.action != null && actionReference.action.enabled;
+        }
+
+        private static bool IsTalkActionEnabled(Chapter1InputReader inputReader)
+        {
+            if (inputReader == null || TalkActionReferenceField == null)
+            {
+                return false;
+            }
+
+            InputActionReference actionReference =
+                TalkActionReferenceField.GetValue(inputReader) as InputActionReference;
+            return actionReference != null &&
+                   actionReference.action != null &&
+                   actionReference.action.enabled;
         }
 
         private static Camera GetGameplayCamera(Chapter1InteractionController interactionController)

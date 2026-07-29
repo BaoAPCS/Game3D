@@ -40,6 +40,7 @@ namespace DormitoryMystery.Chapter1.Editor
             "sprintActionReference",
             "crouchActionReference",
             "interactActionReference",
+            "talkActionReference",
             "toggleFlashlightActionReference",
             "throwCanActionReference",
             "pauseActionReference"

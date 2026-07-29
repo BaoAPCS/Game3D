@@ -18,6 +18,7 @@ namespace DormitoryMystery.Chapter1
         [SerializeField] private GameObject highlightObject;
 
         public bool IsInteractionEnabled => interactionEnabled && (!oneShot || !alreadyUsed);
+        public virtual Chapter1InteractionInput InteractionInput => Chapter1InteractionInput.Interact;
         public float InteractionPriority => interactionPriority;
 
         protected virtual void Awake()
