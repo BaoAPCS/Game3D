@@ -29,6 +29,18 @@ namespace DormitoryMystery.Chapter1
         [SerializeField, TextArea] private string playerLine = "Tôi cần bạn tách đoạn ghi âm này";
         [SerializeField] private string minhSpeaker = "Minh";
         [SerializeField, TextArea] private string minhLine = "Được";
+        [SerializeField, TextArea] private string minhNoiseLine =
+            "Đoạn ghi âm này rè quá, bị lẫn tiếng nói với tiếng gì giống tiếng còi";
+        [SerializeField, TextArea] private string minhSeparateAudioLine =
+            "Bạn cần phải tách âm ra cho tôi";
+        [SerializeField, TextArea] private string playerDoesNotKnowLine =
+            "Nhưng tôi không biết làm";
+        [SerializeField, TextArea] private string minhDungLine =
+            "Dũng ở tầng trên là một producer, cậu ta có thiết bị tách âm chuyên dụng";
+        [SerializeField, Range(10f, 80f)] private float charactersPerSecond =
+            34f;
+        [SerializeField, Range(1f, 6f)] private float punctuationPauseMultiplier =
+            2.5f;
 
         private Chapter1InteractionController interactionController;
         private PlayerInputLock inputLock;
@@ -135,18 +147,23 @@ namespace DormitoryMystery.Chapter1
             SetCamera(minhCamera, true);
             SetDialogueVisible(true);
 
-            ShowLine(playerSpeaker, playerLine);
-            yield return WaitForNextLine();
-
-            ShowLine(minhSpeaker, minhLine);
-            yield return WaitForNextLine();
-
             yield return WaitForAdvanceRelease();
+            yield return StreamLine(playerSpeaker, playerLine);
+            yield return StreamLine(minhSpeaker, minhLine);
+            yield return StreamLine(minhSpeaker, minhNoiseLine);
+            yield return StreamLine(minhSpeaker, minhSeparateAudioLine);
+            yield return StreamLine(
+                playerSpeaker,
+                playerDoesNotKnowLine);
+            yield return StreamLine(minhSpeaker, minhDungLine);
+
             RestoreGameplayState();
         }
 
-        private void ShowLine(string speaker, string line)
+        private IEnumerator StreamLine(string speaker, string line)
         {
+            string safeLine = line ?? string.Empty;
+
             if (speakerText != null)
             {
                 speakerText.text = speaker;
@@ -154,7 +171,8 @@ namespace DormitoryMystery.Chapter1
 
             if (lineText != null)
             {
-                lineText.text = line;
+                lineText.text = safeLine;
+                lineText.maxVisibleCharacters = 0;
             }
 
             if (speakerText != null)
@@ -163,21 +181,87 @@ namespace DormitoryMystery.Chapter1
                     ? new Color(0.45f, 0.95f, 0.68f)
                     : new Color(0.45f, 0.78f, 1f);
             }
+
+            if (lineText == null)
+            {
+                yield return WaitForNextLine();
+                yield break;
+            }
+
+            lineText.ForceMeshUpdate();
+            int characterCount = lineText.textInfo.characterCount;
+            bool skippedTyping = false;
+
+            for (int i = 0; i < characterCount; i++)
+            {
+                if (IsAdvancePressed())
+                {
+                    skippedTyping = true;
+                    break;
+                }
+
+                lineText.maxVisibleCharacters = i + 1;
+                char visibleCharacter =
+                    lineText.textInfo.characterInfo[i].character;
+                float delay = GetCharacterDelay(visibleCharacter);
+                float elapsed = 0f;
+
+                while (elapsed < delay)
+                {
+                    if (IsAdvancePressed())
+                    {
+                        skippedTyping = true;
+                        break;
+                    }
+
+                    elapsed += Time.unscaledDeltaTime;
+                    yield return null;
+                }
+
+                if (skippedTyping)
+                {
+                    break;
+                }
+            }
+
+            lineText.maxVisibleCharacters = int.MaxValue;
+            if (skippedTyping)
+            {
+                yield return WaitForAdvanceRelease();
+            }
+
+            yield return WaitForNextLine();
+        }
+
+        private float GetCharacterDelay(char character)
+        {
+            float baseDelay = 1f / Mathf.Max(1f, charactersPerSecond);
+            if (character == '.' ||
+                character == '!' ||
+                character == '?')
+            {
+                return baseDelay * punctuationPauseMultiplier;
+            }
+
+            if (character == ',' ||
+                character == ';' ||
+                character == ':')
+            {
+                return baseDelay *
+                       Mathf.Lerp(1f, punctuationPauseMultiplier, 0.5f);
+            }
+
+            return baseDelay;
         }
 
         private static IEnumerator WaitForNextLine()
         {
-            int openedFrame = Time.frameCount;
-
-            while (Time.frameCount <= openedFrame)
-            {
-                yield return null;
-            }
-
             while (!IsAdvancePressed())
             {
                 yield return null;
             }
+
+            yield return WaitForAdvanceRelease();
         }
 
         private static IEnumerator WaitForAdvanceRelease()
@@ -331,6 +415,18 @@ namespace DormitoryMystery.Chapter1
             {
                 dialogueFieldOfView = 55f;
             }
+
+            if (charactersPerSecond < 10f ||
+                charactersPerSecond > 80f)
+            {
+                charactersPerSecond = 34f;
+            }
+
+            if (punctuationPauseMultiplier < 1f ||
+                punctuationPauseMultiplier > 6f)
+            {
+                punctuationPauseMultiplier = 2.5f;
+            }
         }
 
         private void ConfigureInteractionTrigger()
@@ -437,7 +533,8 @@ namespace DormitoryMystery.Chapter1
             {
                 if (advanceHintText != null)
                 {
-                    advanceHintText.text = "E / Space / Enter để tiếp tục";
+                    advanceHintText.text =
+                        "E / Space / Enter: hiện nhanh / tiếp tục";
                 }
 
                 return;
@@ -513,7 +610,8 @@ namespace DormitoryMystery.Chapter1
                 FontStyles.Italic,
                 TextAlignmentOptions.MidlineRight);
 
-            advanceHintText.text = "E / Space / Enter để tiếp tục";
+            advanceHintText.text =
+                "E / Space / Enter: hiện nhanh / tiếp tục";
             advanceHintText.color = new Color(0.72f, 0.76f, 0.82f, 0.9f);
             generatedDialogueCanvas = true;
         }
