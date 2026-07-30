@@ -34,6 +34,9 @@ namespace DormitoryMystery.Chapter1
         private string walkStateName;
         private string runStateName;
 
+        public bool IsVisible =>
+            visualRoot == null || visualRoot.gameObject.activeSelf;
+
         private enum LocomotionAnimationState
         {
             Uninitialized,
@@ -97,6 +100,14 @@ namespace DormitoryMystery.Chapter1
 
             SetLocomotionAnimationState(targetState);
             UpdatePlaybackSpeed(targetState);
+        }
+
+        public void SetVisible(bool visible)
+        {
+            if (visualRoot != null)
+            {
+                visualRoot.gameObject.SetActive(visible);
+            }
         }
 
         private void InitializeLegacyAnimation()
