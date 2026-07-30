@@ -14,8 +14,8 @@ namespace DormitoryMystery.Chapter1.Editor
     {
         private const string PlayerPrefabGuid = "062497d03c3ce134b8d5164b06fb04e6";
         private const string PlayerPrefabPath = "Assets/Chapter1/Prefabs/Characters/Player.prefab";
-        private const string ModelPrefabPath = "Assets/Prefab/main_character/Man relax.prefab";
-        private const string ModelFbxPath = "Assets/project upload edit/character man relax/Man relax.FBX";
+        private const string ModelPrefabPath = "Assets/Chapter1/ExternalAssets/Prefab/main_character/Man relax.prefab";
+        private const string ModelFbxPath = "Assets/Chapter1/ExternalAssets/project upload edit/character man relax/Man relax.FBX";
         private const string DormitoryScenePath = "Assets/Chapter1/Scenes/Chapter1_Dormitory.unity";
         private const string PrototypeScenePath = "Assets/Chapter1/Scenes/Chapter1_PlayerPrototype.unity";
         private const float ModelScale = 1.8485f;

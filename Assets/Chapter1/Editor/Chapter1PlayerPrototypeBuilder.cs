@@ -18,8 +18,8 @@ namespace DormitoryMystery.Chapter1.Editor
         private const string InputActionsPath = "Assets/Chapter1/Settings/Chapter1Controls.inputactions";
         private const string InputReferencesFolderPath = "Assets/Chapter1/Settings/InputReferences";
         private const string PlayerPrefabPath = "Assets/Chapter1/Prefabs/Characters/Player.prefab";
-        private const string PlayerModelPrefabPath = "Assets/Prefab/main_character/Man relax.prefab";
-        private const string PlayerModelFbxPath = "Assets/project upload edit/character man relax/Man relax.FBX";
+        private const string PlayerModelPrefabPath = "Assets/Chapter1/ExternalAssets/Prefab/main_character/Man relax.prefab";
+        private const string PlayerModelFbxPath = "Assets/Chapter1/ExternalAssets/project upload edit/character man relax/Man relax.FBX";
         private const string CameraPrefabPath = "Assets/Chapter1/Prefabs/Gameplay/ThirdPersonCameraRig.prefab";
         private const string ScenePath = "Assets/Chapter1/Scenes/Chapter1_PlayerPrototype.unity";
         private const string PlayerMaterialPath = "Assets/Chapter1/Materials/M_Player_Prototype.mat";
