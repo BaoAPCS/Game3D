@@ -109,6 +109,94 @@ namespace DormitoryMystery.Chapter1.Tests
             }
         }
 
+        [Test]
+        public void RoomDoorDungHasWorkingKeypadSetup()
+        {
+            bool openedByTest = false;
+            Scene scene = GetLoadedScene(DormitoryScenePath);
+            if (!scene.IsValid())
+            {
+                scene = EditorSceneManager.OpenScene(
+                    DormitoryScenePath,
+                    OpenSceneMode.Additive);
+                openedByTest = true;
+            }
+
+            try
+            {
+                GameObject roomDoor = FindSceneObject(
+                    scene,
+                    "RoomDoor_Dung");
+                Assert.NotNull(roomDoor, "RoomDoor_Dung missing.");
+
+                RoomDoorKeypadController controller =
+                    roomDoor.GetComponent<RoomDoorKeypadController>();
+                Assert.NotNull(
+                    controller,
+                    "RoomDoor_Dung missing RoomDoorKeypadController.");
+
+                Transform insideMarker =
+                    roomDoor.transform.Find("room_nam_in");
+                Transform outsideMarker =
+                    roomDoor.transform.Find("room_nam_out");
+                Transform doorPlane =
+                    roomDoor.transform.Find("Door_Room_Nam_Hinge");
+                Assert.NotNull(insideMarker, "Inside marker missing.");
+                Assert.NotNull(outsideMarker, "Outside marker missing.");
+                Assert.NotNull(doorPlane, "Door plane missing.");
+
+                Vector3 outsideToInside =
+                    (insideMarker.position - outsideMarker.position).normalized;
+                Vector3 justOutside =
+                    doorPlane.position - outsideToInside * 0.25f;
+                Vector3 justInside =
+                    doorPlane.position + outsideToInside * 0.25f;
+                Assert.IsFalse(
+                    controller.RequiresPassword(justInside),
+                    "Inside interaction should open without a password.");
+                Assert.IsTrue(
+                    controller.RequiresPassword(justOutside),
+                    "Outside interaction should require a password.");
+
+                NavKeypad.Keypad keypad =
+                    roomDoor.GetComponentInChildren<NavKeypad.Keypad>(true);
+                Assert.NotNull(keypad, "Keypad component missing.");
+                Assert.AreSame(
+                    doorPlane,
+                    keypad.transform.parent,
+                    "Keypad must be parented to the animated door hinge.");
+
+                Transform keypadCameraTransform =
+                    roomDoor.transform.Find("Keypad_camera");
+                Assert.NotNull(
+                    keypadCameraTransform,
+                    "Keypad_camera missing.");
+
+                Camera keypadCamera =
+                    keypadCameraTransform.GetComponent<Camera>();
+                Assert.NotNull(keypadCamera, "Keypad Camera missing.");
+                Assert.IsFalse(
+                    keypadCamera.enabled,
+                    "Keypad Camera must be disabled outside keypad mode.");
+
+                AudioListener keypadListener =
+                    keypadCameraTransform.GetComponent<AudioListener>();
+                Assert.NotNull(
+                    keypadListener,
+                    "Keypad AudioListener missing.");
+                Assert.IsFalse(
+                    keypadListener.enabled,
+                    "Keypad AudioListener must be disabled outside keypad mode.");
+            }
+            finally
+            {
+                if (openedByTest && scene.IsValid())
+                {
+                    EditorSceneManager.CloseScene(scene, true);
+                }
+            }
+        }
+
         private static bool HasEnabledBoxCollider(Scene scene, string objectName)
         {
             GameObject gameObject = FindSceneObject(scene, objectName);
