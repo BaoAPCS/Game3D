@@ -14498,7 +14498,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2774220344278030320, guid: be929569fd62ede4496515d18f6b875d, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -4.361
+      value: -4.233
       objectReference: {fileID: 0}
     - target: {fileID: 2774220344278030320, guid: be929569fd62ede4496515d18f6b875d, type: 3}
       propertyPath: m_LocalPosition.y
@@ -16915,6 +16915,75 @@ Transform:
   - {fileID: 256089857}
   m_Father: {fileID: 1284942751}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &1443540405
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 8128668236925612103, guid: 1f7fa7d120775be4b87d5444023b9468, type: 3}
+      propertyPath: m_Name
+      value: henry_animated_cartoon_character
+      objectReference: {fileID: 0}
+    - target: {fileID: 8897093224900880590, guid: 1f7fa7d120775be4b87d5444023b9468, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 1.4313
+      objectReference: {fileID: 0}
+    - target: {fileID: 8897093224900880590, guid: 1f7fa7d120775be4b87d5444023b9468, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 1.4313
+      objectReference: {fileID: 0}
+    - target: {fileID: 8897093224900880590, guid: 1f7fa7d120775be4b87d5444023b9468, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 1.4313
+      objectReference: {fileID: 0}
+    - target: {fileID: 8897093224900880590, guid: 1f7fa7d120775be4b87d5444023b9468, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 5.1595974
+      objectReference: {fileID: 0}
+    - target: {fileID: 8897093224900880590, guid: 1f7fa7d120775be4b87d5444023b9468, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.019000053
+      objectReference: {fileID: 0}
+    - target: {fileID: 8897093224900880590, guid: 1f7fa7d120775be4b87d5444023b9468, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -23.719812
+      objectReference: {fileID: 0}
+    - target: {fileID: 8897093224900880590, guid: 1f7fa7d120775be4b87d5444023b9468, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 8897093224900880590, guid: 1f7fa7d120775be4b87d5444023b9468, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8897093224900880590, guid: 1f7fa7d120775be4b87d5444023b9468, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 8897093224900880590, guid: 1f7fa7d120775be4b87d5444023b9468, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8897093224900880590, guid: 1f7fa7d120775be4b87d5444023b9468, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8897093224900880590, guid: 1f7fa7d120775be4b87d5444023b9468, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: -90
+      objectReference: {fileID: 0}
+    - target: {fileID: 8897093224900880590, guid: 1f7fa7d120775be4b87d5444023b9468, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: -5645937942226959685, guid: 1f7fa7d120775be4b87d5444023b9468, type: 3}
 --- !u!1 &1454695052
 GameObject:
   m_ObjectHideFlags: 0
@@ -18334,6 +18403,17 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 2303921294396319333, guid: 2cf8072ebed1149479d25d30c324125c, type: 3}
   m_PrefabInstance: {fileID: 1562440600}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1562440602 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 2303921294396319334, guid: 2cf8072ebed1149479d25d30c324125c, type: 3}
+  m_PrefabInstance: {fileID: 1562440600}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1f664f9a675c7ff4689df5ab3302c58a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1574166902
 GameObject:
   m_ObjectHideFlags: 0
@@ -19673,9 +19753,9 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f6540e4307b14683b6c6f10ca5b798e5, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DormitoryMystery.Chapter1.RoomDoorKeypadController
-  keypad: {fileID: 0}
+  keypad: {fileID: 1562440602}
   keypadCamera: {fileID: 551066493}
   maximumClickDistance: 10
   insideMarker: {fileID: 280254160}
@@ -24498,3 +24578,4 @@ SceneRoots:
   - {fileID: 286172679}
   - {fileID: 1301304422}
   - {fileID: 1479215623}
+  - {fileID: 1443540405}

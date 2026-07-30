@@ -237,6 +237,23 @@ namespace DormitoryMystery.Chapter1
                 return;
             }
 
+            int lineCount = GetPromptLineCount();
+
+            Vector2 size = promptRect.sizeDelta;
+            size.y = singleLineHeight +
+                     Mathf.Max(0, lineCount - 1) *
+                     AdditionalLineHeight;
+            promptRect.sizeDelta = size;
+        }
+
+        private int GetPromptLineCount()
+        {
+            if (promptText != null)
+            {
+                promptText.ForceMeshUpdate();
+                return Mathf.Max(1, promptText.textInfo.lineCount);
+            }
+
             int lineCount = 1;
             for (int i = 0; i < currentPrompt.Length; i++)
             {
@@ -246,11 +263,7 @@ namespace DormitoryMystery.Chapter1
                 }
             }
 
-            Vector2 size = promptRect.sizeDelta;
-            size.y = singleLineHeight +
-                     Mathf.Max(0, lineCount - 1) *
-                     AdditionalLineHeight;
-            promptRect.sizeDelta = size;
+            return lineCount;
         }
 
         private void HandleLockStateChanged(bool locked)
