@@ -24,6 +24,7 @@ namespace DormitoryMystery.Chapter1
         [SerializeField] private Animator doorAnimator;
         [SerializeField] private Collider doorCollider;
         [SerializeField] private Transform interactionTarget;
+        [SerializeField] private RoomDoorKeypadController keypadController;
 
         [Header("Interaction")]
         [SerializeField, Min(0.5f)] private float maximumDistanceFromDoor = 0.5f;
@@ -40,6 +41,9 @@ namespace DormitoryMystery.Chapter1
         private Vector3 closedUp;
         private Vector3 closedForward;
 
+        public bool IsOpen => isOpen;
+        public bool IsAnimating => isAnimating;
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void InstallDoorRoomNamInteraction()
         {
@@ -51,7 +55,7 @@ namespace DormitoryMystery.Chapter1
             }
 
             Transform[] sceneTransforms =
-                FindObjectsByType<Transform>(FindObjectsSortMode.None);
+                FindObjectsByType<Transform>(FindObjectsInactive.Exclude);
             foreach (Transform candidate in sceneTransforms)
             {
                 if (candidate.name != DoorRoomNamHingeName)
@@ -148,7 +152,19 @@ namespace DormitoryMystery.Chapter1
                 return string.Empty;
             }
 
-            return isOpen ? "[F] Đóng cửa" : "[F] Mở cửa";
+            ResolveReferences();
+            if (keypadController != null &&
+                keypadController.IsInKeypadMode)
+            {
+                return string.Empty;
+            }
+
+            if (isOpen)
+            {
+                return "[F] Đóng cửa";
+            }
+
+            return "[F] Mở cửa";
         }
 
         public override bool CanInteract(InteractionContext context)
@@ -161,6 +177,12 @@ namespace DormitoryMystery.Chapter1
             }
 
             ResolveReferences();
+            if (keypadController != null &&
+                keypadController.IsInKeypadMode)
+            {
+                return false;
+            }
+
             if (doorCollider == null || !doorCollider.enabled)
             {
                 return false;
@@ -228,7 +250,32 @@ namespace DormitoryMystery.Chapter1
                     "Không xác định được vị trí người chơi.");
             }
 
+            if (keypadController != null &&
+                keypadController.RequiresPassword(
+                    context.PlayerTransform.position))
+            {
+                return keypadController.BeginKeypadEntry(this, context);
+            }
+
             return OpenDoorAwayFrom(context.PlayerTransform.position);
+        }
+
+        internal InteractionResult OpenAfterKeypad(
+            Vector3 playerPosition)
+        {
+            if (isOpen || isAnimating)
+            {
+                return InteractionResult.Ignored();
+            }
+
+            ResolveReferences();
+            if (doorAnimator == null)
+            {
+                return InteractionResult.Failed(
+                    "Cửa chưa được gắn Animator.");
+            }
+
+            return OpenDoorAwayFrom(playerPosition);
         }
 
         private InteractionResult OpenDoorAwayFrom(Vector3 playerPosition)
@@ -326,6 +373,12 @@ namespace DormitoryMystery.Chapter1
             if (interactionTarget == null && doorCollider != null)
             {
                 interactionTarget = doorCollider.transform;
+            }
+
+            if (keypadController == null)
+            {
+                keypadController =
+                    GetComponentInParent<RoomDoorKeypadController>();
             }
         }
 

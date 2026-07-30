@@ -42,11 +42,11 @@ namespace NavKeypad
         private string currentInput;
         private bool displayingResult = false;
         private bool accessWasGranted = false;
+        private Coroutine displayResultRoutine;
 
         private void Awake()
         {
-            ClearInput();
-            panelMesh.material.SetVector("_EmissionColor", screenNormalColor * screenIntensity);
+            ResetForNewAttempt();
         }
 
 
@@ -78,7 +78,8 @@ namespace NavKeypad
                 bool granted = currentKombo == keypadCombo;
                 if (!displayingResult)
                 {
-                    StartCoroutine(DisplayResultRoutine(granted));
+                    displayResultRoutine =
+                        StartCoroutine(DisplayResultRoutine(granted));
                 }
             }
             else
@@ -98,9 +99,15 @@ namespace NavKeypad
 
             yield return new WaitForSeconds(displayResultTime);
             displayingResult = false;
-            if (granted) yield break;
+            if (granted)
+            {
+                displayResultRoutine = null;
+                yield break;
+            }
+
             ClearInput();
             panelMesh.material.SetVector("_EmissionColor", screenNormalColor * screenIntensity);
+            displayResultRoutine = null;
 
         }
 
@@ -116,6 +123,22 @@ namespace NavKeypad
         {
             currentInput = "";
             keypadDisplayText.text = currentInput;
+        }
+
+        public void ResetForNewAttempt()
+        {
+            if (displayResultRoutine != null)
+            {
+                StopCoroutine(displayResultRoutine);
+                displayResultRoutine = null;
+            }
+
+            displayingResult = false;
+            accessWasGranted = false;
+            ClearInput();
+            panelMesh.material.SetVector(
+                "_EmissionColor",
+                screenNormalColor * screenIntensity);
         }
 
         private void AccessGranted()
