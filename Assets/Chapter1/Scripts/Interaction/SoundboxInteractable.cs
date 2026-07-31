@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace DormitoryMystery.Chapter1
 {
@@ -16,8 +17,21 @@ namespace DormitoryMystery.Chapter1
             Chapter1InteractionInput.Talk;
 
         [RuntimeInitializeOnLoadMethod(
-            RuntimeInitializeLoadType.AfterSceneLoad)]
-        private static void InstallSceneSoundboxInteraction()
+            RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void RegisterSceneLoadedCallback()
+        {
+            SceneManager.sceneLoaded -= HandleSceneLoaded;
+            SceneManager.sceneLoaded += HandleSceneLoaded;
+        }
+
+        private static void HandleSceneLoaded(
+            Scene scene,
+            LoadSceneMode loadMode)
+        {
+            InstallSceneSoundboxInteraction(scene);
+        }
+
+        private static void InstallSceneSoundboxInteraction(Scene scene)
         {
             int interactableLayer = LayerMask.NameToLayer(
                 InteractableLayerName);
@@ -36,6 +50,7 @@ namespace DormitoryMystery.Chapter1
             {
                 Transform candidate = sceneTransforms[i];
                 if (candidate == null ||
+                    candidate.gameObject.scene != scene ||
                     !string.Equals(
                         candidate.name,
                         SoundboxObjectName,

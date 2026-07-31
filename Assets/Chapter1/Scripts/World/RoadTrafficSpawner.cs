@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace DormitoryMystery.Chapter1
 {
@@ -229,24 +230,67 @@ namespace DormitoryMystery.Chapter1
         private readonly List<ActiveVehicle> activeVehicles = new List<ActiveVehicle>();
         private bool trafficRunning;
 
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-        private static void EnsureRuntimeSpawnerExists()
+        [RuntimeInitializeOnLoadMethod(
+            RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void RegisterSceneLoadedCallback()
         {
-            RoadTrafficSpawner existingSpawner =
-                UnityEngine.Object.FindAnyObjectByType<RoadTrafficSpawner>();
+            SceneManager.sceneLoaded -= HandleSceneLoaded;
+            SceneManager.sceneLoaded += HandleSceneLoaded;
+        }
 
-            if (existingSpawner != null && existingSpawner.isActiveAndEnabled)
+        private static void HandleSceneLoaded(
+            Scene scene,
+            LoadSceneMode loadMode)
+        {
+            EnsureRuntimeSpawnerExists(scene);
+        }
+
+        private static void EnsureRuntimeSpawnerExists(Scene scene)
+        {
+            if (!scene.IsValid() || !scene.isLoaded)
             {
                 return;
             }
 
-            if (GameObject.Find(RiderMotorcycleName) == null &&
-                GameObject.Find(MotorcytressName) == null)
+            bool hasTrafficSource = false;
+            GameObject[] sceneRoots = scene.GetRootGameObjects();
+            for (int rootIndex = 0;
+                 rootIndex < sceneRoots.Length;
+                 rootIndex++)
+            {
+                RoadTrafficSpawner existingSpawner =
+                    sceneRoots[rootIndex]
+                        .GetComponentInChildren<RoadTrafficSpawner>(true);
+                if (existingSpawner != null &&
+                    existingSpawner.isActiveAndEnabled)
+                {
+                    return;
+                }
+
+                Transform[] hierarchy =
+                    sceneRoots[rootIndex]
+                        .GetComponentsInChildren<Transform>(true);
+                for (int childIndex = 0;
+                     childIndex < hierarchy.Length;
+                     childIndex++)
+                {
+                    string objectName = hierarchy[childIndex].name;
+                    if (objectName == RiderMotorcycleName ||
+                        objectName == MotorcytressName)
+                    {
+                        hasTrafficSource = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!hasTrafficSource)
             {
                 return;
             }
 
             GameObject trafficSystem = new GameObject("RoadTrafficSystem (Auto)");
+            SceneManager.MoveGameObjectToScene(trafficSystem, scene);
             trafficSystem.AddComponent<RoadTrafficSpawner>();
         }
 

@@ -1,6 +1,7 @@
 using NavKeypad;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
 
 namespace DormitoryMystery.Chapter1
 {
@@ -41,14 +42,29 @@ namespace DormitoryMystery.Chapter1
 
         public bool IsInKeypadMode => activeDoor != null;
 
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-        private static void EnsureControllerInstalled()
+        [RuntimeInitializeOnLoadMethod(
+            RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void RegisterSceneLoadedCallback()
+        {
+            SceneManager.sceneLoaded -= HandleSceneLoaded;
+            SceneManager.sceneLoaded += HandleSceneLoaded;
+        }
+
+        private static void HandleSceneLoaded(
+            Scene scene,
+            LoadSceneMode loadMode)
+        {
+            EnsureControllerInstalled(scene);
+        }
+
+        private static void EnsureControllerInstalled(Scene scene)
         {
             Transform[] sceneTransforms =
                 FindObjectsByType<Transform>(FindObjectsInactive.Exclude);
             foreach (Transform candidate in sceneTransforms)
             {
-                if (candidate.name != RoomDoorName ||
+                if (candidate.gameObject.scene != scene ||
+                    candidate.name != RoomDoorName ||
                     candidate.GetComponent<RoomDoorKeypadController>() != null ||
                     candidate.GetComponentInChildren<Keypad>(true) == null)
                 {

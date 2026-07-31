@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace DormitoryMystery.Chapter1
 {
@@ -9,8 +10,21 @@ namespace DormitoryMystery.Chapter1
             "henry_animated_cartoon_character";
 
         [RuntimeInitializeOnLoadMethod(
-            RuntimeInitializeLoadType.AfterSceneLoad)]
-        private static void ConfigureHenryIdleAnimation()
+            RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void RegisterSceneLoadedCallback()
+        {
+            SceneManager.sceneLoaded -= HandleSceneLoaded;
+            SceneManager.sceneLoaded += HandleSceneLoaded;
+        }
+
+        private static void HandleSceneLoaded(
+            Scene scene,
+            LoadSceneMode loadMode)
+        {
+            ConfigureHenryIdleAnimation(scene);
+        }
+
+        private static void ConfigureHenryIdleAnimation(Scene scene)
         {
             Transform[] sceneTransforms =
                 UnityEngine.Object.FindObjectsByType<Transform>(
@@ -20,6 +34,7 @@ namespace DormitoryMystery.Chapter1
             {
                 Transform candidate = sceneTransforms[i];
                 if (candidate == null ||
+                    candidate.gameObject.scene != scene ||
                     !string.Equals(
                         candidate.name,
                         HenryObjectName,
@@ -28,32 +43,27 @@ namespace DormitoryMystery.Chapter1
                     continue;
                 }
 
-                PlayLoopingIdle(candidate);
+                HoldInitialPose(candidate);
             }
         }
 
-        private static void PlayLoopingIdle(Transform henryRoot)
+        private static void HoldInitialPose(Transform henryRoot)
         {
             Animation legacyAnimation =
                 henryRoot.GetComponentInChildren<Animation>(true);
             if (legacyAnimation == null || legacyAnimation.clip == null)
             {
                 Debug.LogWarning(
-                    "[HenryIdleAnimationAutoplay] Henry does not have " +
-                    "a Legacy Animation clip assigned.",
+                    "[Henry] Không tìm thấy animation gốc để giữ tư thế đứng.",
                     henryRoot);
                 return;
             }
 
-            legacyAnimation.playAutomatically = true;
-            legacyAnimation.wrapMode = WrapMode.Loop;
-
-            foreach (AnimationState state in legacyAnimation)
-            {
-                state.wrapMode = WrapMode.Loop;
-            }
-
-            legacyAnimation.Play(legacyAnimation.clip.name);
+            legacyAnimation.playAutomatically = false;
+            legacyAnimation.Stop();
+            legacyAnimation.clip.SampleAnimation(
+                legacyAnimation.gameObject,
+                0f);
         }
     }
 }
