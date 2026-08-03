@@ -1,0 +1,341 @@
+\documentclass[aspectratio=169,10pt]{beamer}
+
+\usetheme{Madrid}
+\usecolortheme{default}
+\usefonttheme{professionalfonts}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[english]{babel}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{graphicx}
+\graphicspath{{./}{images/}{docs/images/}}
+\setkeys{Gin}{draft=false}
+
+\definecolor{GameGreen}{RGB}{0,105,92}
+\definecolor{GameGold}{RGB}{225,151,48}
+\definecolor{GameDark}{RGB}{33,43,54}
+\definecolor{GameLight}{RGB}{243,247,246}
+
+\setbeamercolor{structure}{fg=GameGreen}
+\setbeamercolor{frametitle}{fg=white,bg=GameGreen}
+\setbeamercolor{title}{fg=GameGreen}
+\setbeamercolor{block title}{fg=white,bg=GameGreen}
+\setbeamercolor{block body}{bg=GameLight,fg=GameDark}
+\setbeamercolor{alertblock title}{fg=white,bg=GameGold}
+\setbeamercolor{alertblock body}{bg=GameLight,fg=GameDark}
+\setbeamercolor{author in head/foot}{fg=white,bg=GameGreen}
+\setbeamercolor{title in head/foot}{fg=white,bg=GameDark}
+\setbeamercolor{date in head/foot}{fg=white,bg=GameGreen}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{itemize items}[triangle]
+\setbeamertemplate{footline}{%
+  \leavevmode\hbox{%
+  \begin{beamercolorbox}[wd=.25\paperwidth,ht=2.5ex,dp=1ex,center]{author in head/foot}%
+    Group 11
+  \end{beamercolorbox}%
+  \begin{beamercolorbox}[wd=.60\paperwidth,ht=2.5ex,dp=1ex,leftskip=.8em]{title in head/foot}%
+    Horror Investigation Game
+  \end{beamercolorbox}%
+  \begin{beamercolorbox}[wd=.15\paperwidth,ht=2.5ex,dp=1ex,center]{date in head/foot}%
+    \insertframenumber/\inserttotalframenumber
+  \end{beamercolorbox}}%
+  \vskip0pt%
+}
+\setbeamertemplate{title page}{%
+  \vbox{}
+  \vfill
+  \begin{beamercolorbox}[wd=.96\paperwidth,sep=1.05em,center,rounded=true,shadow=true]{frametitle}
+    {\usebeamerfont{title}\color{white}\inserttitle\par}
+    \vspace{0.25cm}
+    {\usebeamerfont{subtitle}\color{white}\insertsubtitle\par}
+    \vspace{0.55cm}
+    {\small\color{white}\insertinstitute\par}
+    \vspace{0.20cm}
+    {\small\color{white}\insertdate\par}
+  \end{beamercolorbox}
+  \vspace{1.0cm}
+  \begin{center}
+    \usebeamerfont{author}\insertauthor
+  \end{center}
+  \vfill
+}
+
+\title{Horror Investigation Game}
+\subtitle{Technical Design and Prototype Implementation}
+\author{\textbf{Group 11}\\[0.2cm]\small
+Vo Minh Dang -- 23125002\\
+Truong Gia Bao -- 23125052\\
+Nguyen Nhat Khoa -- 23125085}
+\institute{Advanced Program (APCS) \\ 3D Visualization and Game Development -- 23TT}
+\date{Final Project Seminar S2: Tech -- 1 August 2026}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{Technical Goal: Build One Reliable Gameplay Foundation}
+  \begin{block}{Engineering objective}
+    The project first establishes a stable third-person gameplay framework in the dormitory vertical slice. Player, interaction, UI, inventory, objectives, and saving are designed to be reusable when later maps are integrated.
+  \end{block}
+
+  \vspace{0.35cm}
+  \begin{columns}[T,onlytextwidth]
+    \column{.48\textwidth}
+    \begin{block}{Reusable systems}
+      Player movement, camera, input, interaction, inventory, HUD, objective events, and save data.
+    \end{block}
+    \column{.48\textwidth}
+    \begin{block}{Map-specific content}
+      Scene geometry, puzzles, NPC placement, visual atmosphere, and the objectives that connect each chapter.
+    \end{block}
+  \end{columns}
+\end{frame}
+
+\section{Unity Foundation}
+\begin{frame}{Unity Environment and Project Organization}
+  \begin{columns}[T,onlytextwidth]
+    \column{.48\textwidth}
+    \begin{block}{Unity stack}
+      \begin{itemize}
+        \item Unity 6000.5.0f1 with Universal Render Pipeline 17.5.0.
+        \item Input System 1.19.0 for keyboard, mouse, and gamepad actions.
+        \item AI Navigation 2.0.13, Timeline 1.8.12, UGUI, and Unity Test Framework.
+      \end{itemize}
+    \end{block}
+    \column{.48\textwidth}
+    \begin{block}{Asset organization}
+      \begin{itemize}
+        \item \texttt{Assets/Chapter1}: runtime scripts, scene, UI, input, save, and tests.
+        \item \texttt{Assets/Chapter2}: police station scene and 3D model.
+        \item \texttt{Assets/Keypad}: reusable keypad and door assets.
+      \end{itemize}
+    \end{block}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Runtime Architecture Separates Systems from Map Content}
+  \begin{columns}[T,onlytextwidth]
+    \column{.31\textwidth}
+    \begin{block}{Player Layer}
+      Input reader, motor, visual controller, stamina, input lock, camera target, and third-person camera rig.
+    \end{block}
+    \column{.31\textwidth}
+    \begin{block}{Gameplay Layer}
+      Interactable contract, interaction controller, pickups, inventory, doors, keypad, NPC logic, and objective markers.
+    \end{block}
+    \column{.31\textwidth}
+    \begin{block}{Progression Layer}
+      Chapter manager, event bus, chapter steps, HUD notifications, and JSON save service.
+    \end{block}
+  \end{columns}
+
+  \vspace{0.35cm}
+  \begin{alertblock}{Design benefit}
+    A new scene can reuse the runtime layers while only replacing scene objects, chapter objectives, and encounter design.
+  \end{alertblock}
+\end{frame}
+
+\section{Implemented Systems}
+\begin{frame}{Player Controller and Camera}
+  \begin{columns}[T,onlytextwidth]
+    \column{.48\textwidth}
+    \begin{block}{Character control}
+      \begin{itemize}
+        \item \texttt{CharacterController}-based third-person movement.
+        \item Sprinting consumes stamina; sprint is unavailable until enough stamina recovers.
+        \item Crouch supports low-ceiling checks and context-based input locks.
+      \end{itemize}
+    \end{block}
+    \column{.48\textwidth}
+    \begin{block}{Camera control}
+      \begin{itemize}
+        \item Orbit camera follows a dedicated target in \texttt{LateUpdate}.
+        \item Camera collision uses a sphere cast against the environment.
+        \item Look input can be disabled during dialogue, puzzles, or pause states.
+      \end{itemize}
+    \end{block}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Interaction, Inventory, and Door Systems}
+  \begin{columns}[T,onlytextwidth]
+    \column{.48\textwidth}
+    \begin{block}{Interaction pipeline}
+      \begin{itemize}
+        \item Camera-forward sphere cast detects targets on the \texttt{Interactable} layer.
+        \item \texttt{IChapter1Interactable} provides a common contract for world objects.
+        \item Prompts, highlights, one-shot behavior, and step gating are handled consistently.
+      \end{itemize}
+    \end{block}
+    \column{.48\textwidth}
+    \begin{block}{Items and access control}
+      \begin{itemize}
+        \item Pickups update \texttt{PlayerInventory} and persisted unique item IDs.
+        \item Flashlight, fuse, throwable can, and inspectable objects are supported.
+        \item Room-door keypad logic controls password-gated access from the outside.
+      \end{itemize}
+    \end{block}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Objectives, HUD, and Save Data}
+  \begin{columns}[T,onlytextwidth]
+    \column{.48\textwidth}
+    \begin{block}{Event-driven presentation}
+      \begin{itemize}
+        \item \texttt{Chapter1EventBus} publishes inventory and progression changes.
+        \item HUD modules cover objectives, interaction prompts, inventory, stamina, notifications, and debug information.
+        \item Scene markers provide named objectives without blocking player movement.
+      \end{itemize}
+    \end{block}
+    \column{.48\textwidth}
+    \begin{block}{Persistent progression}
+      \begin{itemize}
+        \item \texttt{Chapter1SaveData} stores only serializable gameplay state.
+        \item \texttt{JsonChapter1SaveService} saves JSON under \texttt{Application.persistentDataPath}.
+        \item World pickups, inventory changes, and chapter state remain synchronized.
+      \end{itemize}
+    \end{block}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Henry Pursuit Prototype: Animation and Gameplay Integration}
+  \begin{columns}[T,onlytextwidth]
+    \column{.48\textwidth}
+    \centering
+    \includegraphics[height=.40\textheight,keepaspectratio]{HenryRunPose_Quarter.png}
+
+    \vspace{0.10cm}
+    \small\textbf{Front view:} corrected run pose on Henry's production model.
+
+    \column{.48\textwidth}
+    \centering
+    \includegraphics[height=.40\textheight,keepaspectratio]{HenryRunPose_ThreeQuarter.png}
+
+    \vspace{0.10cm}
+    \small\textbf{Three-quarter view:} stride and body-stability validation.
+  \end{columns}
+
+  \vspace{0.10cm}
+  \begin{alertblock}{Runtime behavior}
+    Henry uses idle and run animation controllers. After the theft interaction, the chase controller switches the NPC into the pursuit state and presents a game-over result when the player is caught.
+  \end{alertblock}
+\end{frame}
+
+\section{Scene Integration and Quality}
+\begin{frame}{Scene Readiness and Technical Scope}
+  \renewcommand{\arraystretch}{1.25}
+  \begin{tabular}{p{.20\linewidth} p{.37\linewidth} p{.31\linewidth}}
+    \toprule
+    \textbf{Chapter} & \textbf{Current technical state} & \textbf{Next integration target} \\
+    \midrule
+    Dormitory & Playable scene with player, interaction, inventory, HUD, save, keypad, objective markers, and NPC-related systems. & Stabilize the complete vertical slice and chapter exit. \\
+    Police Station & Scene and 3D model are present. & Add chapter objectives, archive puzzle, stealth zones, and scene transition. \\
+    Old Hospital & Dedicated chapter assets and scene are not yet present. & Build horror encounters, power restoration, checkpoints, and evidence flow. \\
+    Killer's House & Dedicated chapter assets and scene are not yet present. & Build final stealth encounter, endings, and final transition. \\
+    \bottomrule
+  \end{tabular}
+\end{frame}
+
+\begin{frame}{Validation Strategy Focuses on Progression Blockers}
+  \begin{columns}[T,onlytextwidth]
+    \column{.48\textwidth}
+    \begin{block}{Automated edit-mode checks}
+      \begin{itemize}
+        \item Required dormitory areas, spawns, and objective markers exist.
+        \item Colliders are present where required and markers do not block movement.
+        \item Room-door keypad, camera, and audio-listener configuration are valid.
+        \item The scene contains no missing-script components.
+      \end{itemize}
+    \end{block}
+    \column{.48\textwidth}
+    \begin{block}{Manual play-mode checks}
+      \begin{itemize}
+        \item Movement, camera collision, sprint stamina, crouch, and input locks.
+        \item Interaction focus, inventory feedback, keypad access, and save/load.
+        \item NPC chase and failure flow, then full chapter progression to the exit.
+      \end{itemize}
+    \end{block}
+  \end{columns}
+\end{frame}
+
+\section{Technical Delivery Plan}
+\begin{frame}{Technical Roadmap Before Final Delivery}
+  \begin{enumerate}
+    \item Finish and verify the Chapter 1 vertical slice from opening objective to scene exit.
+    \item Generalize shared player, interaction, UI, and save interfaces for cross-chapter reuse.
+    \item Integrate the police-station objective chain, puzzle gates, and stealth requirements.
+    \item Build hospital and killer-house scenes with checkpoint, threat, and ending systems.
+    \item Add playable scenes to Build Settings and perform full-path regression testing.
+  \end{enumerate}
+
+  \vspace{0.2cm}
+  \begin{alertblock}{Delivery check}
+    Verify the final build, project reopening, main progression path, and save/load behavior before packaging \texttt{Group11-S2.rar}.
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{Technical Responsibilities}
+  \begin{columns}[T,onlytextwidth]
+    \column{.31\textwidth}
+    \begin{block}{Vo Minh Dang}
+      \begin{minipage}[t][.35\textheight][t]{\linewidth}
+        \small
+        \textbf{Gameplay \& Integration}
+        \begin{itemize}
+          \item Interaction, objectives, and NPC/AI systems.
+          \item Event connections between gameplay and UI.
+          \item System integration and bug fixing.
+        \end{itemize}
+      \end{minipage}
+    \end{block}
+
+    \column{.34\textwidth}
+    \begin{alertblock}{Truong Gia Bao -- UI/HUD}
+      \begin{minipage}[t][.35\textheight][t]{\linewidth}
+        \small
+        \textbf{UI Implementation}
+        \begin{itemize}
+          \item Interaction prompts and notifications.
+          \item Objective, inventory, and stamina HUD.
+          \item UGUI layout, readability, and consistency.
+        \end{itemize}
+      \end{minipage}
+    \end{alertblock}
+
+    \column{.31\textwidth}
+    \begin{block}{Nguyen Nhat Khoa}
+      \begin{minipage}[t][.35\textheight][t]{\linewidth}
+        \small
+        \textbf{Content \& QA}
+        \begin{itemize}
+          \item Objective and notification content.
+          \item Gameplay-flow and UI validation.
+          \item Issue tracking and demo preparation.
+        \end{itemize}
+      \end{minipage}
+    \end{block}
+  \end{columns}
+
+  \vspace{0.15cm}
+  \small\centering
+  \textbf{Technical workflow:} Bao implements the UI, Dang connects it to gameplay, and Khoa validates the user-facing flow.
+\end{frame}
+
+\begin{frame}{Conclusion: A Reusable Path from Prototype to Full Game}
+  \begin{block}{Technical takeaway}
+    The dormitory prototype proves the core gameplay stack: player control, interaction, inventory, UI, save data, access control, and NPC pursuit. The next phase is scene integration and validation so the same foundation can support the remaining chapters.
+  \end{block}
+
+  \vfill
+  \begin{center}
+    \Large\textcolor{GameGreen}{\textbf{Build the system once. Validate it thoroughly. Reuse it across every map.}}
+  \end{center}
+\end{frame}
+
+\end{document}

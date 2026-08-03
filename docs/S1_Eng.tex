@@ -1,0 +1,349 @@
+\documentclass[aspectratio=169,10pt]{beamer}
+
+\usetheme{Madrid}
+\usecolortheme{default}
+\usefonttheme{professionalfonts}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[english]{babel}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{graphicx}
+\graphicspath{{./}{images/}{docs/images/}}
+\setkeys{Gin}{draft=false}
+\newcommand{\MapImageSlot}[2]{%
+  \IfFileExists{#1}{%
+    \includegraphics[width=.88\linewidth,height=.54\textheight,keepaspectratio]{#1}%
+  }{%
+    \IfFileExists{images/#1}{%
+      \includegraphics[width=.88\linewidth,height=.54\textheight,keepaspectratio]{#1}%
+    }{%
+      \IfFileExists{docs/images/#1}{%
+        \includegraphics[width=.88\linewidth,height=.54\textheight,keepaspectratio]{#1}%
+      }{%
+        \fbox{\parbox[c][.48\textheight][c]{.82\linewidth}{\centering
+          \Large #2\par\vspace{0.35cm}
+          \normalsize Place the image in the same folder as \texttt{main.tex}:\par
+          \texttt{#1}\par}}%
+      }%
+    }%
+  }%
+}
+
+\definecolor{GameGreen}{RGB}{0,105,92}
+\definecolor{GameGold}{RGB}{225,151,48}
+\definecolor{GameDark}{RGB}{33,43,54}
+\definecolor{GameLight}{RGB}{243,247,246}
+
+\setbeamercolor{structure}{fg=GameGreen}
+\setbeamercolor{frametitle}{fg=white,bg=GameGreen}
+\setbeamercolor{title}{fg=GameGreen}
+\setbeamercolor{block title}{fg=white,bg=GameGreen}
+\setbeamercolor{block body}{bg=GameLight,fg=GameDark}
+\setbeamercolor{alertblock title}{fg=white,bg=GameGold}
+\setbeamercolor{alertblock body}{bg=GameLight,fg=GameDark}
+\setbeamercolor{author in head/foot}{fg=white,bg=GameGreen}
+\setbeamercolor{title in head/foot}{fg=white,bg=GameDark}
+\setbeamercolor{date in head/foot}{fg=white,bg=GameGreen}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{itemize items}[triangle]
+\setbeamertemplate{footline}{%
+  \leavevmode\hbox{%
+  \begin{beamercolorbox}[wd=.25\paperwidth,ht=2.5ex,dp=1ex,center]{author in head/foot}%
+    Group 11
+  \end{beamercolorbox}%
+  \begin{beamercolorbox}[wd=.60\paperwidth,ht=2.5ex,dp=1ex,leftskip=.8em]{title in head/foot}%
+    Horror Investigation Game
+  \end{beamercolorbox}%
+  \begin{beamercolorbox}[wd=.15\paperwidth,ht=2.5ex,dp=1ex,center]{date in head/foot}%
+    \insertframenumber/\inserttotalframenumber
+  \end{beamercolorbox}}%
+  \vskip0pt%
+}
+\setbeamertemplate{title page}{%
+  \vbox{}
+  \vfill
+  \begin{beamercolorbox}[wd=.96\paperwidth,sep=1.05em,center,rounded=true,shadow=true]{frametitle}
+    {\usebeamerfont{title}\color{white}\inserttitle\par}
+    \vspace{0.25cm}
+    {\usebeamerfont{subtitle}\color{white}\insertsubtitle\par}
+    \vspace{0.55cm}
+    {\small\color{white}\insertinstitute\par}
+    \vspace{0.20cm}
+    {\small\color{white}\insertdate\par}
+  \end{beamercolorbox}
+  \vspace{1.0cm}
+  \begin{center}
+    \usebeamerfont{author}\insertauthor
+  \end{center}
+  \vfill
+}
+
+\title{Horror Investigation Game}
+\subtitle{Concept: Searching for Lan Across Four Locations}
+\author{\textbf{Group 11}\\[0.25cm]\small
+Vo Minh Dang -- 23125002\\
+Truong Gia Bao -- 23125052\\
+Nguyen Nhat Khoa -- 23125085}
+\institute{Advanced Program (APCS) \\ 3D Visualization and Game Development -- 23TT}
+\date{Final Project Seminar S1: Idea -- 01/08/2026}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{Core Idea}
+  \begin{block}{Story premise}
+    Lan disappears under unusual circumstances. Minh and Nam follow her final recording, concealed records, and traces inside an old hospital to uncover the truth behind the case.
+  \end{block}
+
+  \vspace{0.35cm}
+  \begin{itemize}
+    \item \textbf{Genre:} exploration, investigation, environmental puzzles, and survival horror.
+    \item \textbf{Player goal:} find Lan, expose the hidden case, and survive the final confrontation.
+    \item \textbf{Emotional arc:} everyday unease develops into tension, fear, and psychological climax.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Four Maps Form One Continuous Story}
+  \begin{center}
+    \colorbox{GameLight}{\parbox{0.92\linewidth}{\centering\large
+      \textbf{Dormitory} \quad$\longrightarrow$\quad
+      \textbf{Police Station} \quad$\longrightarrow$\quad
+      \textbf{Old Hospital} \quad$\longrightarrow$\quad
+      \textbf{Killer's House}\\[0.25cm]
+      A disappearance becomes a concealed investigation, a horror survival journey, and finally a confrontation with the truth.}}
+  \end{center}
+
+  \vspace{0.35cm}
+  \begin{columns}[T,onlytextwidth]
+    \column{.48\textwidth}
+    \begin{block}{Story rhythm}
+      Everyday mystery \,$\rightarrow$\, sealed records \,$\rightarrow$\, a real threat \,$\rightarrow$\, psychological climax.
+    \end{block}
+    \column{.48\textwidth}
+    \begin{block}{Gameplay rhythm}
+      Learn the mechanics \,$\rightarrow$\, investigate \,$\rightarrow$\, hide and escape \,$\rightarrow$\, confront and resolve.
+    \end{block}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{The Player Experience Loop}
+  \begin{columns}[T,onlytextwidth]
+    \column{.48\textwidth}
+    \begin{block}{What the player does}
+      \begin{enumerate}
+        \item Explore 3D spaces and observe unusual details.
+        \item Interact with NPCs, objects, locked doors, and evidence.
+        \item Collect recordings, documents, items, and clues.
+        \item Solve conditions or avoid danger to unlock the next objective.
+      \end{enumerate}
+    \end{block}
+    \column{.48\textwidth}
+    \begin{alertblock}{How tension is created}
+      Strange sounds, flickering lights, dark corridors, restricted areas, patrolling characters, and chase sequences make every clue feel risky.
+    \end{alertblock}
+  \end{columns}
+\end{frame}
+
+\section{Four Chapters}
+\begin{frame}{Chapter 1: Dormitory -- Lan's Last Recording}
+  \begin{columns}[T,onlytextwidth]
+    \column{.50\textwidth}
+    \begin{block}{Story}
+      Minh discovers that Lan is missing. Her final recording contains an unfamiliar background sound. Minh and Nam search the dormitory for notes, objects, and traces that connect the disappearance to an old case.
+    \end{block}
+    \column{.46\textwidth}
+    \begin{block}{Gameplay role}
+      This tutorial chapter introduces movement, sprinting, stamina, interaction, item pickup, notes, NPC dialogue, and clue storage.
+    \end{block}
+  \end{columns}
+
+  \vspace{0.2cm}
+  \begin{itemize}
+    \item \textbf{Areas:} Minh's room, Nam's room, Lan's belongings, computer/common room, storage, corridors, lobby, and dormitory gate.
+    \item \textbf{Threats:} strange noises, flickering lights, the feeling of being watched, and light jump scares.
+    \item \textbf{Chapter outcome:} a case code or the name of an old hospital leads the player to the police station.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Map Image Slot: Chapter 1 -- Dormitory}
+  \begin{center}
+    \MapImageSlot{map1.png}{Map Image: Chapter 1 -- Dormitory}
+  \end{center}
+
+  \vspace{0.15cm}
+  \begin{block}{What the image should show}
+    Minh's room, Nam's room, Lan's belongings, computer/common room, storage, corridors, lobby, and dormitory gate.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Chapter 2: Police Station -- The Sealed File}
+  \begin{columns}[T,onlytextwidth]
+    \column{.50\textwidth}
+    \begin{block}{Story}
+      Minh and Nam search for records about Lan, the old hospital, earlier disappearances, and the people involved. They discover that part of the information has been deleted or deliberately hidden.
+    \end{block}
+    \column{.46\textwidth}
+    \begin{block}{Gameplay role}
+      The player begins sneaking, finding keys or access cards, avoiding patrols, assembling fragmented documents, and entering restricted areas.
+    \end{block}
+  \end{columns}
+
+  \vspace{0.2cm}
+  \begin{itemize}
+    \item \textbf{Areas:} public lobby, offices, duty room, interrogation room, evidence room, archive, temporary holding area, and rear parking lot.
+    \item \textbf{Main objective:} reach the archive, assemble the sealed files, and obtain the hospital address or floor plan.
+    \item \textbf{Chapter outcome:} Lan investigated the hospital, and someone inside the station may be hiding the truth.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Map Image Slot: Chapter 2 -- Police Station}
+  \begin{center}
+    \MapImageSlot{map2.png}{Map Image: Chapter 2 -- Police Station}
+  \end{center}
+
+  \vspace{0.15cm}
+  \begin{block}{What the image should show}
+    Public lobby, work corridors, archive, evidence room, temporary holding area, and routes into restricted zones.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Chapter 3: Old Hospital -- The Heart of the Horror}
+  \begin{columns}[T,onlytextwidth]
+    \column{.50\textwidth}
+    \begin{block}{Story}
+      Minh and Nam enter the old hospital where the case began. They investigate signs of illegal activity, experiments, or concealed crimes and find evidence that Lan was taken there.
+    \end{block}
+    \column{.46\textwidth}
+    \begin{block}{Gameplay role}
+      This is the strongest horror chapter: restore power, open sealed areas, collect critical evidence, hide, and escape from the pursuer.
+    \end{block}
+  \end{columns}
+
+  \vspace{0.2cm}
+  \begin{itemize}
+    \item \textbf{Areas:} reception, inpatient corridors, wards, treatment rooms, doctors' offices, morgue, technical basement, and quarantine area.
+    \item \textbf{Environmental pressure:} unstable audio, flickering power, shifting corridors, sudden locked doors, and chase sequences.
+    \item \textbf{Chapter outcome:} a photograph, recording, or notebook reveals that the killer is still alive and exposes the final address.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Map Image Slot: Chapter 3 -- Old Hospital}
+  \begin{center}
+    \MapImageSlot{map3.png}{Map Image: Chapter 3 -- Old Hospital}
+  \end{center}
+
+  \vspace{0.15cm}
+  \begin{block}{What the image should show}
+    Hospital lobby, inpatient corridors, treatment area, morgue, technical basement, and sealed zones.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Chapter 4: Killer's House -- The Final Truth}
+  \begin{columns}[T,onlytextwidth]
+    \column{.50\textwidth}
+    \begin{block}{Story}
+      Minh and Nam follow the address to a house that looks ordinary outside but is distorted within. It preserves the killer's obsession with the hospital and previous victims.
+    \end{block}
+    \column{.46\textwidth}
+    \begin{block}{Gameplay role}
+      The highest-tension chapter: avoid the killer's patrol, overcome traps, open the path to a hidden lower level, and complete the final escape or confrontation.
+    \end{block}
+  \end{columns}
+
+  \vspace{0.2cm}
+  \begin{itemize}
+    \item \textbf{Areas:} front yard, living room, kitchen, bedrooms, study, locked room, basement, and holding/evidence area.
+    \item \textbf{Main objective:} identify the killer, rescue Lan or discover her fate, and survive the final sequence.
+    \item \textbf{Possible endings:} rescue Lan; fail after the evidence is destroyed; or discover in a hidden ending that Nam knows more than expected.
+  \end{itemize}
+\end{frame}
+
+\section{Why This Structure Works}
+\begin{frame}{Four Maps Control Scope and Escalate Emotion}
+  \begin{columns}[T,onlytextwidth]
+    \column{.48\textwidth}
+    \begin{block}{Easier to develop}
+      \begin{itemize}
+        \item Four clear large maps instead of many disconnected small locations.
+        \item Complete the gameplay loop in the first map, then reuse it in later maps.
+        \item Every chapter has a clear goal, identity, and ending condition.
+      \end{itemize}
+    \end{block}
+    \column{.48\textwidth}
+    \begin{block}{A natural horror-investigation rhythm}
+      \begin{itemize}
+        \item Dormitory: familiar mystery with limited direct danger.
+        \item Police station: surveillance and concealed information.
+        \item Hospital: intense horror and real danger.
+        \item Killer's house: pressure, confrontation, and resolution.
+      \end{itemize}
+    \end{block}
+  \end{columns}
+\end{frame}
+
+\section{Team Responsibilities}
+\begin{frame}{Team Responsibilities}
+  \begin{columns}[T,onlytextwidth]
+    \column{.31\textwidth}
+    \begin{block}{Vo Minh Dang}
+      \begin{minipage}[t][.35\textheight][t]{\linewidth}
+        \small
+        \textbf{Gameplay \& Integration}
+        \begin{itemize}
+          \item Interaction, objectives, and AI/NPC systems.
+          \item Connect gameplay events to the UI.
+          \item Integrate and fix system issues.
+        \end{itemize}
+      \end{minipage}
+    \end{block}
+
+    \column{.34\textwidth}
+    \begin{alertblock}{Truong Gia Bao -- UI/HUD}
+      \begin{minipage}[t][.35\textheight][t]{\linewidth}
+        \small
+        \textbf{Lead UI Responsibility}
+        \begin{itemize}
+          \item Interaction prompts and notifications.
+          \item Objective, inventory, and stamina HUD.
+          \item UGUI layout, readability, and consistency.
+        \end{itemize}
+      \end{minipage}
+    \end{alertblock}
+
+    \column{.31\textwidth}
+    \begin{block}{Nguyen Nhat Khoa}
+      \begin{minipage}[t][.35\textheight][t]{\linewidth}
+        \small
+        \textbf{Content \& Testing}
+        \begin{itemize}
+          \item Mission content and notifications.
+          \item Test UI flows during gameplay.
+          \item Record issues and prepare the demo.
+        \end{itemize}
+      \end{minipage}
+    \end{block}
+  \end{columns}
+
+  \vspace{0.15cm}
+  \small\centering
+  \textbf{UI workflow:} Bao builds the interface, Dang connects the logic, and Khoa validates the player experience.
+\end{frame}
+
+\begin{frame}{Concept Summary}
+  \begin{block}{Target experience}
+    The player does not simply visit four locations. They gradually assemble the clues to understand why Lan disappeared, who concealed the truth, and what awaits them at the final destination.
+  \end{block}
+
+  \vspace{0.5cm}
+  \begin{center}
+    \Large\textcolor{GameGreen}{\textbf{Find the clues. Survive the truth. Bring Lan home.}}
+  \end{center}
+\end{frame}
+
+\end{document}

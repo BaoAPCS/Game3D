@@ -16,6 +16,7 @@ namespace DormitoryMystery.Chapter1
             WaitingAtFoodcart,
             ReturningHome,
             Chasing,
+            ForcedCatch,
             Escaped,
             Caught
         }
@@ -27,6 +28,7 @@ namespace DormitoryMystery.Chapter1
         [SerializeField, Min(0.1f)] private float catchDistance = 0.82f;
         [SerializeField, Min(0.01f)]
         private float destinationRefreshInterval = 0.1f;
+        [SerializeField, Min(0.5f)] private float forcedCatchTimeout = 4f;
 
         [Header("Foodcart Distraction")]
         [SerializeField, Min(0.1f)] private float foodcartWaitDuration = 5f;
@@ -52,12 +54,24 @@ namespace DormitoryMystery.Chapter1
         private Quaternion homeRotation;
         private Vector3 foodcartDestination;
         private float foodcartWaitEndsAt;
+        private bool foodcartDistractionActive;
+        private bool batterySwapRaceActive;
+        private PlayerInputLock forcedCatchInputLock;
+        private float forcedCatchDeadline;
 
-        public bool IsChasing => state == ChaseState.Chasing;
+        private const string ForcedCatchInputReason = "HenryForcedCatch";
+
+        public bool IsChasing =>
+            state == ChaseState.Chasing || state == ChaseState.ForcedCatch;
         public bool IsDistracting =>
-            state == ChaseState.MovingToFoodcart ||
-            state == ChaseState.WaitingAtFoodcart ||
+            foodcartDistractionActive &&
+            (state == ChaseState.MovingToFoodcart ||
+             state == ChaseState.WaitingAtFoodcart);
+        public bool IsReturningFromFoodcart =>
+            foodcartDistractionActive &&
             state == ChaseState.ReturningHome;
+        public bool IsBatterySwapRaceActive =>
+            batterySwapRaceActive && state == ChaseState.Chasing;
         public bool CanStartDistraction => state == ChaseState.Idle;
         public bool HasEscaped => state == ChaseState.Escaped;
         public bool HasCaughtPlayer => state == ChaseState.Caught;
@@ -90,6 +104,9 @@ namespace DormitoryMystery.Chapter1
             {
                 case ChaseState.Chasing:
                     UpdateChase();
+                    break;
+                case ChaseState.ForcedCatch:
+                    UpdateForcedCatch();
                     break;
                 case ChaseState.MovingToFoodcart:
                     UpdateMoveToFoodcart();
@@ -132,8 +149,24 @@ namespace DormitoryMystery.Chapter1
             RefreshDestination(currentPlayerPosition);
         }
 
+        private void UpdateForcedCatch()
+        {
+            if (player == null ||
+                Time.time >= forcedCatchDeadline ||
+                CanCatchPlayer(player.position))
+            {
+                CatchPlayer();
+                return;
+            }
+
+            RefreshDestination(player.position);
+        }
+
         private void OnDisable()
         {
+            foodcartDistractionActive = false;
+            batterySwapRaceActive = false;
+            ReleaseForcedCatchInput();
             StopAgent();
             if (animationPlayer != null)
             {
@@ -168,6 +201,8 @@ namespace DormitoryMystery.Chapter1
             }
 
             player = playerTarget;
+            foodcartDistractionActive = false;
+            batterySwapRaceActive = false;
             state = ChaseState.Chasing;
             previousPlayerPosition = player.position;
             activeEscapeDoor = null;
@@ -214,6 +249,8 @@ namespace DormitoryMystery.Chapter1
 
             player = null;
             activeEscapeDoor = null;
+            batterySwapRaceActive = false;
+            foodcartDistractionActive = true;
             state = ChaseState.MovingToFoodcart;
             agent.isStopped = false;
             agent.stoppingDistance = distractionStoppingDistance;
@@ -224,6 +261,118 @@ namespace DormitoryMystery.Chapter1
                 "[Henry] Heading to the foodcart distraction point.",
                 this);
             return true;
+        }
+
+        public bool BeginBatterySwapRace(Transform playerTarget)
+        {
+            bool canStartRace =
+                state == ChaseState.Idle ||
+                state == ChaseState.ReturningHome;
+            if (!canStartRace || playerTarget == null)
+            {
+                return false;
+            }
+
+            if (!EnsureAgentOnNavMesh() ||
+                animationPlayer == null ||
+                !animationPlayer.PlayRun())
+            {
+                return false;
+            }
+
+            player = playerTarget;
+            foodcartDistractionActive = false;
+            batterySwapRaceActive = true;
+            state = ChaseState.Chasing;
+            previousPlayerPosition = player.position;
+            activeEscapeDoor = null;
+            CacheRoomDoors();
+
+            agent.isStopped = false;
+            agent.stoppingDistance = GetChaseStoppingDistance();
+            nextDestinationRefreshAt = 0f;
+            RefreshDestination(player.position, true);
+
+            Debug.Log(
+                "[Henry] Quay về và phát hiện người chơi đang đánh tráo pin.",
+                this);
+            ChaseStarted?.Invoke();
+            return true;
+        }
+
+        public void CompleteBatterySwapRace()
+        {
+            if (!IsBatterySwapRaceActive)
+            {
+                return;
+            }
+
+            batterySwapRaceActive = false;
+            player = null;
+            activeEscapeDoor = null;
+            foodcartDistractionActive = false;
+            BeginReturnHome();
+            Debug.Log(
+                "[Henry] Người chơi đánh tráo pin thành công trước khi bị phát hiện; Henry tiếp tục quay về.",
+                this);
+        }
+
+        public void CancelBatterySwapRace()
+        {
+            if (!IsBatterySwapRaceActive)
+            {
+                return;
+            }
+
+            batterySwapRaceActive = false;
+            player = null;
+            activeEscapeDoor = null;
+            foodcartDistractionActive = false;
+            BeginReturnHome();
+
+            Debug.Log(
+                "[Henry] Người chơi ngừng đánh tráo pin; Henry tiếp tục quay về.",
+                this);
+        }
+
+        public void BeginForcedCatch(Transform playerTarget)
+        {
+            if (state == ChaseState.Caught)
+            {
+                return;
+            }
+
+            player = playerTarget;
+            foodcartDistractionActive = false;
+            batterySwapRaceActive = false;
+            activeEscapeDoor = null;
+            LockPlayerForForcedCatch();
+
+            if (player == null ||
+                !EnsureAgentOnNavMesh() ||
+                animationPlayer == null ||
+                !animationPlayer.PlayRun())
+            {
+                CatchPlayer();
+                return;
+            }
+
+            state = ChaseState.ForcedCatch;
+            float directTravelSeconds = Vector3.Distance(
+                    transform.position,
+                    player.position) /
+                Mathf.Max(0.1f, chaseSpeed);
+            forcedCatchDeadline = Time.time + Mathf.Max(
+                forcedCatchTimeout,
+                directTravelSeconds * 2f + 3f);
+            agent.isStopped = false;
+            agent.stoppingDistance = GetChaseStoppingDistance();
+            nextDestinationRefreshAt = 0f;
+            RefreshDestination(player.position, true);
+
+            Debug.Log(
+                "[Henry] Bắt quả tang người chơi đang đánh tráo pin.",
+                this);
         }
 
         private void UpdateMoveToFoodcart()
@@ -268,6 +417,8 @@ namespace DormitoryMystery.Chapter1
 
             transform.rotation = homeRotation;
             animationPlayer?.StopAtInitialPose();
+            foodcartDistractionActive = false;
+            batterySwapRaceActive = false;
             state = ChaseState.Idle;
 
             Debug.Log(
@@ -279,6 +430,7 @@ namespace DormitoryMystery.Chapter1
         {
             if (!EnsureAgentOnNavMesh())
             {
+                foodcartDistractionActive = false;
                 state = ChaseState.Idle;
                 animationPlayer?.StopAtInitialPose();
                 return;
@@ -615,11 +767,37 @@ namespace DormitoryMystery.Chapter1
                        0f);
         }
 
+        private void LockPlayerForForcedCatch()
+        {
+            ReleaseForcedCatchInput();
+            if (player == null)
+            {
+                return;
+            }
+
+            forcedCatchInputLock = player.GetComponent<PlayerInputLock>();
+            forcedCatchInputLock?.Lock(ForcedCatchInputReason);
+        }
+
+        private void ReleaseForcedCatchInput()
+        {
+            if (forcedCatchInputLock == null)
+            {
+                return;
+            }
+
+            forcedCatchInputLock.Unlock(ForcedCatchInputReason);
+            forcedCatchInputLock = null;
+        }
+
         private void CatchPlayer()
         {
+            foodcartDistractionActive = false;
+            batterySwapRaceActive = false;
             state = ChaseState.Caught;
             StopAgent();
             animationPlayer?.StopAtInitialPose();
+            ReleaseForcedCatchInput();
 
             Debug.Log("[Henry] Henry đã bắt được người chơi.", this);
             PlayerCaught?.Invoke();
@@ -628,6 +806,9 @@ namespace DormitoryMystery.Chapter1
 
         private void CompleteEscape()
         {
+            foodcartDistractionActive = false;
+            batterySwapRaceActive = false;
+            ReleaseForcedCatchInput();
             state = ChaseState.Escaped;
             StopAgent();
             animationPlayer?.StopAtInitialPose();
@@ -637,6 +818,10 @@ namespace DormitoryMystery.Chapter1
                 this);
             PlayerEscaped?.Invoke();
             HenryGameOverPresenter.Instance?.ShowEscapeMessage();
+
+            player = null;
+            activeEscapeDoor = null;
+            BeginReturnHome();
         }
 
         private void StopAgent()
@@ -660,6 +845,7 @@ namespace DormitoryMystery.Chapter1
             catchDistance = Mathf.Max(0.1f, catchDistance);
             destinationRefreshInterval =
                 Mathf.Max(0.01f, destinationRefreshInterval);
+            forcedCatchTimeout = Mathf.Max(0.5f, forcedCatchTimeout);
             foodcartWaitDuration = Mathf.Max(0.1f, foodcartWaitDuration);
             foodcartApproachPadding =
                 Mathf.Max(0.1f, foodcartApproachPadding);

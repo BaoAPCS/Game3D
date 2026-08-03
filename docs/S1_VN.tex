@@ -1,0 +1,349 @@
+\documentclass[aspectratio=169,10pt]{beamer}
+
+\usetheme{Madrid}
+\usecolortheme{default}
+\usefonttheme{professionalfonts}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T5]{fontenc}
+\usepackage[vietnamese]{babel}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{graphicx}
+\graphicspath{{./}{images/}{docs/images/}}
+\setkeys{Gin}{draft=false}
+\newcommand{\MapImageSlot}[2]{%
+  \IfFileExists{#1}{%
+    \includegraphics[width=.88\linewidth,height=.54\textheight,keepaspectratio]{#1}%
+  }{%
+    \IfFileExists{images/#1}{%
+      \includegraphics[width=.88\linewidth,height=.54\textheight,keepaspectratio]{#1}%
+    }{%
+      \IfFileExists{docs/images/#1}{%
+        \includegraphics[width=.88\linewidth,height=.54\textheight,keepaspectratio]{#1}%
+      }{%
+        \fbox{\parbox[c][.48\textheight][c]{.82\linewidth}{\centering
+          \Large #2\par\vspace{0.35cm}
+          \normalsize Đặt ảnh cùng thư mục với \texttt{main.tex}:\par
+          \texttt{#1}\par}}%
+      }%
+    }%
+  }%
+}
+
+\definecolor{GameGreen}{RGB}{0,105,92}
+\definecolor{GameGold}{RGB}{225,151,48}
+\definecolor{GameDark}{RGB}{33,43,54}
+\definecolor{GameLight}{RGB}{243,247,246}
+
+\setbeamercolor{structure}{fg=GameGreen}
+\setbeamercolor{frametitle}{fg=white,bg=GameGreen}
+\setbeamercolor{title}{fg=GameGreen}
+\setbeamercolor{block title}{fg=white,bg=GameGreen}
+\setbeamercolor{block body}{bg=GameLight,fg=GameDark}
+\setbeamercolor{alertblock title}{fg=white,bg=GameGold}
+\setbeamercolor{alertblock body}{bg=GameLight,fg=GameDark}
+\setbeamercolor{author in head/foot}{fg=white,bg=GameGreen}
+\setbeamercolor{title in head/foot}{fg=white,bg=GameDark}
+\setbeamercolor{date in head/foot}{fg=white,bg=GameGreen}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{itemize items}[triangle]
+\setbeamertemplate{footline}{%
+  \leavevmode\hbox{%
+  \begin{beamercolorbox}[wd=.25\paperwidth,ht=2.5ex,dp=1ex,center]{author in head/foot}%
+    Nhóm 11
+  \end{beamercolorbox}%
+  \begin{beamercolorbox}[wd=.60\paperwidth,ht=2.5ex,dp=1ex,leftskip=.8em]{title in head/foot}%
+    Game Kinh dị Điều tra
+  \end{beamercolorbox}%
+  \begin{beamercolorbox}[wd=.15\paperwidth,ht=2.5ex,dp=1ex,center]{date in head/foot}%
+    \insertframenumber/\inserttotalframenumber
+  \end{beamercolorbox}}%
+  \vskip0pt%
+}
+\setbeamertemplate{title page}{%
+  \vbox{}
+  \vfill
+  \begin{beamercolorbox}[wd=.96\paperwidth,sep=1.05em,center,rounded=true,shadow=true]{frametitle}
+    {\usebeamerfont{title}\color{white}\inserttitle\par}
+    \vspace{0.25cm}
+    {\usebeamerfont{subtitle}\color{white}\insertsubtitle\par}
+    \vspace{0.55cm}
+    {\small\color{white}\insertinstitute\par}
+    \vspace{0.20cm}
+    {\small\color{white}\insertdate\par}
+  \end{beamercolorbox}
+  \vspace{1.0cm}
+  \begin{center}
+    \usebeamerfont{author}\insertauthor
+  \end{center}
+  \vfill
+}
+
+\title{Game Kinh dị Điều tra}
+\subtitle{Ý tưởng: Hành trình tìm kiếm Lan qua bốn địa điểm}
+\author{\textbf{Nhóm 11}\\[0.25cm]\small
+Vo Minh Dang -- 23125002\\
+Truong Gia Bao -- 23125052\\
+Nguyen Nhat Khoa -- 23125085}
+\institute{Advanced Program (APCS) \\ 3D Visualization and Game Development -- 23TT}
+\date{Final Project Seminar S1: Idea -- 01/08/2026}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{Ý tưởng trung tâm}
+  \begin{block}{Tiền đề cốt truyện}
+    Lan mất tích trong những tình huống bất thường. Minh và Nam lần theo đoạn ghi âm cuối cùng, các hồ sơ bị che giấu và những dấu vết ở một bệnh viện cũ để tìm ra sự thật phía sau vụ án.
+  \end{block}
+
+  \vspace{0.35cm}
+  \begin{itemize}
+    \item \textbf{Thể loại:} khám phá, điều tra, giải đố môi trường và kinh dị sinh tồn.
+    \item \textbf{Mục tiêu của người chơi:} tìm Lan, vén màn vụ án và sống sót qua cuộc đối đầu cuối cùng.
+    \item \textbf{Cảm xúc chủ đạo:} từ bất an đời thường đến căng thẳng, sợ hãi và cao trào tâm lý.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Bốn map tạo thành một mạch truyện liền mạch}
+  \begin{center}
+    \colorbox{GameLight}{\parbox{0.92\linewidth}{\centering\large
+      \textbf{Ký túc xá} \quad$\longrightarrow$\quad
+      \textbf{Đồn công an} \quad$\longrightarrow$\quad
+      \textbf{Bệnh viện cũ} \quad$\longrightarrow$\quad
+      \textbf{Nhà hung thủ}\\[0.25cm]
+      Một vụ mất tích dần trở thành cuộc điều tra bị che giấu, hành trình sinh tồn kinh dị và cuộc đối mặt với sự thật.}}
+  \end{center}
+
+  \vspace{0.35cm}
+  \begin{columns}[T,onlytextwidth]
+    \column{.48\textwidth}
+    \begin{block}{Nhịp truyện}
+      Bí ẩn đời thường \,$\rightarrow$\, hồ sơ bị ém \,$\rightarrow$\, mối đe dọa thật sự \,$\rightarrow$\, cao trào tâm lý.
+    \end{block}
+    \column{.48\textwidth}
+    \begin{block}{Nhịp gameplay}
+      Học cơ chế \,$\rightarrow$\, điều tra \,$\rightarrow$\, ẩn nấp và chạy trốn \,$\rightarrow$\, đối đầu và khép lại câu chuyện.
+    \end{block}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Vòng trải nghiệm của người chơi}
+  \begin{columns}[T,onlytextwidth]
+    \column{.48\textwidth}
+    \begin{block}{Người chơi sẽ làm gì?}
+      \begin{enumerate}
+        \item Khám phá không gian 3D và quan sát các chi tiết bất thường.
+        \item Tương tác với NPC, vật thể, cửa khóa và chứng cứ.
+        \item Thu thập ghi âm, tài liệu, vật phẩm và manh mối.
+        \item Giải điều kiện hoặc né tránh nguy hiểm để mở mục tiêu mới.
+      \end{enumerate}
+    \end{block}
+    \column{.48\textwidth}
+    \begin{alertblock}{Cách tạo cảm giác căng thẳng}
+      Âm thanh lạ, ánh sáng chập chờn, hành lang tối, khu vực hạn chế, nhân vật tuần tra và những phân đoạn truy đuổi khiến mỗi manh mối đều có cái giá của nó.
+    \end{alertblock}
+  \end{columns}
+\end{frame}
+
+\section{Bốn chương}
+\begin{frame}{Chương 1: Ký túc xá -- Đoạn ghi âm cuối của Lan}
+  \begin{columns}[T,onlytextwidth]
+    \column{.50\textwidth}
+    \begin{block}{Câu chuyện}
+      Minh phát hiện Lan mất tích. Đoạn ghi âm cuối của cô có một âm thanh nền kỳ lạ. Minh và Nam tìm thêm ghi chú, đồ vật và dấu vết trong ký túc xá để liên hệ sự việc với một vụ án cũ.
+    \end{block}
+    \column{.46\textwidth}
+    \begin{block}{Vai trò gameplay}
+      Đây là chương hướng dẫn: di chuyển, chạy, stamina, tương tác, nhặt đồ, đọc ghi chú, nói chuyện với NPC và lưu manh mối.
+    \end{block}
+  \end{columns}
+
+  \vspace{0.2cm}
+  \begin{itemize}
+    \item \textbf{Khu vực:} phòng Minh, phòng Nam, đồ của Lan, phòng máy/phòng sinh hoạt, kho, hành lang, sảnh và cổng ký túc xá.
+    \item \textbf{Mối đe dọa:} tiếng động lạ, đèn chập chờn, cảm giác bị theo dõi và jump-scare nhẹ.
+    \item \textbf{Kết chương:} mã hồ sơ hoặc tên bệnh viện cũ dẫn người chơi tới đồn công an.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Vị trí chèn ảnh map Chương 1 -- Ký túc xá}
+  \begin{center}
+    \MapImageSlot{map1.png}{Ảnh map Chương 1 -- Ký túc xá}
+  \end{center}
+
+  \vspace{0.15cm}
+  \begin{block}{Nội dung nên thể hiện trên ảnh}
+    Phòng Minh, phòng Nam, khu đồ của Lan, phòng máy/phòng sinh hoạt, kho, hành lang, sảnh và cổng ký túc xá.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Chương 2: Đồn công an -- Hồ sơ bị niêm phong}
+  \begin{columns}[T,onlytextwidth]
+    \column{.50\textwidth}
+    \begin{block}{Câu chuyện}
+      Minh và Nam tìm hồ sơ về Lan, bệnh viện cũ, các vụ mất tích trước đây và những người có liên quan. Họ phát hiện một phần thông tin đã bị xóa hoặc cất giấu có chủ ý.
+    \end{block}
+    \column{.46\textwidth}
+    \begin{block}{Vai trò gameplay}
+      Người chơi bắt đầu lén lút, tìm chìa khóa/thẻ, né người tuần tra, ghép tài liệu rời và mở khu vực hạn chế.
+    \end{block}
+  \end{columns}
+
+  \vspace{0.2cm}
+  \begin{itemize}
+    \item \textbf{Khu vực:} sảnh tiếp dân, văn phòng, phòng trực, phòng thẩm vấn, phòng chứng cứ, kho hồ sơ, khu giam tạm và bãi xe sau.
+    \item \textbf{Nhiệm vụ chính:} tìm đường tới kho lưu trữ, ghép hồ sơ bị niêm phong và lấy được địa chỉ/sơ đồ bệnh viện.
+    \item \textbf{Kết chương:} Lan từng điều tra bệnh viện; có thể có người trong đồn đang che giấu sự thật.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Vị trí chèn ảnh map Chương 2 -- Đồn công an}
+  \begin{center}
+    \MapImageSlot{map2.png}{Ảnh map Chương 2 -- Đồn công an}
+  \end{center}
+
+  \vspace{0.15cm}
+  \begin{block}{Nội dung nên thể hiện trên ảnh}
+    Sảnh tiếp dân, hành lang làm việc, kho hồ sơ, phòng chứng cứ, khu giam tạm và lối đi tới khu vực hạn chế.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Chương 3: Bệnh viện cũ -- Trung tâm của nỗi kinh hoàng}
+  \begin{columns}[T,onlytextwidth]
+    \column{.50\textwidth}
+    \begin{block}{Câu chuyện}
+      Minh và Nam đột nhập bệnh viện cũ, nơi vụ án bắt đầu. Họ lần theo dấu vết về các hoạt động phi pháp, thí nghiệm hoặc tội ác bị che giấu và tìm thấy bằng chứng Lan đã bị đưa tới đây.
+    \end{block}
+    \column{.46\textwidth}
+    \begin{block}{Vai trò gameplay}
+      Đây là chương kinh dị mạnh nhất: khôi phục điện, mở các khu bị phong tỏa, thu thập chứng cứ quan trọng, ẩn nấp và chạy trốn khỏi kẻ truy đuổi.
+    \end{block}
+  \end{columns}
+
+  \vspace{0.2cm}
+  \begin{itemize}
+    \item \textbf{Khu vực:} sảnh, quầy lễ tân, hành lang nội trú, phòng bệnh, phòng điều trị, phòng bác sĩ, nhà xác, tầng hầm kỹ thuật và khu phong tỏa.
+    \item \textbf{Áp lực môi trường:} âm thanh bất ổn, điện chập chờn, hành lang thay đổi, cửa khóa bất ngờ và các pha truy đuổi.
+    \item \textbf{Kết chương:} ảnh, băng ghi âm hoặc sổ tay chỉ ra hung thủ vẫn còn sống và tiết lộ địa chỉ cuối cùng.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Vị trí chèn ảnh map Chương 3 -- Bệnh viện cũ}
+  \begin{center}
+    \MapImageSlot{map3.png}{Ảnh map Chương 3 -- Bệnh viện cũ}
+  \end{center}
+
+  \vspace{0.15cm}
+  \begin{block}{Nội dung nên thể hiện trên ảnh}
+    Sảnh bệnh viện, hành lang nội trú, khu điều trị, nhà xác, tầng hầm kỹ thuật và các khu vực bị phong tỏa.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Chương 4: Nhà hung thủ -- Sự thật cuối cùng}
+  \begin{columns}[T,onlytextwidth]
+    \column{.50\textwidth}
+    \begin{block}{Câu chuyện}
+      Minh và Nam lần theo địa chỉ tới một căn nhà bình thường ở bên ngoài nhưng méo mó ở bên trong. Nơi đây lưu giữ ám ảnh của hung thủ về bệnh viện và các nạn nhân trước đó.
+    \end{block}
+    \column{.46\textwidth}
+    \begin{block}{Vai trò gameplay}
+      Căng thẳng cao nhất: né hung thủ tuần tra, vượt bẫy, mở lối xuống tầng bí mật và thực hiện pha thoát thân hoặc đối đầu cuối cùng.
+    \end{block}
+  \end{columns}
+
+  \vspace{0.2cm}
+  \begin{itemize}
+    \item \textbf{Khu vực:} sân trước, phòng khách, bếp, phòng ngủ, phòng làm việc, phòng khóa kín, tầng hầm và khu giam giữ/chứng cứ.
+    \item \textbf{Nhiệm vụ chính:} xác nhận danh tính hung thủ, giải cứu Lan hoặc tìm ra số phận thật của cô, rồi sống sót qua màn cuối.
+    \item \textbf{Các ending có thể có:} cứu được Lan; thất bại khi bằng chứng bị hủy; hoặc ending ẩn cho thấy Nam biết nhiều hơn người chơi tưởng.
+  \end{itemize}
+\end{frame}
+
+\section{Tại sao cấu trúc này phù hợp?}
+\begin{frame}{Bốn map giúp kiểm soát scope và tăng dần cảm xúc}
+  \begin{columns}[T,onlytextwidth]
+    \column{.48\textwidth}
+    \begin{block}{Dễ phát triển hơn}
+      \begin{itemize}
+        \item Bốn map lớn rõ ràng thay vì nhiều địa điểm nhỏ rời rạc.
+        \item Hoàn thiện gameplay loop ở map đầu, sau đó tái sử dụng cho các map sau.
+        \item Mỗi chương có mục tiêu, bản sắc và điều kiện kết thúc riêng.
+      \end{itemize}
+    \end{block}
+    \column{.48\textwidth}
+    \begin{block}{Đúng nhịp game kinh dị điều tra}
+      \begin{itemize}
+        \item Ký túc xá: bí ẩn gần gũi, ít đe dọa trực tiếp.
+        \item Đồn công an: cảm giác bị giám sát và che giấu thông tin.
+        \item Bệnh viện: kinh dị mạnh và nguy hiểm thật sự.
+        \item Nhà hung thủ: áp lực, đối đầu và kết thúc câu chuyện.
+      \end{itemize}
+    \end{block}
+  \end{columns}
+\end{frame}
+
+\section{Phân công}
+\begin{frame}{Phân công thực hiện}
+  \begin{columns}[T,onlytextwidth]
+    \column{.31\textwidth}
+    \begin{block}{Võ Minh Đăng}
+      \begin{minipage}[t][.35\textheight][t]{\linewidth}
+        \small
+        \textbf{Gameplay \& tích hợp}
+        \begin{itemize}
+          \item Tương tác, nhiệm vụ và AI/NPC.
+          \item Kết nối sự kiện gameplay với UI.
+          \item Tích hợp và sửa lỗi hệ thống.
+        \end{itemize}
+      \end{minipage}
+    \end{block}
+
+    \column{.34\textwidth}
+    \begin{alertblock}{Trương Gia Bảo -- UI/HUD}
+      \begin{minipage}[t][.35\textheight][t]{\linewidth}
+        \small
+        \textbf{Phụ trách chính giao diện}
+        \begin{itemize}
+          \item Interaction prompt và notification.
+          \item Objective, inventory và stamina HUD.
+          \item Bố cục UGUI, khả năng đọc và tính nhất quán.
+        \end{itemize}
+      \end{minipage}
+    \end{alertblock}
+
+    \column{.31\textwidth}
+    \begin{block}{Nguyễn Nhật Khoa}
+      \begin{minipage}[t][.35\textheight][t]{\linewidth}
+        \small
+        \textbf{Nội dung \& kiểm thử}
+        \begin{itemize}
+          \item Nội dung nhiệm vụ và thông báo.
+          \item Kiểm thử luồng UI trong gameplay.
+          \item Ghi nhận lỗi và chuẩn bị demo.
+        \end{itemize}
+      \end{minipage}
+    \end{block}
+  \end{columns}
+
+  \vspace{0.15cm}
+  \small\centering
+  \textbf{Quy trình UI:} Gia Bảo xây dựng giao diện, Minh Đăng nối logic, Nhật Khoa kiểm tra trải nghiệm.
+\end{frame}
+
+\begin{frame}{Tóm tắt ý tưởng}
+  \begin{block}{Trải nghiệm mong muốn}
+    Người chơi không chỉ đi qua bốn địa điểm, mà dần ghép các mảnh thông tin để hiểu vì sao Lan biến mất, ai đã che giấu sự thật và điều gì đang chờ họ ở điểm cuối cùng.
+  \end{block}
+
+  \vspace{0.5cm}
+  \begin{center}
+    \Large\textcolor{GameGreen}{\textbf{Tìm manh mối. Sống sót trước sự thật. Đưa Lan trở về.}}
+  \end{center}
+\end{frame}
+
+\end{document}

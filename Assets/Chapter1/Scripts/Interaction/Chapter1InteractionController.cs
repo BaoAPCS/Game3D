@@ -264,7 +264,10 @@ namespace DormitoryMystery.Chapter1
                 return;
             }
 
-            if (IsObstructed(targetPosition))
+            bool closePickup =
+                interactable is UPSInteractable &&
+                targetDistance <= 1.5f;
+            if (!closePickup && IsObstructed(targetPosition))
             {
                 return;
             }
