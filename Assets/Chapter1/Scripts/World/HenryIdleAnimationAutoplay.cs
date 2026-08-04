@@ -43,27 +43,26 @@ namespace DormitoryMystery.Chapter1
                     continue;
                 }
 
-                HoldInitialPose(candidate);
+                PlayOriginalIdle(candidate);
             }
         }
 
-        private static void HoldInitialPose(Transform henryRoot)
+        private static void PlayOriginalIdle(Transform henryRoot)
         {
-            Animation legacyAnimation =
-                henryRoot.GetComponentInChildren<Animation>(true);
-            if (legacyAnimation == null || legacyAnimation.clip == null)
+            HenryRunAnimationPlayer animationPlayer =
+                henryRoot.GetComponent<HenryRunAnimationPlayer>();
+            if (animationPlayer == null)
             {
-                Debug.LogWarning(
-                    "[Henry] Không tìm thấy animation gốc để giữ tư thế đứng.",
-                    henryRoot);
-                return;
+                animationPlayer = henryRoot.gameObject.AddComponent<
+                    HenryRunAnimationPlayer>();
             }
 
-            legacyAnimation.playAutomatically = false;
-            legacyAnimation.Stop();
-            legacyAnimation.clip.SampleAnimation(
-                legacyAnimation.gameObject,
-                0f);
+            if (!animationPlayer.PlayIdle())
+            {
+                Debug.LogWarning(
+                    "[Henry] Không thể phát animation đứng yên gốc.",
+                    henryRoot);
+            }
         }
     }
 }

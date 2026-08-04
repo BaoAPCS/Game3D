@@ -5,6 +5,7 @@ namespace DormitoryMystery.Chapter1
     [DisallowMultipleComponent]
     public sealed class HenryRunAnimationPlayer : MonoBehaviour
     {
+        public const string IdleClipName = "Henry_Idle";
         public const string RunClipName = "Henry_Run";
         public const string RunClipResourcePath =
             "Henry/Henry_Run_FastRun";
@@ -18,25 +19,36 @@ namespace DormitoryMystery.Chapter1
         public bool IsRunPlaying =>
             legacyAnimation != null &&
             legacyAnimation.IsPlaying(RunClipName);
+        public bool IsIdlePlaying =>
+            legacyAnimation != null &&
+            legacyAnimation.IsPlaying(IdleClipName);
 
+        public AnimationClip IdleClip => initialClip;
         public AnimationClip RunClip => runClip;
 
         private void Awake()
         {
             Configure();
-            StopAtInitialPose();
+            PlayIdle();
         }
 
         private void Start()
         {
-            StopAtInitialPose();
+            if (!IsRunPlaying)
+            {
+                PlayIdle();
+            }
         }
 
         public bool Configure()
         {
             if (configured)
             {
-                return legacyAnimation != null && runClip != null;
+                return legacyAnimation != null &&
+                       initialClip != null &&
+                       runClip != null &&
+                       legacyAnimation.GetClip(IdleClipName) != null &&
+                       legacyAnimation.GetClip(RunClipName) != null;
             }
 
             configured = true;
@@ -49,6 +61,13 @@ namespace DormitoryMystery.Chapter1
             }
 
             initialClip = legacyAnimation.clip;
+            if (initialClip == null)
+            {
+                LogMissingAnimation(
+                    "Henry không có animation gốc để phát idle.");
+                return false;
+            }
+
             runClip = Resources.Load<AnimationClip>(
                 RunClipResourcePath);
             if (runClip == null)
@@ -59,6 +78,26 @@ namespace DormitoryMystery.Chapter1
             }
 
             legacyAnimation.playAutomatically = false;
+            if (legacyAnimation.GetClip(IdleClipName) != null)
+            {
+                legacyAnimation.RemoveClip(IdleClipName);
+            }
+
+            legacyAnimation.AddClip(initialClip, IdleClipName);
+            AnimationState idleState = legacyAnimation[IdleClipName];
+            if (idleState == null)
+            {
+                LogMissingAnimation(
+                    $"Không gắn được clip '{IdleClipName}' cho Henry.");
+                return false;
+            }
+
+            idleState.wrapMode = WrapMode.Loop;
+            idleState.speed = 1f;
+            idleState.layer = 0;
+            idleState.weight = 1f;
+            idleState.blendMode = AnimationBlendMode.Blend;
+
             if (legacyAnimation.GetClip(RunClipName) != null)
             {
                 legacyAnimation.RemoveClip(RunClipName);
@@ -79,6 +118,32 @@ namespace DormitoryMystery.Chapter1
             runState.weight = 1f;
             runState.blendMode = AnimationBlendMode.Blend;
             return true;
+        }
+
+        public bool PlayIdle()
+        {
+            if (!Configure())
+            {
+                return false;
+            }
+
+            if (IsIdlePlaying)
+            {
+                return true;
+            }
+
+            legacyAnimation.Stop();
+            bool started = legacyAnimation.Play(
+                IdleClipName,
+                PlayMode.StopAll);
+            if (!started)
+            {
+                Debug.LogError(
+                    $"[Henry] Không thể phát animation '{IdleClipName}'.",
+                    this);
+            }
+
+            return started;
         }
 
         public bool PlayRun()

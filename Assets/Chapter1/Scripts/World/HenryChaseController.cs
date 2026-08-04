@@ -95,7 +95,7 @@ namespace DormitoryMystery.Chapter1
             ConfigureAgent();
             homePosition = transform.position;
             homeRotation = transform.rotation;
-            animationPlayer.StopAtInitialPose();
+            animationPlayer.PlayIdle();
         }
 
         private void Update()
@@ -444,7 +444,7 @@ namespace DormitoryMystery.Chapter1
             }
 
             StopAgent();
-            animationPlayer?.StopAtInitialPose();
+            animationPlayer?.PlayIdle();
             state = ChaseState.WaitingAtFoodcart;
             foodcartWaitEndsAt = Time.time + foodcartWaitDuration;
         }
@@ -474,7 +474,7 @@ namespace DormitoryMystery.Chapter1
             }
 
             transform.rotation = homeRotation;
-            animationPlayer?.StopAtInitialPose();
+            animationPlayer?.PlayIdle();
             foodcartDistractionActive = false;
             batterySwapRaceActive = false;
             state = ChaseState.Idle;
@@ -490,7 +490,7 @@ namespace DormitoryMystery.Chapter1
             {
                 foodcartDistractionActive = false;
                 state = ChaseState.Idle;
-                animationPlayer?.StopAtInitialPose();
+                animationPlayer?.PlayIdle();
                 return;
             }
 
@@ -893,7 +893,7 @@ namespace DormitoryMystery.Chapter1
             batterySwapRaceActive = false;
             state = ChaseState.Caught;
             StopAgent();
-            animationPlayer?.StopAtInitialPose();
+            animationPlayer?.PlayIdle();
             ReleaseForcedCatchInput();
 
             Debug.Log("[Henry] Henry đã bắt được người chơi.", this);
@@ -908,7 +908,7 @@ namespace DormitoryMystery.Chapter1
             ReleaseForcedCatchInput();
             state = ChaseState.Escaped;
             StopAgent();
-            animationPlayer?.StopAtInitialPose();
+            animationPlayer?.PlayIdle();
 
             Debug.Log(
                 "[Henry] Người chơi đã vào phòng và đóng cửa an toàn.",
