@@ -25,6 +25,9 @@ namespace DormitoryMystery.Chapter1.Editor
         {
             new InputReferenceSpec("Move", "moveActionReference", null),
             new InputReferenceSpec("Look", "lookActionReference", null),
+            new InputReferenceSpec("Attack", "attackActionReference", null),
+            new InputReferenceSpec("Kick", "kickActionReference", null),
+            new InputReferenceSpec("Jump", "jumpActionReference", "<Keyboard>/space"),
             new InputReferenceSpec("Sprint", "sprintActionReference", null),
             new InputReferenceSpec("Crouch", "crouchActionReference", null),
             new InputReferenceSpec("Interact", "interactActionReference", "<Keyboard>/f"),

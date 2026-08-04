@@ -69,6 +69,15 @@ namespace DormitoryMystery.Chapter1
                 persistence.RecordCollected(context.ChapterManager);
             }
 
+            if (itemId == Chapter1ItemId.AudioSeparator)
+            {
+                Mission01AudioSeparatorManager manager = Mission01AudioSeparatorManager.Instance;
+                if (manager != null)
+                {
+                    manager.MarkAudioSeparatorCollected();
+                }
+            }
+
             ApplyCollectedState();
 
             string message = string.IsNullOrWhiteSpace(pickupMessage) ? GetDefaultPickupMessage(itemId) : pickupMessage;
@@ -129,7 +138,8 @@ namespace DormitoryMystery.Chapter1
                 || item == Chapter1ItemId.Flashlight
                 || item == Chapter1ItemId.Fuse
                 || item == Chapter1ItemId.HardDrive
-                || item == Chapter1ItemId.Archive17;
+                || item == Chapter1ItemId.Archive17
+                || item == Chapter1ItemId.AudioSeparator;
         }
 
         private static string GetDefaultPickupMessage(Chapter1ItemId item)
@@ -148,6 +158,8 @@ namespace DormitoryMystery.Chapter1
                     return "Đã nhặt đoạn ghi âm.";
                 case Chapter1ItemId.Archive17:
                     return "Đã nhặt Hồ sơ số 17.";
+                case Chapter1ItemId.AudioSeparator:
+                    return "Đã nhặt máy tách âm.";
                 default:
                     return "Đã nhặt vật phẩm.";
             }

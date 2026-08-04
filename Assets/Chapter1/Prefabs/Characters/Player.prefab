@@ -80,6 +80,37 @@ MonoBehaviour:
   standingLocalOffset: {x: 0, y: 1.4, z: 0}
   crouchingLocalOffset: {x: 0, y: 1.05, z: 0}
   smoothTime: 0.08
+--- !u!1 &980906549286140679
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7289411469025911647}
+  m_Layer: 0
+  m_Name: AttackPoint
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7289411469025911647
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 980906549286140679}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 1, z: 0.85}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1394547097534500628}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1768788295795746500
 GameObject:
   m_ObjectHideFlags: 0
@@ -259,6 +290,11 @@ GameObject:
   - component: {fileID: 4647693439416801271}
   - component: {fileID: 4338521695952961192}
   - component: {fileID: 5061323054803135519}
+  - component: {fileID: 2608203049918446400}
+  - component: {fileID: 1943409525567369318}
+  - component: {fileID: 3234517627012300010}
+  - component: {fileID: 7618332874887176514}
+  - component: {fileID: 831201755241820960}
   m_Layer: 8
   m_Name: Player
   m_TagString: Player
@@ -282,6 +318,7 @@ Transform:
   - {fileID: 4029535986297191082}
   - {fileID: 7849580450590285546}
   - {fileID: 2027109962216772490}
+  - {fileID: 7289411469025911647}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!143 &132529182369247979
@@ -323,12 +360,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DormitoryMystery.Chapter1.Chapter1InputReader
   moveActionReference: {fileID: 11400000, guid: dad0c848aca169145b4f54c37b0c475b, type: 2}
   lookActionReference: {fileID: 11400000, guid: 07c9d40f66408b84aa79d50e4effd52b, type: 2}
+  attackActionReference: {fileID: 11400000, guid: 87f977d4a79f47c4a939dc6aab87284c, type: 2}
+  kickActionReference: {fileID: 11400000, guid: 3b4c54f4ed7d4a84a9374cbf75bd731d, type: 2}
+  jumpActionReference: {fileID: 11400000, guid: 0d6bbfae24cc4b969da5f99dbb13e478, type: 2}
   sprintActionReference: {fileID: 11400000, guid: d69616eb44ad2c94ca6fab46550fa894, type: 2}
   crouchActionReference: {fileID: 11400000, guid: 13165b71b28062f4abfaab27c175a8a0, type: 2}
   interactActionReference: {fileID: 11400000, guid: e68fb0fb0e3257f418cbdbfdf0dc0f56, type: 2}
   talkActionReference: {fileID: 11400000, guid: 4d0de1f85d834570bbf3cf9cbb7cab11, type: 2}
   toggleFlashlightActionReference: {fileID: 11400000, guid: 484212b3ba609db43a22e3b088547c1a, type: 2}
   throwCanActionReference: {fileID: 11400000, guid: 5f35fd39fe7f0d94b93d36228d8411c8, type: 2}
+  inventoryActionReference: {fileID: 11400000, guid: da7c12d06fb84c77a7f3ebc3d6ff8a75, type: 2}
   pauseActionReference: {fileID: 11400000, guid: a0b496e02d588ac45888b07a0befb512, type: 2}
 --- !u!114 &3867606634284726602
 MonoBehaviour:
@@ -379,10 +420,19 @@ MonoBehaviour:
   sprintSpeed: 6
   crouchSpeed: 2
   rotationSpeed: 720
+  acceleration: 22
+  deceleration: 28
+  stopSnapSpeed: 0.08
   gravity: -20
   groundedForce: -2
   standingHeight: 1.8
   crouchingHeight: 1.1
+  crouchHeightSmoothTime: 0.08
+  jumpHeight: 1.25
+  jumpInputBufferTime: 0.12
+  coyoteTime: 0.1
+  airborneControlMultiplier: 0.85
+  terminalVelocity: -35
   standUpBlockingMask:
     serializedVersion: 2
     m_Bits: 512
@@ -402,16 +452,17 @@ MonoBehaviour:
   visualRoot: {fileID: 7849580450590285546}
   standingLocalPosition: {x: 0, y: 0, z: 0}
   crouchingYOffset: 0
-  smoothTime: 0.08
+  smoothTime: 0.1
   enableWalkBob: 0
   walkBobAmplitude: 0.025
   walkBobFrequency: 7
+  useLegacyLocomotion: 1
   legacyAnimation: {fileID: 4690735341528322069}
   animatedModelRoot: {fileID: 4690735341534303403}
   walkClip: {fileID: 7400000, guid: df54603a1943cbf40ab6d4f3de04d83b, type: 3}
   runClip: {fileID: 7400004, guid: df54603a1943cbf40ab6d4f3de04d83b, type: 3}
   runSpeedThreshold: 4.75
-  animationFadeDuration: 0.12
+  animationFadeDuration: 0.16
   walkReferenceSpeed: 3.5
   runReferenceSpeed: 6
 --- !u!114 &4647693439416801271
@@ -478,6 +529,193 @@ MonoBehaviour:
   gameplayCamera: {fileID: 0}
   autoTurnOnAfterPickup: 1
   rotationFollowSpeed: 18
+--- !u!114 &2608203049918446400
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6620642945003662220}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e8e12f8ac2b11fa40ba3e99ef6f131dc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DormitoryMystery.Chapter1.PlayerCombatController
+  inputReader: {fileID: 1517192502962649873}
+  playerMotor: {fileID: 8380470748956178452}
+  inputLock: {fileID: 3867606634284726602}
+  playerVisualController: {fileID: 7110365749550402794}
+  legacyAnimationToPause: {fileID: 4690735341528322069}
+  animator: {fileID: 1943409525567369318}
+  attackPoint: {fileID: 7289411469025911647}
+  proceduralAnimationRoot: {fileID: 2480943109296301907}
+  comboAttacks:
+  - attackName: Punch Left
+    animationTrigger: PunchLeft
+    damage: 10
+    attackRange: 1.1
+    attackRadius: 0.3
+    hitTime: 0.29
+    attackDuration: 0.58
+    comboInputStartTime: 0.203
+    comboInputEndTime: 0.44079998
+    recoveryTime: 0.04
+  - attackName: Punch Right
+    animationTrigger: PunchRight
+    damage: 12
+    attackRange: 1.15
+    attackRadius: 0.32
+    hitTime: 0.31
+    attackDuration: 0.62
+    comboInputStartTime: 0.217
+    comboInputEndTime: 0.4712
+    recoveryTime: 0.0434
+  - attackName: Hook
+    animationTrigger: Hook
+    damage: 15
+    attackRange: 1.15
+    attackRadius: 0.34
+    hitTime: 0.374
+    attackDuration: 0.68
+    comboInputStartTime: 0.2584
+    comboInputEndTime: 0.5576
+    recoveryTime: 0.068
+  - attackName: Right Hook
+    animationTrigger: RightHook
+    damage: 18
+    attackRange: 1.2
+    attackRadius: 0.36
+    hitTime: 0.40320003
+    attackDuration: 0.72
+    comboInputStartTime: 0.2736
+    comboInputEndTime: 0.59040004
+    recoveryTime: 0.072000004
+  comboResetDelay: 1
+  postAttackInputBufferTime: 0.14
+  neutralKickAttack:
+    attackName: Heavy Kick
+    animationTrigger: KickHeavy
+    damage: 28
+    attackRange: 1.6
+    attackRadius: 0.42
+    hitTime: 0.58
+    attackDuration: 1
+    comboInputStartTime: 0.36
+    comboInputEndTime: 0.84
+    recoveryTime: 0.18
+  forwardKickAttack:
+    attackName: Side Kick
+    animationTrigger: KickSide
+    damage: 18
+    attackRange: 1.45
+    attackRadius: 0.38
+    hitTime: 0.476
+    attackDuration: 0.85
+    comboInputStartTime: 0.2975
+    comboInputEndTime: 0.697
+    recoveryTime: 0.085
+  backwardKickAttack:
+    attackName: Spinning Back Kick
+    animationTrigger: SpinningBackKick
+    damage: 30
+    attackRange: 1.55
+    attackRadius: 0.42
+    hitTime: 0.60899997
+    attackDuration: 1.05
+    comboInputStartTime: 0.399
+    comboInputEndTime: 0.8819999
+    recoveryTime: 0.189
+  directionalKickThreshold: 0.35
+  enemyLayerMask:
+    serializedVersion: 2
+    m_Bits: 2048
+  triggerInteraction: 2
+  lockMovementDuringAttack: 0
+  attackMoveSpeedMultiplier: 0.6
+  allowCombatWhileCrouching: 0
+  enableAnimatorOnlyDuringAttack: 1
+  enableAnimatorWhileCrouching: 1
+  enableAnimatorWhileIdle: 0
+  enableAnimatorWhileMoving: 1
+  enableAnimatorWhileJumping: 1
+  suspendLegacyAnimationDuringAttack: 1
+  animatorReleaseDelay: 0.08
+  locomotionBlendDuration: 0.14
+  moveSpeedDampTime: 0.1
+  runStateSpeedThreshold: 4.75
+  playProceduralFallback: 1
+  proceduralFallbackStrength: 1
+  drawDebugGizmos: 1
+  logAttackDebug: 0
+--- !u!95 &1943409525567369318
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6620642945003662220}
+  m_Enabled: 0
+  m_Avatar: {fileID: 9000000, guid: 0136c8e772e3043818af2fcf699b214f, type: 3}
+  m_Controller: {fileID: 9100000, guid: e07caba8457f653428fbd90ca42be7c0, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 1
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &3234517627012300010
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6620642945003662220}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2df1934ecfb94bf4bc90084b3013605c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DormitoryMystery.Chapter1.CombatAnimationEventRelay
+  combatController: {fileID: 2608203049918446400}
+--- !u!114 &7618332874887176514
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6620642945003662220}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e588767a4f8245049a17351f65ee4286, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DormitoryMystery.Chapter1.InventoryController
+  startingItems:
+  - {fileID: 11400000, guid: d1d7689f833e1bb419eba418668d08d2, type: 2}
+  items: []
+--- !u!114 &831201755241820960
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6620642945003662220}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ea996fc577af75a48a229655b3a8a85b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DormitoryMystery.Chapter1.BackpackPhoneInputController
+  inputReader: {fileID: 1517192502962649873}
+  inputLock: {fileID: 3867606634284726602}
+  inventoryController: {fileID: 7618332874887176514}
+  inventoryUIController: {fileID: 0}
+  phoneUIController: {fileID: 0}
+  targetCanvas: {fileID: 0}
+  createRuntimeUiIfMissing: 1
 --- !u!1001 &4690735341534135967
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -821,6 +1059,10 @@ PrefabInstance:
     - target: {fileID: 430644, guid: c6a6ecc1771d3a14ea2dc427f16ce1df, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 11130506, guid: c6a6ecc1771d3a14ea2dc427f16ce1df, type: 3}
+      propertyPath: m_Enabled
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 11130506, guid: c6a6ecc1771d3a14ea2dc427f16ce1df, type: 3}
       propertyPath: m_PlayAutomatically

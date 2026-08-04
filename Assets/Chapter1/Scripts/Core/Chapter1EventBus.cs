@@ -14,6 +14,10 @@ namespace DormitoryMystery.Chapter1
         public static event Action<string> CheckpointChanged;
         public static event Action<string> NotificationRequested;
         public static event Action ChapterCompleted;
+        public static event Action<FirstMissionState> FirstMissionStateChanged;
+        public static event Action OnFirstMissionCompleted;
+        public static event Action OnAllLanAudioStemsSaved;
+        public static event Action OnLanVoiceRecordingListened;
 
         public static void RaiseStepChanged(Chapter1Step step)
         {
@@ -63,6 +67,26 @@ namespace DormitoryMystery.Chapter1
         public static void RaiseChapterCompleted()
         {
             ChapterCompleted?.Invoke();
+        }
+
+        public static void RaiseFirstMissionStateChanged(FirstMissionState state)
+        {
+            FirstMissionStateChanged?.Invoke(state);
+        }
+
+        public static void RaiseFirstMissionCompleted()
+        {
+            OnFirstMissionCompleted?.Invoke();
+        }
+
+        public static void RaiseAllLanAudioStemsSaved()
+        {
+            OnAllLanAudioStemsSaved?.Invoke();
+        }
+
+        public static void RaiseLanVoiceRecordingListened()
+        {
+            OnLanVoiceRecordingListened?.Invoke();
         }
     }
 }

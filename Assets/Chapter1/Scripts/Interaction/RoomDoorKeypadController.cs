@@ -13,6 +13,7 @@ namespace DormitoryMystery.Chapter1
         private const string KeypadCameraName = "Keypad_camera";
         private const string DoorHingeName = "Door_Room_Nam_Hinge";
         private const string RoomDoorName = "RoomDoor_Dung";
+        private const int Mission01DoorCombo = 2502;
 
         [Header("Keypad")]
         [SerializeField] private Keypad keypad;
@@ -62,12 +63,14 @@ namespace DormitoryMystery.Chapter1
         private void Awake()
         {
             ResolveReferences();
+            ConfigureMissionKeypadCombo();
             SetKeypadCameraActive(false);
         }
 
         private void OnEnable()
         {
             ResolveReferences();
+            ConfigureMissionKeypadCombo();
             SubscribeToKeypad();
         }
 
@@ -192,6 +195,14 @@ namespace DormitoryMystery.Chapter1
                     "Không xác định được người chơi để mở keypad.");
             }
 
+            if (TryResolveMissionKeypadGate(
+                    door,
+                    context.PlayerTransform.position,
+                    out InteractionResult missionGateResult))
+            {
+                return missionGateResult;
+            }
+
             PlayerInputLock inputLock =
                 context.PlayerObject.GetComponent<PlayerInputLock>();
             Camera resolvedGameplayCamera =
@@ -256,6 +267,21 @@ namespace DormitoryMystery.Chapter1
                 return;
             }
 
+            if (IsMission01DungDoor())
+            {
+                Mission01AudioSeparatorManager manager =
+                    Mission01AudioSeparatorManager.Instance;
+                if (manager == null ||
+                    !manager.TryUnlockDungDoor(
+                        Mission01AudioSeparatorManager.CorrectDoorPassword))
+                {
+                    ExitKeypadMode();
+                    Chapter1EventBus.RaiseNotification(
+                        "Mật khẩu chưa dùng được. Hãy hỏi Dũng thêm.");
+                    return;
+                }
+            }
+
             DoorInteractable door = activeDoor;
             Vector3 playerPosition = pendingPlayerPosition;
             ExitKeypadMode();
@@ -266,6 +292,86 @@ namespace DormitoryMystery.Chapter1
             {
                 Chapter1EventBus.RaiseNotification(result.Message);
             }
+        }
+
+        public void ConfigureForMission01()
+        {
+            ResolveReferences();
+            ConfigureMissionKeypadCombo();
+        }
+
+        private bool TryResolveMissionKeypadGate(
+            DoorInteractable door,
+            Vector3 playerPosition,
+            out InteractionResult result)
+        {
+            result = default;
+            if (!IsMission01DungDoor())
+            {
+                return false;
+            }
+
+            ConfigureMissionKeypadCombo();
+
+            Mission01AudioSeparatorManager manager =
+                Mission01AudioSeparatorManager.Instance;
+            if (manager == null)
+            {
+                result = InteractionResult.Failed(
+                    "Chưa tìm thấy Mission 01 Manager.");
+                return true;
+            }
+
+            if (manager.DoorUnlocked)
+            {
+                result = door.OpenAfterKeypad(playerPosition);
+                return true;
+            }
+
+            if (manager.State < FirstMissionState.GoToDungRoom)
+            {
+                result = InteractionResult.Failed(
+                    "Chưa có lý do để vào phòng Dũng.");
+                return true;
+            }
+
+            if (manager.State == FirstMissionState.GoToDungRoom)
+            {
+                manager.DiscoverLockedDoor();
+                result = InteractionResult.Succeeded(
+                    "Cửa được khóa bằng mật khẩu.");
+                return true;
+            }
+
+            if (manager.State < FirstMissionState.SolveBirthdayPassword)
+            {
+                result = InteractionResult.Succeeded(
+                    "Cửa được khóa bằng mật khẩu.");
+                return true;
+            }
+
+            return false;
+        }
+
+        private void ConfigureMissionKeypadCombo()
+        {
+            if (!IsMission01DungDoor() || keypad == null)
+            {
+                return;
+            }
+
+            if (keypad.KeypadCombo != Mission01DoorCombo)
+            {
+                keypad.SetCombo(Mission01DoorCombo);
+            }
+        }
+
+        private bool IsMission01DungDoor()
+        {
+            return string.Equals(
+                gameObject.name,
+                RoomDoorName,
+                System.StringComparison.Ordinal);
         }
 
         private void ExitKeypadMode()

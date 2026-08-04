@@ -8,6 +8,7 @@ namespace DormitoryMystery.Chapter1
     public sealed class PlayerInventory : MonoBehaviour
     {
         private const string Archive17Token = "item.Archive17";
+        private const string AudioSeparatorToken = "mission01.audio_separator_device";
 
         [SerializeField] private Chapter1Manager chapterManager;
         [SerializeField] private bool autoSaveOnChange = true;
@@ -22,6 +23,7 @@ namespace DormitoryMystery.Chapter1
         public bool HasFlashlight => HasItem(Chapter1ItemId.Flashlight);
         public bool HasFuse => HasItem(Chapter1ItemId.Fuse);
         public bool HasHardDrive => HasItem(Chapter1ItemId.HardDrive);
+        public bool HasAudioSeparator => HasItem(Chapter1ItemId.AudioSeparator);
         public int ThrowableCanCount => GetCount(Chapter1ItemId.ThrowableCan);
 
         private void Awake()
@@ -126,6 +128,7 @@ namespace DormitoryMystery.Chapter1
             SetCountFromSave(Chapter1ItemId.HardDrive, safeData.HasHardDrive ? 1 : 0);
             SetCountFromSave(Chapter1ItemId.ThrowableCan, safeData.ThrowableCanCount);
             SetCountFromSave(Chapter1ItemId.Archive17, safeData.CollectedUniqueItemIds.Contains(Archive17Token) ? 1 : 0);
+            SetCountFromSave(Chapter1ItemId.AudioSeparator, 0);
             initializedFromSave = true;
             RaiseInventoryChanged(Chapter1ItemId.None, 0);
         }
@@ -144,6 +147,8 @@ namespace DormitoryMystery.Chapter1
             data.HasHardDrive = HasItem(Chapter1ItemId.HardDrive);
             data.ThrowableCanCount = GetCount(Chapter1ItemId.ThrowableCan);
             SetCollectedToken(data, Archive17Token, HasItem(Chapter1ItemId.Archive17));
+            data.Mission01AudioSeparatorCollected = false;
+            SetCollectedToken(data, AudioSeparatorToken, false);
         }
 
         private void LoadFromManagerIfNeeded()
@@ -187,7 +192,8 @@ namespace DormitoryMystery.Chapter1
                 || itemId == Chapter1ItemId.Flashlight
                 || itemId == Chapter1ItemId.Fuse
                 || itemId == Chapter1ItemId.HardDrive
-                || itemId == Chapter1ItemId.Archive17;
+                || itemId == Chapter1ItemId.Archive17
+                || itemId == Chapter1ItemId.AudioSeparator;
         }
 
         private void SetCountFromSave(Chapter1ItemId itemId, int count)

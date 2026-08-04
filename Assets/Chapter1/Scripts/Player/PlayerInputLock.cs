@@ -13,6 +13,8 @@ namespace DormitoryMystery.Chapter1
         public const string EndingReason = "Ending";
         public const string PauseReason = "Pause";
         public const string RespawnReason = "Respawn";
+        public const string InventoryReason = "Inventory";
+        public const string PhoneReason = "Phone";
 
         private readonly HashSet<string> activeLocks = new HashSet<string>(StringComparer.Ordinal);
 
@@ -33,6 +35,11 @@ namespace DormitoryMystery.Chapter1
             RaiseIfStateChanged(wasLocked);
         }
 
+        public void AcquireInputLock(string reason)
+        {
+            Lock(reason);
+        }
+
         public void Unlock(string reason)
         {
             if (!IsValidReason(reason, "mở khóa"))
@@ -43,6 +50,11 @@ namespace DormitoryMystery.Chapter1
             bool wasLocked = IsLocked;
             activeLocks.Remove(reason);
             RaiseIfStateChanged(wasLocked);
+        }
+
+        public void ReleaseInputLock(string reason)
+        {
+            Unlock(reason);
         }
 
         public void ClearAllLocks()
