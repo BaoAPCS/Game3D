@@ -137,11 +137,15 @@ namespace DormitoryMystery.Chapter1
         private void OnEnable()
         {
             Chapter1EventBus.NotificationRequested += ShowMessage;
+            Chapter1EventBus.UrgentNotificationRequested +=
+                ShowUrgentMessage;
         }
 
         private void OnDisable()
         {
             Chapter1EventBus.NotificationRequested -= ShowMessage;
+            Chapter1EventBus.UrgentNotificationRequested -=
+                ShowUrgentMessage;
             if (queueRoutine != null)
             {
                 StopCoroutine(queueRoutine);
@@ -161,6 +165,27 @@ namespace DormitoryMystery.Chapter1
 
             messageQueue.Enqueue(message);
             if (queueRoutine == null && isActiveAndEnabled)
+            {
+                queueRoutine = StartCoroutine(ProcessQueue());
+            }
+        }
+
+        public void ShowUrgentMessage(string message)
+        {
+            if (string.IsNullOrWhiteSpace(message))
+            {
+                return;
+            }
+
+            if (queueRoutine != null)
+            {
+                StopCoroutine(queueRoutine);
+                queueRoutine = null;
+            }
+
+            messageQueue.Clear();
+            messageQueue.Enqueue(message);
+            if (isActiveAndEnabled)
             {
                 queueRoutine = StartCoroutine(ProcessQueue());
             }

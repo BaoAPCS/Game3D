@@ -13,6 +13,7 @@ namespace DormitoryMystery.Chapter1
         public static event Action PlayerCaught;
         public static event Action<string> CheckpointChanged;
         public static event Action<string> NotificationRequested;
+        public static event Action<string> UrgentNotificationRequested;
         public static event Action ChapterCompleted;
 
         public static void RaiseStepChanged(Chapter1Step step)
@@ -58,6 +59,11 @@ namespace DormitoryMystery.Chapter1
         public static void RaiseNotification(string message)
         {
             NotificationRequested?.Invoke(message ?? string.Empty);
+        }
+
+        public static void RaiseUrgentNotification(string message)
+        {
+            UrgentNotificationRequested?.Invoke(message ?? string.Empty);
         }
 
         public static void RaiseChapterCompleted()

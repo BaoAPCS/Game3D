@@ -220,6 +220,64 @@ namespace DormitoryMystery.Chapter1
             return true;
         }
 
+        /// <summary>
+        /// Starts the chase after the player crosses ChaseTrigger with the
+        /// swapped battery. Unlike the ordinary theft entry point, this may
+        /// interrupt Henry's food-cart visit or his return trip, while keeping
+        /// the existing chase, closed-door escape, and return-home flow.
+        /// </summary>
+        public bool BeginPostSwapChase(Transform playerTarget)
+        {
+            bool canInterruptCurrentState =
+                state == ChaseState.Idle ||
+                state == ChaseState.MovingToFoodcart ||
+                state == ChaseState.WaitingAtFoodcart ||
+                state == ChaseState.ReturningHome;
+            if (!canInterruptCurrentState || playerTarget == null)
+            {
+                return false;
+            }
+
+            if (!EnsureAgentOnNavMesh())
+            {
+                Debug.LogError(
+                    "[Henry] Cannot start the post-swap chase because " +
+                    "Henry is not on the NavMesh.",
+                    this);
+                return false;
+            }
+
+            if (animationPlayer == null ||
+                !animationPlayer.PlayRun())
+            {
+                Debug.LogError(
+                    "[Henry] Cannot start the post-swap chase because " +
+                    "the run animation is unavailable.",
+                    this);
+                return false;
+            }
+
+            player = playerTarget;
+            foodcartDistractionActive = false;
+            batterySwapRaceActive = false;
+            state = ChaseState.Chasing;
+            previousPlayerPosition = player.position;
+            activeEscapeDoor = null;
+            CacheRoomDoors();
+
+            agent.isStopped = false;
+            agent.stoppingDistance = GetChaseStoppingDistance();
+            nextDestinationRefreshAt = 0f;
+            RefreshDestination(player.position, true);
+
+            Debug.Log(
+                "[Henry] Phát hiện ắc quy đã bị đánh tráo; " +
+                "bắt đầu truy đuổi người chơi.",
+                this);
+            ChaseStarted?.Invoke();
+            return true;
+        }
+
         public bool BeginFoodcartDistraction(Transform foodcart)
         {
             if (!CanStartDistraction || foodcart == null)
@@ -757,14 +815,53 @@ namespace DormitoryMystery.Chapter1
         private bool CanEscapeThroughClosedRoomDoor(
             Vector3 playerPosition)
         {
-            return activeEscapeDoor != null &&
-                   activeEscapeDoor.IsFullyClosed &&
-                   activeEscapeDoor.IsOnInsideSide(
+            if (IsPlayerSafeBehindDoor(
+                    activeEscapeDoor,
+                    playerPosition))
+            {
+                return true;
+            }
+
+            // Crossing can be missed when the player moves across the thin
+            // doorway plane in one frame. Closing a door requires standing
+            // beside it, so recover the correct escape door from that local
+            // position instead of allowing the chase to continue forever.
+            float recoveryRadius = doorwayHalfWidth + 0.75f;
+            float recoveryRadiusSquared =
+                recoveryRadius * recoveryRadius;
+            for (int i = 0; i < trackedDoors.Count; i++)
+            {
+                DoorInteractable door = trackedDoors[i];
+                if (!IsPlayerSafeBehindDoor(door, playerPosition))
+                {
+                    continue;
+                }
+
+                Vector3 doorwayOffset =
+                    playerPosition - door.DoorwayPoint;
+                doorwayOffset.y = 0f;
+                if (doorwayOffset.sqrMagnitude >
+                    recoveryRadiusSquared)
+                {
+                    continue;
+                }
+
+                activeEscapeDoor = door;
+                return true;
+            }
+
+            return false;
+        }
+
+        private bool IsPlayerSafeBehindDoor(
+            DoorInteractable door,
+            Vector3 playerPosition)
+        {
+            return door != null &&
+                   !door.IsOpen &&
+                   door.IsOnInsideSide(
                        playerPosition,
-                       insideSideMargin) &&
-                   !activeEscapeDoor.IsOnInsideSide(
-                       transform.position,
-                       0f);
+                       insideSideMargin);
         }
 
         private void LockPlayerForForcedCatch()
