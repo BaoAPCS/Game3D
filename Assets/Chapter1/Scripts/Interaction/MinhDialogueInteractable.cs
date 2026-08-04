@@ -37,6 +37,24 @@ namespace DormitoryMystery.Chapter1
             "Nhưng tôi không biết làm";
         [SerializeField, TextArea] private string minhDungLine =
             "Dũng ở tầng trên là một producer, cậu ta có thiết bị tách âm chuyên dụng";
+
+        [Header("Second Dialogue")]
+        [SerializeField, TextArea] private string secondPlayerOpeningLine =
+            "Tôi đã tách được đoạn ghi âm rồi đây";
+        [SerializeField, TextArea] private string secondMinhAiLine =
+            "Tiếng còi này tôi sẽ phải train model AI để nhận biết nó tiếng còi gì";
+        [SerializeField, TextArea] private string secondMinhTrainingTimeLine =
+            "Nhưng quá trình train sẽ tầm 1 tháng bạn có đợi được không ?";
+        [SerializeField, TextArea] private string secondPlayerUrgencyLine =
+            "1 tháng hả, lâu quá chị tôi sẽ chết mất. Có cách nào đẩy nhanh quá trình train không ?";
+        [SerializeField, TextArea] private string secondMinhEquipmentLine =
+            "Có nhưng bạn phải tìm cho tôi một PSU và UPS";
+        [SerializeField, TextArea] private string secondMinhScrapyardLine =
+            "Sáng nay tôi thấy 2 thứ đó ngoài bãi rác có vẻ còn dùng được";
+        [SerializeField, TextArea] private string secondMinhBatteryLine =
+            "Nhưng UPS thì cần ắc quy, bạn thử hỏi mượn ắc quy của ông Henry chủ quán burger đối diện xem sao";
+        [SerializeField, TextArea] private string secondPlayerAcceptLine =
+            "Được, tôi sẽ lấy những thứ bạn yêu cầu.";
         [SerializeField, Range(10f, 80f)] private float charactersPerSecond =
             34f;
         [SerializeField, Range(1f, 6f)] private float punctuationPauseMultiplier =
@@ -51,6 +69,7 @@ namespace DormitoryMystery.Chapter1
         private GameObject dialoguePlayer;
         private Renderer[] hiddenPlayerRenderers;
         private bool[] playerRendererEnabledStates;
+        private int completedDialogueCount;
 
         public override Chapter1InteractionInput InteractionInput =>
             Chapter1InteractionInput.Talk;
@@ -148,6 +167,24 @@ namespace DormitoryMystery.Chapter1
             SetDialogueVisible(true);
 
             yield return WaitForAdvanceRelease();
+            if (completedDialogueCount == 0)
+            {
+                yield return PlayFirstDialogue();
+            }
+            else
+            {
+                yield return PlaySecondDialogue();
+            }
+
+            completedDialogueCount = Mathf.Min(
+                completedDialogueCount + 1,
+                2);
+
+            RestoreGameplayState();
+        }
+
+        private IEnumerator PlayFirstDialogue()
+        {
             yield return StreamLine(playerSpeaker, playerLine);
             yield return StreamLine(minhSpeaker, minhLine);
             yield return StreamLine(minhSpeaker, minhNoiseLine);
@@ -156,8 +193,34 @@ namespace DormitoryMystery.Chapter1
                 playerSpeaker,
                 playerDoesNotKnowLine);
             yield return StreamLine(minhSpeaker, minhDungLine);
+        }
 
-            RestoreGameplayState();
+        private IEnumerator PlaySecondDialogue()
+        {
+            yield return StreamLine(
+                playerSpeaker,
+                secondPlayerOpeningLine);
+            yield return StreamLine(
+                minhSpeaker,
+                secondMinhAiLine);
+            yield return StreamLine(
+                minhSpeaker,
+                secondMinhTrainingTimeLine);
+            yield return StreamLine(
+                playerSpeaker,
+                secondPlayerUrgencyLine);
+            yield return StreamLine(
+                minhSpeaker,
+                secondMinhEquipmentLine);
+            yield return StreamLine(
+                minhSpeaker,
+                secondMinhScrapyardLine);
+            yield return StreamLine(
+                minhSpeaker,
+                secondMinhBatteryLine);
+            yield return StreamLine(
+                playerSpeaker,
+                secondPlayerAcceptLine);
         }
 
         private IEnumerator StreamLine(string speaker, string line)
