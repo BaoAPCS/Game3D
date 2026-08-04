@@ -26,6 +26,9 @@ namespace DormitoryMystery.Chapter1
         public Vector2 LookInput { get; private set; }
         public bool SprintHeld { get; private set; }
         public bool TalkHeld { get; private set; }
+        public bool ThrowCanHeld { get; private set; }
+        public bool GameplayInputEnabled =>
+            gameplayInputEnabled && isActiveAndEnabled;
 
         public event Action CrouchPressed;
         public event Action InteractPressed;
@@ -33,6 +36,7 @@ namespace DormitoryMystery.Chapter1
         public event Action TalkReleased;
         public event Action ToggleFlashlightPressed;
         public event Action ThrowCanPressed;
+        public event Action ThrowCanReleased;
         public event Action PausePressed;
 
         private void OnEnable()
@@ -82,7 +86,10 @@ namespace DormitoryMystery.Chapter1
                 OnTalkPerformed,
                 OnTalkCanceled);
             RegisterButtonCallback(toggleFlashlightActionReference, OnToggleFlashlightPerformed);
-            RegisterButtonCallback(throwCanActionReference, OnThrowCanPerformed);
+            RegisterValueCallbacks(
+                throwCanActionReference,
+                OnThrowCanPerformed,
+                OnThrowCanCanceled);
             RegisterButtonCallback(pauseActionReference, OnPausePerformed);
 
             callbacksRegistered = true;
@@ -105,7 +112,10 @@ namespace DormitoryMystery.Chapter1
                 OnTalkPerformed,
                 OnTalkCanceled);
             UnregisterButtonCallback(toggleFlashlightActionReference, OnToggleFlashlightPerformed);
-            UnregisterButtonCallback(throwCanActionReference, OnThrowCanPerformed);
+            UnregisterValueCallbacks(
+                throwCanActionReference,
+                OnThrowCanPerformed,
+                OnThrowCanCanceled);
             UnregisterButtonCallback(pauseActionReference, OnPausePerformed);
 
             callbacksRegistered = false;
@@ -233,6 +243,7 @@ namespace DormitoryMystery.Chapter1
             LookInput = Vector2.zero;
             SprintHeld = false;
             TalkHeld = false;
+            ThrowCanHeld = false;
         }
 
         private void OnMovePerformed(InputAction.CallbackContext context)
@@ -319,9 +330,20 @@ namespace DormitoryMystery.Chapter1
 
         private void OnThrowCanPerformed(InputAction.CallbackContext context)
         {
-            if (gameplayInputEnabled)
+            ThrowCanHeld = gameplayInputEnabled && context.ReadValueAsButton();
+            if (ThrowCanHeld)
             {
                 ThrowCanPressed?.Invoke();
+            }
+        }
+
+        private void OnThrowCanCanceled(InputAction.CallbackContext context)
+        {
+            bool wasHeld = ThrowCanHeld;
+            ThrowCanHeld = false;
+            if (wasHeld)
+            {
+                ThrowCanReleased?.Invoke();
             }
         }
 

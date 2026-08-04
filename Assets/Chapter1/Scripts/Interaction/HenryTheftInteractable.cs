@@ -23,6 +23,8 @@ namespace DormitoryMystery.Chapter1
 
         internal const string InteractableLayerName = "Interactable";
 
+        private static bool InstallLegacyFoodcartInteraction => false;
+
         private const string InteractionTriggerName =
             "Henry_Theft_Interaction";
 
@@ -137,7 +139,7 @@ namespace DormitoryMystery.Chapter1
                     $"[Henry] Không tìm thấy foodcart '{FoodcartObjectName}'.",
                     henry);
             }
-            else
+            else if (InstallLegacyFoodcartInteraction)
             {
                 HenryFoodcartInteractable.InstallOnFoodcart(
                     foodcart.gameObject,

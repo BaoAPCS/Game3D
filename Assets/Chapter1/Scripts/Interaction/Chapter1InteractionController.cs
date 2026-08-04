@@ -265,7 +265,8 @@ namespace DormitoryMystery.Chapter1
             }
 
             bool closePickup =
-                interactable is UPSInteractable &&
+                (interactable is UPSInteractable ||
+                 interactable is PetrolCanInteractable) &&
                 targetDistance <= 1.5f;
             if (!closePickup && IsObstructed(targetPosition))
             {
@@ -343,6 +344,12 @@ namespace DormitoryMystery.Chapter1
 
         private void HandleTalkPressed()
         {
+            PetrolCanThrower thrower = GetComponent<PetrolCanThrower>();
+            if (thrower != null && thrower.HasCan)
+            {
+                return;
+            }
+
             TryPerformInteraction(Chapter1InteractionInput.Talk);
         }
 

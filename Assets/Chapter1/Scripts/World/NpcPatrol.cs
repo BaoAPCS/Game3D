@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.AI;
 
 namespace DormitoryMystery.Chapter1
 {
@@ -7,6 +8,8 @@ namespace DormitoryMystery.Chapter1
     {
         private const float RunLoopRestartNormalizedTime = 0.95f;
         private static readonly int RunStateHash = Animator.StringToHash("Base Layer.Run_F");
+        private static readonly int IdleStateHash =
+            Animator.StringToHash("Base Layer.Pose_Idle");
 
         [Header("Pavement route (world-space X positions)")]
         [SerializeField] private Vector3 endpointA = new Vector3(-10f, -0.013f, -17.575f);
@@ -28,6 +31,11 @@ namespace DormitoryMystery.Chapter1
         private float turnElapsed;
         private Quaternion turnStartRotation;
         private Quaternion turnTargetRotation;
+        private Vector3 emergencyDestination;
+        private NavMeshAgent emergencyAgent;
+        private bool emergencyRunning;
+        private bool usingEmergencyNavMesh;
+        private bool holdingAtFoodcart;
 
         private void Awake()
         {
@@ -50,6 +58,9 @@ namespace DormitoryMystery.Chapter1
             targetEndpointIndex = Mathf.Abs(transform.position.x - endpointA.x) <= arrivalThreshold ? 1 : 0;
             turning = false;
             turnElapsed = 0f;
+            emergencyRunning = false;
+            usingEmergencyNavMesh = false;
+            holdingAtFoodcart = false;
 
             FaceDirection(GetTargetPoint() - transform.position);
             PlayRunAnimation();
@@ -57,6 +68,17 @@ namespace DormitoryMystery.Chapter1
 
         private void Update()
         {
+            if (holdingAtFoodcart)
+            {
+                return;
+            }
+
+            if (emergencyRunning)
+            {
+                UpdateEmergencyRun();
+                return;
+            }
+
             KeepRunAnimationPlaying();
 
             if (turning)
@@ -76,6 +98,181 @@ namespace DormitoryMystery.Chapter1
                 transform.position = target;
                 BeginTurn();
             }
+        }
+
+        internal bool BeginEmergencyRun(Vector3 destination)
+        {
+            if (holdingAtFoodcart || emergencyRunning)
+            {
+                return false;
+            }
+
+            emergencyDestination = new Vector3(
+                destination.x,
+                transform.position.y,
+                destination.z);
+            turning = false;
+            emergencyRunning = true;
+            usingEmergencyNavMesh =
+                TryStartEmergencyNavigation(ref emergencyDestination);
+            holdingAtFoodcart = false;
+            FaceDirection(emergencyDestination - transform.position);
+            PlayRunAnimation();
+            return true;
+        }
+
+        private void UpdateEmergencyRun()
+        {
+            KeepRunAnimationPlaying();
+            if (usingEmergencyNavMesh)
+            {
+                UpdateEmergencyNavigation();
+                return;
+            }
+
+            Vector3 currentPosition = transform.position;
+            float emergencySpeed = Mathf.Max(runSpeed, 3.5f);
+            Vector3 nextPosition = Vector3.MoveTowards(
+                currentPosition,
+                emergencyDestination,
+                emergencySpeed * Time.deltaTime);
+            transform.position = nextPosition;
+            FaceDirection(emergencyDestination - nextPosition);
+
+            Vector3 remaining = emergencyDestination - nextPosition;
+            remaining.y = 0f;
+            float stopThreshold = Mathf.Max(arrivalThreshold, 0.15f);
+            if (remaining.sqrMagnitude > stopThreshold * stopThreshold)
+            {
+                return;
+            }
+
+            transform.position = emergencyDestination;
+            FinishEmergencyRun();
+        }
+
+        private bool TryStartEmergencyNavigation(
+            ref Vector3 destination)
+        {
+            if (!HenryChaseNavigation.EnsureBuilt())
+            {
+                return false;
+            }
+
+            emergencyAgent = GetComponent<NavMeshAgent>();
+            if (emergencyAgent == null)
+            {
+                emergencyAgent = gameObject.AddComponent<NavMeshAgent>();
+            }
+
+            float emergencySpeed = Mathf.Max(runSpeed, 3.5f);
+            emergencyAgent.agentTypeID = 0;
+            emergencyAgent.radius = 0.3f;
+            emergencyAgent.height = 1.8f;
+            emergencyAgent.baseOffset = 0f;
+            emergencyAgent.speed = emergencySpeed;
+            emergencyAgent.acceleration = 16f;
+            emergencyAgent.angularSpeed = 720f;
+            emergencyAgent.stoppingDistance =
+                Mathf.Max(arrivalThreshold, 0.2f);
+            emergencyAgent.autoBraking = true;
+            emergencyAgent.updatePosition = true;
+            emergencyAgent.updateRotation = true;
+            emergencyAgent.obstacleAvoidanceType =
+                ObstacleAvoidanceType.HighQualityObstacleAvoidance;
+            emergencyAgent.avoidancePriority = 35;
+
+            if (!emergencyAgent.enabled)
+            {
+                emergencyAgent.enabled = true;
+            }
+
+            if (!emergencyAgent.isOnNavMesh)
+            {
+                if (!NavMesh.SamplePosition(
+                        transform.position,
+                        out NavMeshHit startHit,
+                        2.5f,
+                        NavMesh.AllAreas) ||
+                    !emergencyAgent.Warp(startHit.position))
+                {
+                    emergencyAgent.enabled = false;
+                    return false;
+                }
+            }
+
+            if (!NavMesh.SamplePosition(
+                    destination,
+                    out NavMeshHit destinationHit,
+                    3f,
+                    NavMesh.AllAreas))
+            {
+                emergencyAgent.enabled = false;
+                return false;
+            }
+
+            destination = destinationHit.position;
+            emergencyAgent.isStopped = false;
+            if (emergencyAgent.SetDestination(destination))
+            {
+                return true;
+            }
+
+            emergencyAgent.enabled = false;
+            return false;
+        }
+
+        private void UpdateEmergencyNavigation()
+        {
+            if (emergencyAgent == null ||
+                !emergencyAgent.enabled ||
+                !emergencyAgent.isOnNavMesh)
+            {
+                usingEmergencyNavMesh = false;
+                return;
+            }
+
+            if (emergencyAgent.pathPending)
+            {
+                return;
+            }
+
+            if (emergencyAgent.pathStatus == NavMeshPathStatus.PathInvalid)
+            {
+                emergencyAgent.isStopped = true;
+                emergencyAgent.enabled = false;
+                usingEmergencyNavMesh = false;
+                return;
+            }
+
+            float stopThreshold = Mathf.Max(
+                emergencyAgent.stoppingDistance,
+                arrivalThreshold);
+            if (emergencyAgent.remainingDistance > stopThreshold)
+            {
+                return;
+            }
+
+            FinishEmergencyRun();
+        }
+
+        private void FinishEmergencyRun()
+        {
+            if (emergencyAgent != null && emergencyAgent.enabled)
+            {
+                if (emergencyAgent.isOnNavMesh)
+                {
+                    emergencyAgent.isStopped = true;
+                    emergencyAgent.ResetPath();
+                }
+
+                emergencyAgent.enabled = false;
+            }
+
+            emergencyRunning = false;
+            usingEmergencyNavMesh = false;
+            holdingAtFoodcart = true;
+            PlayIdleAnimation();
         }
 
         private void BeginTurn()
@@ -169,6 +366,20 @@ namespace DormitoryMystery.Chapter1
             {
                 animator.Play(RunStateHash, 0, 0f);
             }
+        }
+
+        private void PlayIdleAnimation()
+        {
+            if (animator == null || !animator.HasState(0, IdleStateHash))
+            {
+                return;
+            }
+
+            animator.CrossFadeInFixedTime(
+                IdleStateHash,
+                0.15f,
+                0,
+                0f);
         }
 
         private void OnDrawGizmosSelected()

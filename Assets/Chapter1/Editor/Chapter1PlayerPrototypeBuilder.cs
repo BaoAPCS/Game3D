@@ -438,7 +438,7 @@ namespace DormitoryMystery.Chapter1.Editor
             toggleFlashlight.AddBinding("<Gamepad>/dpad/up");
 
             InputAction throwCan = gameplayMap.AddAction("ThrowCan", InputActionType.Button);
-            throwCan.AddBinding("<Keyboard>/g");
+            throwCan.AddBinding("<Keyboard>/e");
             throwCan.AddBinding("<Gamepad>/rightShoulder");
 
             InputAction pause = gameplayMap.AddAction("Pause", InputActionType.Button);
