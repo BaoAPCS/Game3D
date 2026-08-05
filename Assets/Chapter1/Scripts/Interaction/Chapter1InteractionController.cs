@@ -264,11 +264,13 @@ namespace DormitoryMystery.Chapter1
                 return;
             }
 
-            bool closePickup =
+            bool bypassObstruction =
                 (interactable is UPSInteractable ||
                  interactable is PetrolCanInteractable) &&
                 targetDistance <= 1.5f;
-            if (!closePickup && IsObstructed(targetPosition))
+            bypassObstruction = bypassObstruction ||
+                interactable is HenryDialogueInteractable;
+            if (!bypassObstruction && IsObstructed(targetPosition))
             {
                 return;
             }

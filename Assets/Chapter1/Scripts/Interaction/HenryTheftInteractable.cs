@@ -119,6 +119,11 @@ namespace DormitoryMystery.Chapter1
                 return;
             }
 
+            HenryDialogueInteractable.InstallOnHenry(
+                henry.gameObject,
+                interactableLayer,
+                chase);
+
             if (theftBattery == null)
             {
                 Debug.LogError(
