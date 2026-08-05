@@ -14,6 +14,7 @@ namespace DormitoryMystery.Chapter1
         private static ulong sceneHandle = ulong.MaxValue;
         private static GameObject brokenBatteryObject;
 
+        public static bool IsStarted { get; private set; }
         public static bool HasPsu { get; private set; }
         public static bool HasUps { get; private set; }
         public static bool HasBrokenBattery { get; private set; }
@@ -46,7 +47,7 @@ namespace DormitoryMystery.Chapter1
 
         public static bool CollectPsu()
         {
-            if (HasPsu)
+            if (!IsStarted || HasPsu)
             {
                 return false;
             }
@@ -57,7 +58,7 @@ namespace DormitoryMystery.Chapter1
 
         public static bool CollectUps()
         {
-            if (HasUps || !HasHenryBattery)
+            if (!IsStarted || HasUps || !HasHenryBattery)
             {
                 return false;
             }
@@ -68,13 +69,18 @@ namespace DormitoryMystery.Chapter1
 
         public static void CollectBrokenBattery(GameObject pickupObject)
         {
+            if (!IsStarted)
+            {
+                return;
+            }
+
             HasBrokenBattery = true;
             brokenBatteryObject = pickupObject;
         }
 
         public static bool CompleteBatterySwap()
         {
-            if (HasHenryBattery || !HasBrokenBattery)
+            if (!IsStarted || HasHenryBattery || !HasBrokenBattery)
             {
                 return false;
             }
@@ -82,6 +88,12 @@ namespace DormitoryMystery.Chapter1
             HasBrokenBattery = false;
             HasHenryBattery = true;
             return true;
+        }
+
+        public static void BeginMission(Scene scene)
+        {
+            EnsureScene(scene);
+            IsStarted = true;
         }
 
         public static void PlaceBrokenBatteryAt(Transform target)
@@ -101,6 +113,7 @@ namespace DormitoryMystery.Chapter1
 
         private static void ResetProgress()
         {
+            IsStarted = false;
             HasPsu = false;
             HasUps = false;
             HasBrokenBattery = false;
@@ -270,7 +283,8 @@ namespace DormitoryMystery.Chapter1
 
         public override bool CanInteract(InteractionContext context)
         {
-            if (!base.CanInteract(context) ||
+            if (!Mission2HeistProgress.IsStarted ||
+                !base.CanInteract(context) ||
                 context.PlayerTransform == null ||
                 IsAlreadyCollected())
             {
@@ -313,7 +327,8 @@ namespace DormitoryMystery.Chapter1
         protected override InteractionResult PerformInteraction(
             InteractionContext context)
         {
-            if (IsAlreadyCollected())
+            if (!Mission2HeistProgress.IsStarted ||
+                IsAlreadyCollected())
             {
                 return InteractionResult.Ignored();
             }

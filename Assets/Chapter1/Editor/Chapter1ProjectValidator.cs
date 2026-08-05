@@ -37,8 +37,10 @@ namespace DormitoryMystery.Chapter1.Editor
             "Assets/Chapter1",
             "Assets/Chapter1/Scenes",
             "Assets/Chapter1/Scripts",
+            "Assets/Chapter1/Scripts/Combat",
             "Assets/Chapter1/Scripts/Core",
             "Assets/Chapter1/Scripts/Player",
+            "Assets/Chapter1/Scripts/Player/Combat",
             "Assets/Chapter1/Scripts/Camera",
             "Assets/Chapter1/Scripts/Interaction",
             "Assets/Chapter1/Scripts/Inventory",
@@ -70,6 +72,9 @@ namespace DormitoryMystery.Chapter1.Editor
         {
             "Move",
             "Look",
+            "Attack",
+            "Kick",
+            "Jump",
             "Sprint",
             "Crouch",
             "Interact",
@@ -83,6 +88,9 @@ namespace DormitoryMystery.Chapter1.Editor
         {
             new InputReferenceValidationEntry("Move", "moveActionReference"),
             new InputReferenceValidationEntry("Look", "lookActionReference"),
+            new InputReferenceValidationEntry("Attack", "attackActionReference"),
+            new InputReferenceValidationEntry("Kick", "kickActionReference"),
+            new InputReferenceValidationEntry("Jump", "jumpActionReference"),
             new InputReferenceValidationEntry("Sprint", "sprintActionReference"),
             new InputReferenceValidationEntry("Crouch", "crouchActionReference"),
             new InputReferenceValidationEntry("Interact", "interactActionReference"),
@@ -305,6 +313,10 @@ namespace DormitoryMystery.Chapter1.Editor
                 { "PlayerStamina", "DormitoryMystery.Chapter1.PlayerStamina" },
                 { "Chapter1PlayerMotor", "DormitoryMystery.Chapter1.Chapter1PlayerMotor" },
                 { "PlayerVisualController", "DormitoryMystery.Chapter1.PlayerVisualController" },
+                { "PlayerCombatController", "DormitoryMystery.Chapter1.PlayerCombatController" },
+                { "ComboAttack", "DormitoryMystery.Chapter1.ComboAttack" },
+                { "IDamageable", "DormitoryMystery.Chapter1.IDamageable" },
+                { "EnemyHealth", "DormitoryMystery.Chapter1.EnemyHealth" },
                 { "CameraTarget", "DormitoryMystery.Chapter1.CameraTarget" },
                 { "ThirdPersonCameraRig", "DormitoryMystery.Chapter1.ThirdPersonCameraRig" },
                 { "Chapter1GameplayBootstrap", "DormitoryMystery.Chapter1.Chapter1GameplayBootstrap" },
@@ -339,6 +351,10 @@ namespace DormitoryMystery.Chapter1.Editor
             ValidateScriptFile("PlayerStamina", "Assets/Chapter1/Scripts/Player/PlayerStamina.cs");
             ValidateScriptFile("Chapter1PlayerMotor", "Assets/Chapter1/Scripts/Player/Chapter1PlayerMotor.cs");
             ValidateScriptFile("PlayerVisualController", "Assets/Chapter1/Scripts/Player/PlayerVisualController.cs");
+            ValidateScriptFile("ComboAttack", "Assets/Chapter1/Scripts/Player/Combat/ComboAttack.cs");
+            ValidateScriptFile("PlayerCombatController", "Assets/Chapter1/Scripts/Player/Combat/PlayerCombatController.cs");
+            ValidateScriptFile("IDamageable", "Assets/Chapter1/Scripts/Combat/IDamageable.cs");
+            ValidateScriptFile("EnemyHealth", "Assets/Chapter1/Scripts/Enemy/EnemyHealth.cs");
             ValidateScriptFile("CameraTarget", "Assets/Chapter1/Scripts/Camera/CameraTarget.cs");
             ValidateScriptFile("ThirdPersonCameraRig", "Assets/Chapter1/Scripts/Camera/ThirdPersonCameraRig.cs");
             ValidateScriptFile("Chapter1GameplayBootstrap", "Assets/Chapter1/Scripts/Core/Chapter1GameplayBootstrap.cs");

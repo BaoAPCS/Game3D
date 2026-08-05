@@ -8,6 +8,7 @@
         Fuse,
         ThrowableCan,
         HardDrive,
-        Archive17
+        Archive17,
+        AudioSeparator
     }
 }

@@ -104,7 +104,8 @@ namespace DormitoryMystery.Chapter1
 
         public override bool CanInteract(InteractionContext context)
         {
-            return base.CanInteract(context) &&
+            return Mission2HeistProgress.IsStarted &&
+                   base.CanInteract(context) &&
                    IsConversationAvailable(context.PlayerTransform);
         }
 
@@ -120,7 +121,8 @@ namespace DormitoryMystery.Chapter1
             InteractionContext context)
         {
             ResolveReferences();
-            if (context.PlayerObject == null ||
+            if (!Mission2HeistProgress.IsStarted ||
+                context.PlayerObject == null ||
                 !IsConversationAvailable(context.PlayerTransform))
             {
                 return InteractionResult.Ignored();

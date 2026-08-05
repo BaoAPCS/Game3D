@@ -180,7 +180,8 @@ namespace DormitoryMystery.Chapter1
 
         public override bool CanInteract(InteractionContext context)
         {
-            if (theftCommitted ||
+            if (!Mission2HeistProgress.IsStarted ||
+                theftCommitted ||
                 Mission2HeistProgress.HasHenryBattery ||
                 !base.CanInteract(context) ||
                 context.PlayerTransform == null)
@@ -207,7 +208,8 @@ namespace DormitoryMystery.Chapter1
         protected override InteractionResult PerformInteraction(
             InteractionContext context)
         {
-            if (theftCommitted ||
+            if (!Mission2HeistProgress.IsStarted ||
+                theftCommitted ||
                 Mission2HeistProgress.HasHenryBattery ||
                 context.PlayerTransform == null)
             {

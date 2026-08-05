@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -26,17 +27,7 @@ namespace DormitoryMystery.Chapter1
 
         [Header("Dialogue")]
         [SerializeField] private string playerSpeaker = "Player";
-        [SerializeField, TextArea] private string playerLine = "Tôi cần bạn tách đoạn ghi âm này";
         [SerializeField] private string minhSpeaker = "Minh";
-        [SerializeField, TextArea] private string minhLine = "Được";
-        [SerializeField, TextArea] private string minhNoiseLine =
-            "Đoạn ghi âm này rè quá, bị lẫn tiếng nói với tiếng gì giống tiếng còi";
-        [SerializeField, TextArea] private string minhSeparateAudioLine =
-            "Bạn cần phải tách âm ra cho tôi";
-        [SerializeField, TextArea] private string playerDoesNotKnowLine =
-            "Nhưng tôi không biết làm";
-        [SerializeField, TextArea] private string minhDungLine =
-            "Dũng ở tầng trên là một producer, cậu ta có thiết bị tách âm chuyên dụng";
 
         [Header("Second Dialogue")]
         [SerializeField, TextArea] private string secondPlayerOpeningLine =
@@ -55,6 +46,8 @@ namespace DormitoryMystery.Chapter1
             "Nhưng UPS thì cần ắc quy, bạn thử hỏi mượn ắc quy của ông Henry chủ quán burger đối diện xem sao";
         [SerializeField, TextArea] private string secondPlayerAcceptLine =
             "Được, tôi sẽ lấy những thứ bạn yêu cầu.";
+
+        [SerializeField] private Mission01AudioSeparatorManager mission01Manager;
         [SerializeField, Range(10f, 80f)] private float charactersPerSecond =
             34f;
         [SerializeField, Range(1f, 6f)] private float punctuationPauseMultiplier =
@@ -69,7 +62,9 @@ namespace DormitoryMystery.Chapter1
         private GameObject dialoguePlayer;
         private Renderer[] hiddenPlayerRenderers;
         private bool[] playerRendererEnabledStates;
-        private int completedDialogueCount;
+        private List<DialogueLine> activeMissionLines;
+        private MinhMissionDialogueMode activeMissionMode;
+        private PlayerInventory activeInventory;
 
         public override Chapter1InteractionInput InteractionInput =>
             Chapter1InteractionInput.Talk;
@@ -139,6 +134,12 @@ namespace DormitoryMystery.Chapter1
             }
 
             dialoguePlayer = context.PlayerObject;
+            activeInventory = context.Inventory != null
+                ? context.Inventory
+                : context.PlayerObject.GetComponent<PlayerInventory>();
+            ResolveMission01Manager();
+            activeMissionMode = DetermineMissionDialogueMode(activeInventory);
+            activeMissionLines = BuildMissionDialogue(activeMissionMode);
             StartCoroutine(PlayDialogue());
             return InteractionResult.Succeeded();
         }
@@ -167,60 +168,175 @@ namespace DormitoryMystery.Chapter1
             SetDialogueVisible(true);
 
             yield return WaitForAdvanceRelease();
-            if (completedDialogueCount == 0)
+            if (activeMissionLines != null && activeMissionLines.Count > 0)
             {
-                yield return PlayFirstDialogue();
+                for (int i = 0; i < activeMissionLines.Count; i++)
+                {
+                    DialogueLine line = activeMissionLines[i];
+                    yield return StreamLine(line.Speaker, line.Text);
+                }
             }
-            else
-            {
-                yield return PlaySecondDialogue();
-            }
-
-            completedDialogueCount = Mathf.Min(
-                completedDialogueCount + 1,
-                2);
-
+            ApplyMissionDialogueOutcome();
             RestoreGameplayState();
         }
 
-        private IEnumerator PlayFirstDialogue()
+        private MinhMissionDialogueMode DetermineMissionDialogueMode(PlayerInventory inventory)
         {
-            yield return StreamLine(playerSpeaker, playerLine);
-            yield return StreamLine(minhSpeaker, minhLine);
-            yield return StreamLine(minhSpeaker, minhNoiseLine);
-            yield return StreamLine(minhSpeaker, minhSeparateAudioLine);
-            yield return StreamLine(
-                playerSpeaker,
-                playerDoesNotKnowLine);
-            yield return StreamLine(minhSpeaker, minhDungLine);
+            Mission2HeistProgress.EnsureScene(gameObject.scene);
+            if (mission01Manager == null)
+            {
+                return MinhMissionDialogueMode.Default;
+            }
+
+            FirstMissionState state = mission01Manager.State;
+            Chapter1SaveData missionData = mission01Manager.Data;
+
+            // Normalize sessions created before Task 1 ended immediately
+            // after all six separated stems were saved. This also protects
+            // against a missing mixer reference: Minh can recover the state
+            // from the six recordings already present in the phone.
+            if (state >= FirstMissionState.ProcessAudio &&
+                state < FirstMissionState.ReturnToMinh &&
+                missionData.AreAllLanAudioStemsSaved())
+            {
+                mission01Manager.NotifyAllLanAudioStemsSaved();
+                state = mission01Manager.State;
+            }
+
+            if (state < FirstMissionState.MessageDung &&
+                !missionData.Mission01MinhIntroDialoguePlayed)
+            {
+                // The legacy branch could reach Minh before it synchronized
+                // the downloaded recording with Mission 01. Normalize that
+                // state here so finishing the first main dialogue always
+                // unlocks the Dung message choice.
+                if (state < FirstMissionState.GoToMinhRoom)
+                {
+                    mission01Manager.NotifyLanRecordingSaved();
+                }
+
+                if (mission01Manager.State ==
+                    FirstMissionState.GoToMinhRoom)
+                {
+                    mission01Manager.TryStartMinhIntroDialogue();
+                }
+
+                return MinhMissionDialogueMode.Intro;
+            }
+
+            if (state == FirstMissionState.ReturnToMinh &&
+                !missionData.Mission01CompletionDialoguePlayed &&
+                missionData.Mission01LanRecordingSeparated &&
+                missionData.AreAllLanAudioStemsSaved())
+            {
+                return MinhMissionDialogueMode.Completion;
+            }
+
+            if (state >= FirstMissionState.MessageDung &&
+                state < FirstMissionState.ReturnToMinh)
+            {
+                return MinhMissionDialogueMode.Reminder;
+            }
+
+            if (state == FirstMissionState.Completed)
+            {
+                return Mission2HeistProgress.IsStarted
+                    ? MinhMissionDialogueMode.AlreadyCompleted
+                    : MinhMissionDialogueMode.Task2Briefing;
+            }
+
+            return MinhMissionDialogueMode.Default;
         }
 
-        private IEnumerator PlaySecondDialogue()
+        private List<DialogueLine> BuildMissionDialogue(MinhMissionDialogueMode mode)
         {
-            yield return StreamLine(
+            List<DialogueLine> lines = new List<DialogueLine>();
+            switch (mode)
+            {
+                case MinhMissionDialogueMode.Default:
+                case MinhMissionDialogueMode.Intro:
+                    AddMainTask1IntroLines(lines);
+                    break;
+                case MinhMissionDialogueMode.Reminder:
+                    lines.Add(new DialogueLine(minhSpeaker, "Nhắn hỏi Dũng về cái máy tách âm đi."));
+                    break;
+                case MinhMissionDialogueMode.Completion:
+                case MinhMissionDialogueMode.Task2Briefing:
+                    AddTask2BriefingLines(lines);
+                    break;
+                case MinhMissionDialogueMode.AlreadyCompleted:
+                    lines.Add(new DialogueLine(minhSpeaker, "Tớ đang nghe lại phần ghi âm đã được tách."));
+                    break;
+            }
+
+            return lines;
+        }
+
+        private void AddMainTask1IntroLines(List<DialogueLine> lines)
+        {
+            lines.Add(new DialogueLine(
+                minhSpeaker,
+                "Đoạn ghi âm này nhiều tạp âm quá. Nghe thế này thì không thể biết chị Lan đang nói gì được."));
+            lines.Add(new DialogueLine(
+                minhSpeaker,
+                "Phải dùng máy tách âm để lọc giọng nói ra."));
+            lines.Add(new DialogueLine(
+                minhSpeaker,
+                "Dũng có một cái. Cậu nhắn hỏi mượn thử xem."));
+        }
+
+        private void ApplyMissionDialogueOutcome()
+        {
+            if (mission01Manager != null &&
+                activeMissionMode == MinhMissionDialogueMode.Intro)
+            {
+                mission01Manager.CompleteMinhIntroDialogue();
+            }
+            else if (mission01Manager != null &&
+                     activeMissionMode == MinhMissionDialogueMode.Completion)
+            {
+                if (mission01Manager.TryCompleteWithMinh(activeInventory))
+                {
+                    Mission2HeistProgress.BeginMission(gameObject.scene);
+                }
+            }
+            else if (activeMissionMode ==
+                     MinhMissionDialogueMode.Task2Briefing)
+            {
+                Mission2HeistProgress.BeginMission(gameObject.scene);
+            }
+
+            activeMissionMode = MinhMissionDialogueMode.Default;
+            activeMissionLines = null;
+            activeInventory = null;
+        }
+
+        private void AddTask2BriefingLines(List<DialogueLine> lines)
+        {
+            lines.Add(new DialogueLine(
                 playerSpeaker,
-                secondPlayerOpeningLine);
-            yield return StreamLine(
+                secondPlayerOpeningLine));
+            lines.Add(new DialogueLine(
                 minhSpeaker,
-                secondMinhAiLine);
-            yield return StreamLine(
+                secondMinhAiLine));
+            lines.Add(new DialogueLine(
                 minhSpeaker,
-                secondMinhTrainingTimeLine);
-            yield return StreamLine(
+                secondMinhTrainingTimeLine));
+            lines.Add(new DialogueLine(
                 playerSpeaker,
-                secondPlayerUrgencyLine);
-            yield return StreamLine(
+                secondPlayerUrgencyLine));
+            lines.Add(new DialogueLine(
                 minhSpeaker,
-                secondMinhEquipmentLine);
-            yield return StreamLine(
+                secondMinhEquipmentLine));
+            lines.Add(new DialogueLine(
                 minhSpeaker,
-                secondMinhScrapyardLine);
-            yield return StreamLine(
+                secondMinhScrapyardLine));
+            lines.Add(new DialogueLine(
                 minhSpeaker,
-                secondMinhBatteryLine);
-            yield return StreamLine(
+                secondMinhBatteryLine));
+            lines.Add(new DialogueLine(
                 playerSpeaker,
-                secondPlayerAcceptLine);
+                secondPlayerAcceptLine));
         }
 
         private IEnumerator StreamLine(string speaker, string line)
@@ -453,6 +569,14 @@ namespace DormitoryMystery.Chapter1
                     minhCamera = cameras[i];
                     return;
                 }
+            }
+        }
+
+        private void ResolveMission01Manager()
+        {
+            if (mission01Manager == null)
+            {
+                mission01Manager = Mission01AudioSeparatorManager.Instance;
             }
         }
 
@@ -742,6 +866,28 @@ namespace DormitoryMystery.Chapter1
             {
                 listener.enabled = enabled;
             }
+        }
+
+        private enum MinhMissionDialogueMode
+        {
+            Default,
+            Intro,
+            Reminder,
+            Completion,
+            Task2Briefing,
+            AlreadyCompleted
+        }
+
+        private readonly struct DialogueLine
+        {
+            public DialogueLine(string speaker, string text)
+            {
+                Speaker = speaker ?? string.Empty;
+                Text = text ?? string.Empty;
+            }
+
+            public string Speaker { get; }
+            public string Text { get; }
         }
     }
 }

@@ -74,7 +74,8 @@ namespace DormitoryMystery.Chapter1
 
         public override bool CanInteract(InteractionContext context)
         {
-            if (isHeld ||
+            if (!Mission2HeistProgress.IsStarted ||
+                isHeld ||
                 !base.CanInteract(context) ||
                 context.PlayerTransform == null)
             {
@@ -116,7 +117,9 @@ namespace DormitoryMystery.Chapter1
         protected override InteractionResult PerformInteraction(
             InteractionContext context)
         {
-            if (isHeld || context.PlayerObject == null)
+            if (!Mission2HeistProgress.IsStarted ||
+                isHeld ||
+                context.PlayerObject == null)
             {
                 return InteractionResult.Ignored();
             }

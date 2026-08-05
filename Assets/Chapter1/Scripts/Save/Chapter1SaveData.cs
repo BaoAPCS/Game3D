@@ -26,13 +26,36 @@ namespace DormitoryMystery.Chapter1
         public string CurrentCheckpointId;
         public List<string> CollectedUniqueItemIds;
         public List<string> SeenTutorialIds;
+        public int FirstMissionStateValue;
+        public bool Mission01MinhIntroDialoguePlayed;
+        public bool Mission01CompletionDialoguePlayed;
+        public bool Mission01DungBorrowRequestSent;
+        public bool Mission01DungBorrowReplyReceived;
+        public bool Mission01DungPasswordQuestionSent;
+        public bool Mission01DungPasswordHintReceived;
+        public bool Mission01DungBirthdayQuestionSent;
+        public bool Mission01DungBirthdayHintReceived;
+        public bool Mission01DungHasUnread;
+        public bool Mission01DungDoorDiscovered;
+        public bool Mission01DungDoorUnlocked;
+        public bool Mission01AudioSeparatorCollected;
+        public bool Mission01LanRecordingSeparated;
+        public bool Mission01AudioSeparatorMixerStarted;
+        public bool Mission01AudioSeparatorMixerCompleted;
+        public bool Mission01AudioSeparatorTutorialSeen;
+        public bool Mission01LanVoiceRecordingListened;
+        public List<string> SavedPhoneRecordingIds;
+        public List<string> SavedLanAudioStemIds;
+        public List<float> AudioSeparatorFaderValues;
+        public bool Mission01Completed;
+        public bool Mission01CalendarViewed;
 
         public Chapter1SaveData()
         {
             SaveVersion = 1;
             CurrentStep = Chapter1Step.TalkToNam;
             NamTrust = 45;
-            HasLanRecording = true;
+            HasLanRecording = false;
             HasFlashlight = false;
             HasFuse = false;
             HasHardDrive = false;
@@ -49,6 +72,10 @@ namespace DormitoryMystery.Chapter1
             CurrentCheckpointId = "ChapterStart";
             CollectedUniqueItemIds = new List<string>();
             SeenTutorialIds = new List<string>();
+            SavedPhoneRecordingIds = new List<string>();
+            SavedLanAudioStemIds = new List<string>();
+            AudioSeparatorFaderValues = CreateDefaultFaderValues();
+            FirstMissionStateValue = (int)FirstMissionState.None;
         }
 
         public static Chapter1SaveData CreateDefault()
@@ -73,6 +100,136 @@ namespace DormitoryMystery.Chapter1
 
             CollectedUniqueItemIds ??= new List<string>();
             SeenTutorialIds ??= new List<string>();
+            SavedPhoneRecordingIds ??= new List<string>();
+            SavedLanAudioStemIds ??= new List<string>();
+            AudioSeparatorFaderValues ??= CreateDefaultFaderValues();
+            while (AudioSeparatorFaderValues.Count < LanAudioRecordingCatalog.StemCount)
+            {
+                AudioSeparatorFaderValues.Add(1f);
+            }
+
+            for (int i = AudioSeparatorFaderValues.Count - 1; i >= LanAudioRecordingCatalog.StemCount; i--)
+            {
+                AudioSeparatorFaderValues.RemoveAt(i);
+            }
+
+            for (int i = 0; i < AudioSeparatorFaderValues.Count; i++)
+            {
+                AudioSeparatorFaderValues[i] = Math.Max(0f, Math.Min(1f, AudioSeparatorFaderValues[i]));
+            }
+
+            if (HasLanRecording)
+            {
+                AddPhoneRecording(LanAudioRecordingCatalog.MixedRecordingId);
+            }
+
+            SyncStemRecordings();
+
+            if (FirstMissionStateValue < (int)FirstMissionState.None || FirstMissionStateValue > (int)FirstMissionState.Completed)
+            {
+                FirstMissionStateValue = (int)FirstMissionState.None;
+            }
+        }
+
+        public bool HasPhoneRecording(string recordingId)
+        {
+            EnsureValidCollectionsOnly();
+            return !string.IsNullOrWhiteSpace(recordingId) && SavedPhoneRecordingIds.Contains(recordingId);
+        }
+
+        public bool AddPhoneRecording(string recordingId)
+        {
+            EnsureValidCollectionsOnly();
+            if (string.IsNullOrWhiteSpace(recordingId) || SavedPhoneRecordingIds.Contains(recordingId))
+            {
+                return false;
+            }
+
+            SavedPhoneRecordingIds.Add(recordingId);
+            if (recordingId == LanAudioRecordingCatalog.MixedRecordingId)
+            {
+                HasLanRecording = true;
+            }
+
+            return true;
+        }
+
+        public bool HasSavedStem(LanAudioStemId stem)
+        {
+            EnsureValidCollectionsOnly();
+            return SavedLanAudioStemIds.Contains(stem.ToString());
+        }
+
+        public bool AddSavedStem(LanAudioStemId stem)
+        {
+            EnsureValidCollectionsOnly();
+            string stemId = stem.ToString();
+            bool changed = false;
+            if (!SavedLanAudioStemIds.Contains(stemId))
+            {
+                SavedLanAudioStemIds.Add(stemId);
+                changed = true;
+            }
+
+            string recordingId = LanAudioRecordingCatalog.GetOutputRecordingId(stem);
+            return AddPhoneRecording(recordingId) || changed;
+        }
+
+        public int GetSavedStemCount()
+        {
+            EnsureValidCollectionsOnly();
+            int count = 0;
+            for (int i = 0; i < LanAudioRecordingCatalog.StemOrder.Length; i++)
+            {
+                if (HasSavedStem(LanAudioRecordingCatalog.StemOrder[i]))
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        public bool AreAllLanAudioStemsSaved()
+        {
+            return GetSavedStemCount() >= LanAudioRecordingCatalog.StemCount;
+        }
+
+        private void SyncStemRecordings()
+        {
+            for (int i = 0; i < LanAudioRecordingCatalog.StemOrder.Length; i++)
+            {
+                LanAudioStemId stem = LanAudioRecordingCatalog.StemOrder[i];
+                string recordingId = LanAudioRecordingCatalog.GetOutputRecordingId(stem);
+                if (SavedPhoneRecordingIds.Contains(recordingId) && !SavedLanAudioStemIds.Contains(stem.ToString()))
+                {
+                    SavedLanAudioStemIds.Add(stem.ToString());
+                }
+                else if (SavedLanAudioStemIds.Contains(stem.ToString()) && !SavedPhoneRecordingIds.Contains(recordingId))
+                {
+                    SavedPhoneRecordingIds.Add(recordingId);
+                }
+            }
+
+            Mission01AudioSeparatorMixerCompleted = AreAllLanAudioStemsSaved();
+        }
+
+        private void EnsureValidCollectionsOnly()
+        {
+            SavedPhoneRecordingIds ??= new List<string>();
+            SavedLanAudioStemIds ??= new List<string>();
+            AudioSeparatorFaderValues ??= CreateDefaultFaderValues();
+        }
+
+        private static List<float> CreateDefaultFaderValues()
+        {
+            List<float> values = new List<float>(LanAudioRecordingCatalog.StemCount);
+            for (int i = 0; i < LanAudioRecordingCatalog.StemCount; i++)
+            {
+                values.Add(1f);
+            }
+
+            return values;
         }
     }
 }

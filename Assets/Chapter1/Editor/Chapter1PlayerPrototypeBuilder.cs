@@ -40,6 +40,9 @@ namespace DormitoryMystery.Chapter1.Editor
         {
             new InputReferenceBinding("Move", "moveActionReference"),
             new InputReferenceBinding("Look", "lookActionReference"),
+            new InputReferenceBinding("Attack", "attackActionReference"),
+            new InputReferenceBinding("Kick", "kickActionReference"),
+            new InputReferenceBinding("Jump", "jumpActionReference"),
             new InputReferenceBinding("Sprint", "sprintActionReference"),
             new InputReferenceBinding("Crouch", "crouchActionReference"),
             new InputReferenceBinding("Interact", "interactActionReference"),
@@ -415,6 +418,17 @@ namespace DormitoryMystery.Chapter1.Editor
             InputAction look = gameplayMap.AddAction("Look", InputActionType.Value, expectedControlLayout: "Vector2");
             look.AddBinding("<Mouse>/delta");
             look.AddBinding("<Gamepad>/rightStick");
+
+            InputAction attack = gameplayMap.AddAction("Attack", InputActionType.Button, expectedControlLayout: "Button");
+            attack.AddBinding("<Mouse>/leftButton");
+
+            InputAction kick = gameplayMap.AddAction("Kick", InputActionType.Button, expectedControlLayout: "Button");
+            kick.AddBinding("<Mouse>/rightButton");
+            kick.AddBinding("<Gamepad>/rightTrigger");
+
+            InputAction jump = gameplayMap.AddAction("Jump", InputActionType.Button, expectedControlLayout: "Button");
+            jump.AddBinding("<Keyboard>/space");
+            jump.AddBinding("<Gamepad>/buttonSouth");
 
             InputAction sprint = gameplayMap.AddAction("Sprint", InputActionType.Button);
             sprint.AddBinding("<Keyboard>/leftShift");

@@ -56,7 +56,8 @@ namespace DormitoryMystery.Chapter1
             Collider contactedCollider,
             ContactPoint contact)
         {
-            if (!configured ||
+            if (!Mission2HeistProgress.IsStarted ||
+                !configured ||
                 ignited ||
                 grillCollider == null ||
                 fireVfx == null ||

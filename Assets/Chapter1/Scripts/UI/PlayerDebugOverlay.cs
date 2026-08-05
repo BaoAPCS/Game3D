@@ -8,7 +8,7 @@ namespace DormitoryMystery.Chapter1
     {
         private static readonly FieldInfo InteractActionReferenceField = typeof(Chapter1InputReader).GetField("interactActionReference", BindingFlags.Instance | BindingFlags.NonPublic);
 
-        [SerializeField] private bool showOverlay = true;
+        [SerializeField] private bool showOverlay;
         [SerializeField] private Chapter1InputReader inputReader;
         [SerializeField] private Chapter1PlayerMotor playerMotor;
         [SerializeField] private PlayerStamina playerStamina;

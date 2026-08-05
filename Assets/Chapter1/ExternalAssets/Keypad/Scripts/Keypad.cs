@@ -16,6 +16,7 @@ namespace NavKeypad
 
         public UnityEvent OnAccessGranted => onAccessGranted;
         public UnityEvent OnAccessDenied => onAccessDenied;
+        public int KeypadCombo => keypadCombo;
 
         [Header("Settings")]
         [SerializeField] private string accessGrantedText = "Granted";
@@ -87,6 +88,11 @@ namespace NavKeypad
                 Debug.LogWarning("Couldn't process input for some reason..");
             }
 
+        }
+
+        public void SetCombo(int combo)
+        {
+            keypadCombo = Mathf.Clamp(combo, 0, 999999999);
         }
 
         //mainly for animations 

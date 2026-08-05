@@ -11,6 +11,7 @@ namespace DormitoryMystery.Chapter1
         [SerializeField] private bool enableWalkBob;
         [SerializeField] private float walkBobAmplitude = 0.025f;
         [SerializeField] private float walkBobFrequency = 7f;
+        [SerializeField] private bool useLegacyLocomotion = true;
         [SerializeField] private Animation legacyAnimation;
         [SerializeField] private Transform animatedModelRoot;
         [SerializeField] private AnimationClip walkClip;
@@ -30,12 +31,16 @@ namespace DormitoryMystery.Chapter1
         private Vector3 animatedModelLocalScale;
         private bool hasAnimatedModelTransform;
         private bool missingAnimationWarningIssued;
+        private bool legacyPlaybackSuspended;
         private LocomotionAnimationState currentAnimationState = LocomotionAnimationState.Uninitialized;
         private string walkStateName;
         private string runStateName;
 
         public bool IsVisible =>
             visualRoot == null || visualRoot.gameObject.activeSelf;
+        public bool UsesLegacyLocomotion => useLegacyLocomotion;
+        public Animation LegacyAnimation => legacyAnimation;
+        public Transform AnimatedModelRoot => animatedModelRoot;
 
         private enum LocomotionAnimationState
         {
@@ -100,6 +105,54 @@ namespace DormitoryMystery.Chapter1
 
             SetLocomotionAnimationState(targetState);
             UpdatePlaybackSpeed(targetState);
+        }
+
+        public void SetLegacyAnimationSuspended(bool suspended)
+        {
+            if (legacyPlaybackSuspended == suspended)
+            {
+                return;
+            }
+
+            InitializeLegacyAnimation();
+            legacyPlaybackSuspended = suspended;
+
+            if (legacyPlaybackSuspended)
+            {
+                StopAndRewindAnimation();
+                return;
+            }
+
+            LocomotionAnimationState stateToRestore = currentAnimationState;
+            currentAnimationState = LocomotionAnimationState.Uninitialized;
+            SetLocomotionAnimationState(stateToRestore == LocomotionAnimationState.Uninitialized
+                ? LocomotionAnimationState.Idle
+                : stateToRestore);
+            UpdatePlaybackSpeed(currentAnimationState);
+        }
+
+        public void SetUseLegacyLocomotion(bool value)
+        {
+            if (useLegacyLocomotion == value)
+            {
+                return;
+            }
+
+            useLegacyLocomotion = value;
+            if (!useLegacyLocomotion)
+            {
+                legacyPlaybackSuspended = false;
+                StopAndRewindAnimation();
+                return;
+            }
+
+            InitializeLegacyAnimation();
+            LocomotionAnimationState stateToRestore = currentAnimationState;
+            currentAnimationState = LocomotionAnimationState.Uninitialized;
+            SetLocomotionAnimationState(stateToRestore == LocomotionAnimationState.Uninitialized
+                ? LocomotionAnimationState.Idle
+                : stateToRestore);
+            UpdatePlaybackSpeed(currentAnimationState);
         }
 
         public void SetVisible(bool visible)
@@ -190,6 +243,16 @@ namespace DormitoryMystery.Chapter1
             }
 
             currentAnimationState = targetState;
+            if (!useLegacyLocomotion)
+            {
+                return;
+            }
+
+            if (legacyPlaybackSuspended)
+            {
+                StopAndRewindAnimation();
+                return;
+            }
 
             if (targetState == LocomotionAnimationState.Idle)
             {
@@ -213,7 +276,7 @@ namespace DormitoryMystery.Chapter1
 
         private void UpdatePlaybackSpeed(LocomotionAnimationState state)
         {
-            if (legacyAnimation == null)
+            if (!useLegacyLocomotion || legacyAnimation == null || legacyPlaybackSuspended)
             {
                 return;
             }

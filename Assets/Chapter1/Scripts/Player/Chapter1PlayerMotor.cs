@@ -16,10 +16,19 @@ namespace DormitoryMystery.Chapter1
         [SerializeField] private float sprintSpeed = 6f;
         [SerializeField] private float crouchSpeed = 2f;
         [SerializeField] private float rotationSpeed = 720f;
+        [SerializeField, Min(0.1f)] private float acceleration = 22f;
+        [SerializeField, Min(0.1f)] private float deceleration = 28f;
+        [SerializeField, Min(0f)] private float stopSnapSpeed = 0.08f;
         [SerializeField] private float gravity = -20f;
         [SerializeField] private float groundedForce = -2f;
         [SerializeField] private float standingHeight = 1.8f;
         [SerializeField] private float crouchingHeight = 1.1f;
+        [SerializeField, Min(0.01f)] private float crouchHeightSmoothTime = 0.08f;
+        [SerializeField, Min(0f)] private float jumpHeight = 1.25f;
+        [SerializeField, Range(0f, 0.3f)] private float jumpInputBufferTime = 0.12f;
+        [SerializeField, Range(0f, 0.3f)] private float coyoteTime = 0.1f;
+        [SerializeField, Range(0f, 1f)] private float airborneControlMultiplier = 0.85f;
+        [SerializeField] private float terminalVelocity = -35f;
         [SerializeField] private LayerMask standUpBlockingMask = ~0;
         [SerializeField] private float standUpCheckPadding = 0.05f;
 
@@ -32,11 +41,21 @@ namespace DormitoryMystery.Chapter1
         private bool movementEnabled = true;
         private bool isPlayerHidden;
         private bool missingCameraLogged;
+        private bool combatMovementModifierActive;
+        private bool combatLocksMovement;
+        private float combatMoveSpeedMultiplier = 1f;
+        private float targetControllerHeight;
+        private float controllerHeightVelocity;
+        private float lastGroundedTime;
+        private float jumpInputExpireTime;
 
         public bool IsMoving { get; private set; }
         public bool IsSprinting { get; private set; }
         public bool IsCrouching { get; private set; }
+        public bool IsGrounded { get; private set; }
+        public bool IsJumping { get; private set; }
         public float CurrentSpeed { get; private set; }
+        public float VerticalVelocity => verticalVelocity;
         public Vector3 Velocity { get; private set; }
 
         private void Awake()
@@ -61,7 +80,8 @@ namespace DormitoryMystery.Chapter1
                 cameraTransform = Camera.main.transform;
             }
 
-            ApplyControllerHeight(false);
+            targetControllerHeight = GetControllerHeight(false);
+            ApplyControllerHeight(targetControllerHeight);
         }
 
         private void OnEnable()
@@ -69,6 +89,7 @@ namespace DormitoryMystery.Chapter1
             if (inputReader != null)
             {
                 inputReader.CrouchPressed += ToggleCrouch;
+                inputReader.JumpPressed += QueueJump;
             }
 
             Chapter1EventBus.PlayerHiddenChanged += OnPlayerHiddenChanged;
@@ -79,9 +100,22 @@ namespace DormitoryMystery.Chapter1
             if (inputReader != null)
             {
                 inputReader.CrouchPressed -= ToggleCrouch;
+                inputReader.JumpPressed -= QueueJump;
             }
 
             Chapter1EventBus.PlayerHiddenChanged -= OnPlayerHiddenChanged;
+        }
+
+        private void OnValidate()
+        {
+            acceleration = Mathf.Max(0.1f, acceleration);
+            deceleration = Mathf.Max(0.1f, deceleration);
+            stopSnapSpeed = Mathf.Max(0f, stopSnapSpeed);
+            crouchHeightSmoothTime = Mathf.Max(0.01f, crouchHeightSmoothTime);
+            jumpHeight = Mathf.Max(0f, jumpHeight);
+            jumpInputBufferTime = Mathf.Clamp(jumpInputBufferTime, 0f, 0.3f);
+            coyoteTime = Mathf.Clamp(coyoteTime, 0f, 0.3f);
+            airborneControlMultiplier = Mathf.Clamp01(airborneControlMultiplier);
         }
 
         private void Update()
@@ -91,10 +125,12 @@ namespace DormitoryMystery.Chapter1
                 return;
             }
 
-            if (!movementEnabled || inputLock.IsLocked)
+            UpdateGroundedState();
+            if (!movementEnabled || inputLock.IsLocked || IsCombatMovementLocked())
             {
                 StopHorizontalMovement();
                 UpdateVisualState();
+                UpdateControllerHeight(Time.deltaTime);
                 playerStamina.TickRegeneration(Time.deltaTime);
                 MoveWithGravityOnly();
                 return;
@@ -102,9 +138,10 @@ namespace DormitoryMystery.Chapter1
 
             Vector2 moveInput = inputReader.MoveInput;
             Vector3 moveDirection = GetCameraRelativeMoveDirection(moveInput);
-            IsMoving = moveDirection.sqrMagnitude > 0.0001f;
-            IsSprinting = ShouldSprint(IsMoving);
-            CurrentSpeed = GetCurrentMoveSpeed();
+            bool hasMoveInput = moveDirection.sqrMagnitude > 0.0001f;
+            IsSprinting = ShouldSprint(hasMoveInput);
+            float targetSpeed = GetCurrentMoveSpeed(hasMoveInput);
+            ProcessBufferedJump();
 
             if (IsSprinting)
             {
@@ -115,9 +152,13 @@ namespace DormitoryMystery.Chapter1
                 playerStamina.TickRegeneration(Time.deltaTime);
             }
 
-            horizontalVelocity = moveDirection * CurrentSpeed;
+            UpdateHorizontalVelocity(moveDirection, targetSpeed, Time.deltaTime);
+            IsMoving = horizontalVelocity.sqrMagnitude > stopSnapSpeed * stopSnapSpeed;
+            CurrentSpeed = IsMoving ? horizontalVelocity.magnitude : 0f;
             UpdateRotation(moveDirection);
+            UpdateControllerHeight(Time.deltaTime);
             MoveCharacter();
+            UpdateGroundedState();
             UpdateVisualState();
         }
 
@@ -142,6 +183,7 @@ namespace DormitoryMystery.Chapter1
             }
 
             verticalVelocity = 0f;
+            IsJumping = false;
             ResetMovementState();
         }
 
@@ -149,6 +191,19 @@ namespace DormitoryMystery.Chapter1
         {
             movementEnabled = enabled;
             if (!movementEnabled)
+            {
+                StopHorizontalMovement();
+                UpdateVisualState();
+            }
+        }
+
+        public void SetCombatMovementModifier(bool active, float speedMultiplier, bool lockMovement)
+        {
+            combatMovementModifierActive = active;
+            combatLocksMovement = active && lockMovement;
+            combatMoveSpeedMultiplier = active ? Mathf.Clamp01(speedMultiplier) : 1f;
+
+            if (combatLocksMovement)
             {
                 StopHorizontalMovement();
                 UpdateVisualState();
@@ -166,6 +221,7 @@ namespace DormitoryMystery.Chapter1
             IsSprinting = false;
             CurrentSpeed = 0f;
             Velocity = Vector3.zero;
+            jumpInputExpireTime = 0f;
             UpdateVisualState();
         }
 
@@ -231,28 +287,109 @@ namespace DormitoryMystery.Chapter1
                 && hasMoveInput
                 && !IsCrouching
                 && !inputLock.IsLocked
+                && !combatMovementModifierActive
                 && playerStamina.CanSprint
                 && !isPlayerHidden;
         }
 
-        private float GetCurrentMoveSpeed()
+        private float GetCurrentMoveSpeed(bool hasMoveInput)
         {
-            if (!IsMoving)
+            if (!hasMoveInput)
             {
                 return 0f;
             }
 
+            float speed;
             if (IsCrouching)
             {
-                return crouchSpeed;
+                speed = crouchSpeed;
+            }
+            else
+            {
+                speed = IsSprinting ? sprintSpeed : walkSpeed;
             }
 
-            return IsSprinting ? sprintSpeed : walkSpeed;
+            speed = combatMovementModifierActive ? speed * combatMoveSpeedMultiplier : speed;
+            return IsGrounded ? speed : speed * airborneControlMultiplier;
+        }
+
+        private void QueueJump()
+        {
+            jumpInputExpireTime = Time.time + jumpInputBufferTime;
+        }
+
+        private void ProcessBufferedJump()
+        {
+            if (jumpInputExpireTime <= 0f || Time.time > jumpInputExpireTime)
+            {
+                jumpInputExpireTime = 0f;
+                return;
+            }
+
+            if (!CanJumpNow())
+            {
+                return;
+            }
+
+            jumpInputExpireTime = 0f;
+            IsJumping = true;
+            IsGrounded = false;
+            verticalVelocity = Mathf.Sqrt(jumpHeight * -2f * gravity);
+        }
+
+        private bool CanJumpNow()
+        {
+            if (!movementEnabled
+                || inputLock == null
+                || inputLock.IsLocked
+                || IsCrouching
+                || combatMovementModifierActive
+                || isPlayerHidden)
+            {
+                return false;
+            }
+
+            return Time.time <= lastGroundedTime + coyoteTime;
+        }
+
+        private void UpdateGroundedState()
+        {
+            bool grounded = characterController != null && characterController.isGrounded;
+            IsGrounded = grounded;
+            if (!grounded)
+            {
+                return;
+            }
+
+            lastGroundedTime = Time.time;
+            if (verticalVelocity <= 0f)
+            {
+                IsJumping = false;
+            }
+        }
+
+        private void UpdateHorizontalVelocity(Vector3 moveDirection, float targetSpeed, float deltaTime)
+        {
+            Vector3 targetVelocity = moveDirection * targetSpeed;
+            float rate = targetVelocity.sqrMagnitude > horizontalVelocity.sqrMagnitude
+                ? acceleration
+                : deceleration;
+
+            horizontalVelocity = Vector3.MoveTowards(horizontalVelocity, targetVelocity, rate * deltaTime);
+            if (targetVelocity.sqrMagnitude <= 0.0001f && horizontalVelocity.sqrMagnitude <= stopSnapSpeed * stopSnapSpeed)
+            {
+                horizontalVelocity = Vector3.zero;
+            }
+        }
+
+        private bool IsCombatMovementLocked()
+        {
+            return combatMovementModifierActive && combatLocksMovement;
         }
 
         private void UpdateRotation(Vector3 moveDirection)
         {
-            if (!IsMoving)
+            if (moveDirection.sqrMagnitude <= 0.0001f)
             {
                 return;
             }
@@ -263,12 +400,13 @@ namespace DormitoryMystery.Chapter1
 
         private void MoveCharacter()
         {
-            if (characterController.isGrounded && verticalVelocity < 0f)
+            if (IsGrounded && verticalVelocity < 0f)
             {
                 verticalVelocity = groundedForce;
             }
 
             verticalVelocity += gravity * Time.deltaTime;
+            verticalVelocity = Mathf.Max(verticalVelocity, terminalVelocity);
             Velocity = horizontalVelocity + Vector3.up * verticalVelocity;
             characterController.Move(Velocity * Time.deltaTime);
         }
@@ -280,14 +418,17 @@ namespace DormitoryMystery.Chapter1
                 return;
             }
 
-            if (characterController.isGrounded && verticalVelocity < 0f)
+            UpdateGroundedState();
+            if (IsGrounded && verticalVelocity < 0f)
             {
                 verticalVelocity = groundedForce;
             }
 
             verticalVelocity += gravity * Time.deltaTime;
+            verticalVelocity = Mathf.Max(verticalVelocity, terminalVelocity);
             Velocity = Vector3.up * verticalVelocity;
             characterController.Move(Velocity * Time.deltaTime);
+            UpdateGroundedState();
         }
 
         private void ToggleCrouch()
@@ -314,7 +455,11 @@ namespace DormitoryMystery.Chapter1
             }
 
             IsCrouching = crouched;
-            ApplyControllerHeight(IsCrouching);
+            targetControllerHeight = GetControllerHeight(IsCrouching);
+            if (IsCrouching)
+            {
+                jumpInputExpireTime = 0f;
+            }
 
             if (playerVisualController != null)
             {
@@ -327,16 +472,51 @@ namespace DormitoryMystery.Chapter1
             }
         }
 
-        private void ApplyControllerHeight(bool crouched)
+        private float GetControllerHeight(bool crouched)
+        {
+            return Mathf.Max(characterController != null ? characterController.radius * 2f : 0.01f, crouched ? crouchingHeight : standingHeight);
+        }
+
+        private void UpdateControllerHeight(float deltaTime)
         {
             if (characterController == null)
             {
                 return;
             }
 
-            float targetHeight = Mathf.Max(characterController.radius * 2f, crouched ? crouchingHeight : standingHeight);
-            characterController.height = targetHeight;
-            characterController.center = new Vector3(0f, targetHeight * 0.5f, 0f);
+            if (targetControllerHeight <= 0f)
+            {
+                targetControllerHeight = GetControllerHeight(IsCrouching);
+            }
+
+            float currentHeight = characterController.height;
+            float nextHeight = Mathf.SmoothDamp(
+                currentHeight,
+                targetControllerHeight,
+                ref controllerHeightVelocity,
+                crouchHeightSmoothTime,
+                Mathf.Infinity,
+                deltaTime);
+
+            if (Mathf.Abs(nextHeight - targetControllerHeight) <= 0.005f)
+            {
+                nextHeight = targetControllerHeight;
+                controllerHeightVelocity = 0f;
+            }
+
+            ApplyControllerHeight(nextHeight);
+        }
+
+        private void ApplyControllerHeight(float height)
+        {
+            if (characterController == null)
+            {
+                return;
+            }
+
+            float safeHeight = Mathf.Max(characterController.radius * 2f, height);
+            characterController.height = safeHeight;
+            characterController.center = new Vector3(0f, safeHeight * 0.5f, 0f);
         }
 
         private bool CanStandUp()

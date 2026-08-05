@@ -9,6 +9,8 @@
 /[Mm]emoryCaptures/
 /[Rr]ecordings/
 /[Cc]aptures/
+/Assets/_Recovery/
+/Assets/_Recovery.meta
 
 # Unity-generated IDE files
 *.csproj

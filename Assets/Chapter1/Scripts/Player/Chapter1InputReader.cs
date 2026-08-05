@@ -9,12 +9,16 @@ namespace DormitoryMystery.Chapter1
     {
         [SerializeField] private InputActionReference moveActionReference;
         [SerializeField] private InputActionReference lookActionReference;
+        [SerializeField] private InputActionReference attackActionReference;
+        [SerializeField] private InputActionReference kickActionReference;
+        [SerializeField] private InputActionReference jumpActionReference;
         [SerializeField] private InputActionReference sprintActionReference;
         [SerializeField] private InputActionReference crouchActionReference;
         [SerializeField] private InputActionReference interactActionReference;
         [SerializeField] private InputActionReference talkActionReference;
         [SerializeField] private InputActionReference toggleFlashlightActionReference;
         [SerializeField] private InputActionReference throwCanActionReference;
+        [SerializeField] private InputActionReference inventoryActionReference;
         [SerializeField] private InputActionReference pauseActionReference;
 
         private readonly List<InputAction> cachedActions = new List<InputAction>();
@@ -31,12 +35,16 @@ namespace DormitoryMystery.Chapter1
             gameplayInputEnabled && isActiveAndEnabled;
 
         public event Action CrouchPressed;
+        public event Action AttackPressed;
+        public event Action KickPressed;
+        public event Action JumpPressed;
         public event Action InteractPressed;
         public event Action TalkPressed;
         public event Action TalkReleased;
         public event Action ToggleFlashlightPressed;
         public event Action ThrowCanPressed;
         public event Action ThrowCanReleased;
+        public event Action InventoryPressed;
         public event Action PausePressed;
 
         private void OnEnable()
@@ -79,6 +87,9 @@ namespace DormitoryMystery.Chapter1
             RegisterValueCallbacks(moveActionReference, OnMovePerformed, OnMoveCanceled);
             RegisterValueCallbacks(lookActionReference, OnLookPerformed, OnLookCanceled);
             RegisterValueCallbacks(sprintActionReference, OnSprintPerformed, OnSprintCanceled);
+            RegisterButtonCallback(attackActionReference, OnAttackPerformed);
+            RegisterButtonCallback(kickActionReference, OnKickPerformed);
+            RegisterButtonCallback(jumpActionReference, OnJumpPerformed);
             RegisterButtonCallback(crouchActionReference, OnCrouchPerformed);
             RegisterButtonCallback(interactActionReference, OnInteractPerformed);
             RegisterValueCallbacks(
@@ -90,6 +101,7 @@ namespace DormitoryMystery.Chapter1
                 throwCanActionReference,
                 OnThrowCanPerformed,
                 OnThrowCanCanceled);
+            RegisterButtonCallback(inventoryActionReference, OnInventoryPerformed);
             RegisterButtonCallback(pauseActionReference, OnPausePerformed);
 
             callbacksRegistered = true;
@@ -105,6 +117,9 @@ namespace DormitoryMystery.Chapter1
             UnregisterValueCallbacks(moveActionReference, OnMovePerformed, OnMoveCanceled);
             UnregisterValueCallbacks(lookActionReference, OnLookPerformed, OnLookCanceled);
             UnregisterValueCallbacks(sprintActionReference, OnSprintPerformed, OnSprintCanceled);
+            UnregisterButtonCallback(attackActionReference, OnAttackPerformed);
+            UnregisterButtonCallback(kickActionReference, OnKickPerformed);
+            UnregisterButtonCallback(jumpActionReference, OnJumpPerformed);
             UnregisterButtonCallback(crouchActionReference, OnCrouchPerformed);
             UnregisterButtonCallback(interactActionReference, OnInteractPerformed);
             UnregisterValueCallbacks(
@@ -116,6 +131,7 @@ namespace DormitoryMystery.Chapter1
                 throwCanActionReference,
                 OnThrowCanPerformed,
                 OnThrowCanCanceled);
+            UnregisterButtonCallback(inventoryActionReference, OnInventoryPerformed);
             UnregisterButtonCallback(pauseActionReference, OnPausePerformed);
 
             callbacksRegistered = false;
@@ -220,12 +236,16 @@ namespace DormitoryMystery.Chapter1
             referencesValidated = true;
             ValidateReference(moveActionReference, "Move");
             ValidateReference(lookActionReference, "Look");
+            ValidateReference(attackActionReference, "Attack");
+            ValidateReference(kickActionReference, "Kick");
+            ValidateReference(jumpActionReference, "Jump");
             ValidateReference(sprintActionReference, "Sprint");
             ValidateReference(crouchActionReference, "Crouch");
             ValidateReference(interactActionReference, "Interact");
             ValidateReference(talkActionReference, "Talk");
             ValidateReference(toggleFlashlightActionReference, "ToggleFlashlight");
             ValidateReference(throwCanActionReference, "ThrowCan");
+            ValidateReference(inventoryActionReference, "Inventory");
             ValidateReference(pauseActionReference, "Pause");
         }
 
@@ -283,6 +303,30 @@ namespace DormitoryMystery.Chapter1
         private void OnSprintCanceled(InputAction.CallbackContext context)
         {
             SprintHeld = false;
+        }
+
+        private void OnAttackPerformed(InputAction.CallbackContext context)
+        {
+            if (gameplayInputEnabled)
+            {
+                AttackPressed?.Invoke();
+            }
+        }
+
+        private void OnKickPerformed(InputAction.CallbackContext context)
+        {
+            if (gameplayInputEnabled)
+            {
+                KickPressed?.Invoke();
+            }
+        }
+
+        private void OnJumpPerformed(InputAction.CallbackContext context)
+        {
+            if (gameplayInputEnabled)
+            {
+                JumpPressed?.Invoke();
+            }
         }
 
         private void OnCrouchPerformed(InputAction.CallbackContext context)
@@ -344,6 +388,14 @@ namespace DormitoryMystery.Chapter1
             if (wasHeld)
             {
                 ThrowCanReleased?.Invoke();
+            }
+        }
+
+        private void OnInventoryPerformed(InputAction.CallbackContext context)
+        {
+            if (gameplayInputEnabled)
+            {
+                InventoryPressed?.Invoke();
             }
         }
 
