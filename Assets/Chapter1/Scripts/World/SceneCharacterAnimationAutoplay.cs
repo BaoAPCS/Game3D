@@ -32,7 +32,11 @@ namespace DormitoryMystery.Chapter1
             new CharacterSetup(
                 "David",
                 "David/David_Auto",
-                "Base Layer.David_Idle")
+                "Base Layer.David_Idle"),
+            new CharacterSetup(
+                "Lewis",
+                "Lewis/Lewis_Auto",
+                "Base Layer.Lewis_Idle")
         };
 
         [RuntimeInitializeOnLoadMethod(
