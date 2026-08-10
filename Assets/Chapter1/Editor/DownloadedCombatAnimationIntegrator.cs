@@ -190,6 +190,15 @@ namespace DormitoryMystery.Chapter1.Editor
                 new[] { "jump" },
                 0.2f,
                 0.45f,
+                0.8f),
+            new AnimationRoleSpec(
+                CombatAnimationRole.Stunned,
+                "Stunned",
+                "Stunned",
+                false,
+                new[] { "stunned" },
+                0.2f,
+                0.5f,
                 0.8f)
         };
 
@@ -593,6 +602,7 @@ namespace DormitoryMystery.Chapter1.Editor
             AnimationClip idleClip = assets.GetClip(CombatAnimationRole.StandIdle) ?? assets.GetClip(CombatAnimationRole.CombatIdle);
             AnimationClip sitClip = assets.GetClip(CombatAnimationRole.SitDown) ?? idleClip;
             AnimationClip jumpClip = assets.GetClip(CombatAnimationRole.Jump);
+            AnimationClip stunnedClip = assets.GetClip(CombatAnimationRole.Stunned);
             AnimationClip safeWalkClip = assets.GetClip(CombatAnimationRole.Walk) ?? idleClip;
             AnimationClip safeRunClip = assets.GetClip(CombatAnimationRole.Run) ?? safeWalkClip;
 
@@ -612,6 +622,9 @@ namespace DormitoryMystery.Chapter1.Editor
             AnimatorState crouchIdle = EnsureState(stateMachine, "Crouch Idle", sitClip, new Vector3(220f, 300f, 0f), report);
             AnimatorState crouchWalk = EnsureState(stateMachine, "Crouch Walk", sitClip, new Vector3(220f, 380f, 0f), report);
             AnimatorState jump = EnsureState(stateMachine, "Jump", jumpClip, new Vector3(220f, 470f, 0f), report);
+            AnimatorState stunned = EnsureState(stateMachine, "Stunned", stunnedClip, new Vector3(520f, 700f, 0f), report);
+            stunned.writeDefaultValues = true;
+            stunned.speed = 1f;
             stateMachine.defaultState = idle;
 
             EnsureTransition(idle, walk, LocomotionTransitionDuration, false, report, Condition.Greater(MoveSpeed, MoveStartThreshold), Condition.IfNot(IsCrouching));
@@ -1392,6 +1405,15 @@ namespace DormitoryMystery.Chapter1.Editor
             report.Add(jumpState != null && jumpClip != null && jumpState.motion == jumpClip, $"Jump state uses Jump clip {jumpClip?.name}.");
             report.Add(CountAnyStateTransitions(stateMachine, Jump) == 1, "Jump trigger has exactly one Any State transition.");
 
+            AnimatorState stunnedState = FindState(stateMachine, "Stunned");
+            AnimationClip stunnedClip = assets.GetClip(CombatAnimationRole.Stunned);
+            report.Add(stunnedState != null, "Stunned state exists.");
+            report.Add(stunnedState != null && stunnedClip != null && stunnedState.motion == stunnedClip, $"Stunned state uses Stunned clip {stunnedClip?.name}.");
+            report.Add(stunnedState != null && Mathf.Approximately(stunnedState.speed, 1f), "Stunned state playback speed is 1.");
+            report.Add(stunnedState != null && stunnedState.transitions.Length == 0, "Stunned state has no outgoing transitions.");
+            report.Add(!ControllerHasParameter(controller, "Stunned"), "Stunned has no Animator parameter or trigger.");
+            report.Add(stunnedState != null && CountAnyStateTransitionsToState(stateMachine, stunnedState) == 0, "Stunned has no Any State transition.");
+
             for (int i = 0; i < RoleSpecs.Length; i++)
             {
                 AnimationRoleSpec spec = RoleSpecs[i];
@@ -1503,6 +1525,21 @@ namespace DormitoryMystery.Chapter1.Editor
             for (int i = 0; i < transitions.Length; i++)
             {
                 if (HasCondition(transitions[i], triggerName, AnimatorConditionMode.If))
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        private static int CountAnyStateTransitionsToState(AnimatorStateMachine stateMachine, AnimatorState destination)
+        {
+            int count = 0;
+            AnimatorStateTransition[] transitions = stateMachine.anyStateTransitions;
+            for (int i = 0; i < transitions.Length; i++)
+            {
+                if (transitions[i].destinationState == destination)
                 {
                     count++;
                 }
@@ -1763,7 +1800,8 @@ namespace DormitoryMystery.Chapter1.Editor
             KickHeavy,
             SpinningBackKick,
             SitDown,
-            Jump
+            Jump,
+            Stunned
         }
 
         private readonly struct AnimationRoleSpec
