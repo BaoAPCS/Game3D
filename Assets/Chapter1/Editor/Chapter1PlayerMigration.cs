@@ -14,12 +14,12 @@ namespace DormitoryMystery.Chapter1.Editor
     {
         private const string PlayerPrefabGuid = "062497d03c3ce134b8d5164b06fb04e6";
         private const string PlayerPrefabPath = "Assets/Chapter1/Prefabs/Characters/Player.prefab";
-        private const string ModelPrefabPath = "Assets/Chapter1/ExternalAssets/Prefab/main_character/Man relax.prefab";
-        private const string ModelFbxPath = "Assets/Chapter1/ExternalAssets/project upload edit/character man relax/Man relax.FBX";
+        private const string ModelPath = "Assets/Chapter1/ExternalAssets/Nam.fbx";
+        private const string AnimatorControllerPath =
+            "Assets/Chapter1/Animations/Controllers/Chapter1PlayerAnimator.controller";
         private const string DormitoryScenePath = "Assets/Chapter1/Scenes/Chapter1_Dormitory.unity";
         private const string PrototypeScenePath = "Assets/Chapter1/Scenes/Chapter1_PlayerPrototype.unity";
-        private const float ModelScale = 1.8485f;
-        private const float ModelYaw = 0f;
+        private const float ModelScale = 0.52161586f;
 
         [MenuItem("Tools/Chapter 1/Migrate Player Model")]
         public static void MigrateFromMenu()
@@ -64,30 +64,52 @@ namespace DormitoryMystery.Chapter1.Editor
             Transform modelAnchor = playerPrefab.transform.Find("Visual/ModelAnchor");
             PlayerVisualController visualController = playerPrefab.GetComponent<PlayerVisualController>();
             GameObject modelInstance = modelAnchor != null ? FindModelInstance(modelAnchor) : null;
-            Animation legacyAnimation = modelInstance != null
-                ? modelInstance.GetComponentInChildren<Animation>(true)
-                : null;
+            RuntimeAnimatorController expectedController =
+                AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(AnimatorControllerPath);
+            Avatar expectedAvatar = LoadModelAvatar();
+            Animator animator = playerPrefab.GetComponent<Animator>();
+            PlayerCombatController combatController = playerPrefab.GetComponent<PlayerCombatController>();
             if (modelAnchor == null
                 || visualController == null
                 || modelInstance == null
-                || legacyAnimation == null
-                || legacyAnimation.playAutomatically
-                || Quaternion.Angle(
-                    modelInstance.transform.localRotation,
-                    Quaternion.Euler(0f, ModelYaw, 0f)) > 0.01f
+                || modelAnchor.childCount != 1
+                || modelInstance.GetComponentInChildren<Animation>(true) != null
+                || modelInstance.GetComponentInChildren<Animator>(true) != null
+                || Quaternion.Angle(modelInstance.transform.localRotation, Quaternion.identity) > 0.01f
+                || Vector3.Distance(modelInstance.transform.localPosition, Vector3.zero) > 0.0001f
                 || Vector3.Distance(
                     modelInstance.transform.localScale,
-                    Vector3.one * ModelScale) > 0.0001f)
+                    Vector3.one * ModelScale) > 0.0001f
+                || animator == null
+                || !animator.enabled
+                || animator.applyRootMotion
+                || animator.avatar != expectedAvatar
+                || animator.runtimeAnimatorController != expectedController
+                || combatController == null)
             {
                 return true;
             }
 
             SerializedObject serializedController = new SerializedObject(visualController);
             if (!HasObjectReference(serializedController, "visualRoot")
-                || !HasObjectReference(serializedController, "legacyAnimation")
-                || !HasObjectReference(serializedController, "animatedModelRoot")
-                || !HasObjectReference(serializedController, "walkClip")
-                || !HasObjectReference(serializedController, "runClip"))
+                || !HasObjectReferenceTo(serializedController, "animatedModelRoot", modelInstance.transform)
+                || !HasNullObjectReference(serializedController, "legacyAnimation")
+                || !HasNullObjectReference(serializedController, "walkClip")
+                || !HasNullObjectReference(serializedController, "runClip")
+                || !HasBooleanValue(serializedController, "useLegacyLocomotion", false))
+            {
+                return true;
+            }
+
+            SerializedObject serializedCombat = new SerializedObject(combatController);
+            if (!HasObjectReferenceTo(serializedCombat, "animator", animator)
+                || !HasNullObjectReference(serializedCombat, "legacyAnimationToPause")
+                || !HasBooleanValue(serializedCombat, "enableAnimatorOnlyDuringAttack", false)
+                || !HasBooleanValue(serializedCombat, "enableAnimatorWhileCrouching", true)
+                || !HasBooleanValue(serializedCombat, "enableAnimatorWhileIdle", true)
+                || !HasBooleanValue(serializedCombat, "enableAnimatorWhileMoving", true)
+                || !HasBooleanValue(serializedCombat, "enableAnimatorWhileJumping", true)
+                || !HasBooleanValue(serializedCombat, "suspendLegacyAnimationDuringAttack", false))
             {
                 return true;
             }
@@ -186,51 +208,84 @@ namespace DormitoryMystery.Chapter1.Editor
             GameObject modelInstance = FindModelInstance(modelAnchor);
             if (modelInstance == null)
             {
-                GameObject modelPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(ModelPrefabPath);
-                if (modelPrefab == null)
+                DestroyAllChildren(modelAnchor);
+
+                GameObject model = AssetDatabase.LoadAssetAtPath<GameObject>(ModelPath);
+                if (model == null)
                 {
-                    throw new InvalidOperationException($"Missing player model prefab: '{ModelPrefabPath}'.");
+                    throw new InvalidOperationException($"Missing player model: '{ModelPath}'.");
                 }
 
-                modelInstance = PrefabUtility.InstantiatePrefab(modelPrefab, modelAnchor) as GameObject;
+                modelInstance = PrefabUtility.InstantiatePrefab(model, modelAnchor) as GameObject;
                 if (modelInstance == null)
                 {
-                    throw new InvalidOperationException($"Failed to instantiate player model prefab: '{ModelPrefabPath}'.");
+                    throw new InvalidOperationException($"Failed to instantiate player model: '{ModelPath}'.");
                 }
             }
 
-            modelInstance.name = "Man relax";
+            DestroyOtherChildren(modelAnchor, modelInstance.transform);
+
+            modelInstance.name = "Nam";
             modelInstance.transform.localPosition = Vector3.zero;
-            modelInstance.transform.localRotation = Quaternion.Euler(0f, ModelYaw, 0f);
+            modelInstance.transform.localRotation = Quaternion.identity;
             modelInstance.transform.localScale = Vector3.one * ModelScale;
-            AlignModelToAnchor(modelInstance, modelAnchor);
             SetLayerRecursively(modelInstance, LayerMask.NameToLayer("Player"));
+            RemoveNestedAnimators(modelInstance);
 
-            Animation legacyAnimation = modelInstance.GetComponentInChildren<Animation>(true);
-            if (legacyAnimation == null)
+            Avatar avatar = LoadModelAvatar();
+            RuntimeAnimatorController animatorController =
+                AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(AnimatorControllerPath);
+            if (avatar == null)
             {
-                throw new InvalidOperationException($"Player model '{ModelPrefabPath}' is missing its Legacy Animation component.");
+                throw new InvalidOperationException($"Model '{ModelPath}' does not contain a valid Humanoid Avatar.");
             }
 
-            legacyAnimation.playAutomatically = false;
-            legacyAnimation.Stop();
-            if (PrefabUtility.IsPartOfPrefabInstance(legacyAnimation))
+            if (animatorController == null)
             {
-                PrefabUtility.RecordPrefabInstancePropertyModifications(legacyAnimation);
-                PrefabUtility.RecordPrefabInstancePropertyModifications(modelInstance.transform);
+                throw new InvalidOperationException($"Missing Animator Controller: '{AnimatorControllerPath}'.");
             }
 
-            AnimationClip walkClip = LoadAnimationClip("walk 1");
-            AnimationClip runClip = LoadAnimationClip("run");
+            Animator animator = player.GetComponent<Animator>();
+            if (animator == null)
+            {
+                animator = player.AddComponent<Animator>();
+            }
+
+            animator.avatar = avatar;
+            animator.runtimeAnimatorController = animatorController;
+            animator.applyRootMotion = false;
+            animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+            animator.keepAnimatorStateOnDisable = true;
+            animator.enabled = true;
 
             SerializedObject serializedController = new SerializedObject(visualController);
             AssignObjectReference(serializedController, "visualRoot", visual);
-            AssignObjectReference(serializedController, "legacyAnimation", legacyAnimation);
+            AssignBoolean(serializedController, "useLegacyLocomotion", false);
+            AssignObjectReference(serializedController, "legacyAnimation", null);
             AssignObjectReference(serializedController, "animatedModelRoot", modelInstance.transform);
-            AssignObjectReference(serializedController, "walkClip", walkClip);
-            AssignObjectReference(serializedController, "runClip", runClip);
+            AssignObjectReference(serializedController, "walkClip", null);
+            AssignObjectReference(serializedController, "runClip", null);
             AssignFloat(serializedController, "crouchingYOffset", 0f);
             serializedController.ApplyModifiedPropertiesWithoutUndo();
+
+            PlayerCombatController combatController = player.GetComponent<PlayerCombatController>();
+            if (combatController == null)
+            {
+                throw new InvalidOperationException(
+                    $"Player '{player.name}' is missing {nameof(PlayerCombatController)}; the Animator cannot receive locomotion parameters.");
+            }
+
+            SerializedObject serializedCombat = new SerializedObject(combatController);
+            AssignObjectReference(serializedCombat, "legacyAnimationToPause", null);
+            AssignObjectReference(serializedCombat, "animator", animator);
+            AssignObjectReference(serializedCombat, "proceduralAnimationRoot", modelAnchor);
+            AssignBoolean(serializedCombat, "enableAnimatorOnlyDuringAttack", false);
+            AssignBoolean(serializedCombat, "enableAnimatorWhileCrouching", true);
+            AssignBoolean(serializedCombat, "enableAnimatorWhileIdle", true);
+            AssignBoolean(serializedCombat, "enableAnimatorWhileMoving", true);
+            AssignBoolean(serializedCombat, "enableAnimatorWhileJumping", true);
+            AssignBoolean(serializedCombat, "suspendLegacyAnimationDuringAttack", false);
+            serializedCombat.ApplyModifiedPropertiesWithoutUndo();
         }
 
         private static void MigrateScene(string scenePath, bool removeStandaloneModel)
@@ -319,7 +374,6 @@ namespace DormitoryMystery.Chapter1.Editor
                 .Where(root =>
                 {
                     if (root == gameplayPlayer
-                        || !string.Equals(root.name, "Player", StringComparison.Ordinal)
                         || root.GetComponent<Chapter1PlayerMotor>() != null)
                     {
                         return false;
@@ -327,7 +381,7 @@ namespace DormitoryMystery.Chapter1.Editor
 
                     GameObject source = PrefabUtility.GetCorrespondingObjectFromSource(root);
                     string sourcePath = source != null ? AssetDatabase.GetAssetPath(source) : string.Empty;
-                    return string.Equals(sourcePath, ModelPrefabPath, StringComparison.OrdinalIgnoreCase);
+                    return string.Equals(sourcePath, ModelPath, StringComparison.OrdinalIgnoreCase);
                 })
                 .ToArray();
         }
@@ -339,8 +393,8 @@ namespace DormitoryMystery.Chapter1.Editor
                 GameObject child = modelAnchor.GetChild(i).gameObject;
                 GameObject source = PrefabUtility.GetCorrespondingObjectFromSource(child);
                 string sourcePath = source != null ? AssetDatabase.GetAssetPath(source) : string.Empty;
-                if (string.Equals(sourcePath, ModelPrefabPath, StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(child.name, "Man relax", StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(sourcePath, ModelPath, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(child.name, "Nam", StringComparison.OrdinalIgnoreCase))
                 {
                     return child;
                 }
@@ -349,74 +403,39 @@ namespace DormitoryMystery.Chapter1.Editor
             return null;
         }
 
-        private static AnimationClip LoadAnimationClip(string clipName)
+        private static Avatar LoadModelAvatar()
         {
-            AnimationClip clip = AssetDatabase.LoadAllAssetsAtPath(ModelFbxPath)
-                .OfType<AnimationClip>()
-                .FirstOrDefault(candidate =>
-                    !candidate.name.StartsWith("__preview__", StringComparison.OrdinalIgnoreCase)
-                    && string.Equals(candidate.name.Trim(), clipName.Trim(), StringComparison.OrdinalIgnoreCase));
-
-            if (clip == null)
-            {
-                throw new InvalidOperationException($"Cannot find animation clip '{clipName}' in '{ModelFbxPath}'.");
-            }
-
-            return clip;
+            return AssetDatabase.LoadAllAssetsAtPath(ModelPath)
+                .OfType<Avatar>()
+                .FirstOrDefault(candidate => candidate != null && candidate.isValid && candidate.isHuman);
         }
 
-        private static void AlignModelToAnchor(GameObject modelInstance, Transform modelAnchor)
+        private static void RemoveNestedAnimators(GameObject modelInstance)
         {
-            Renderer[] renderers = modelInstance.GetComponentsInChildren<Renderer>(true);
-            if (!TryCalculateBoundsRelativeTo(modelAnchor, renderers, out Bounds bounds))
+            foreach (Animator nestedAnimator in modelInstance.GetComponentsInChildren<Animator>(true))
             {
-                throw new InvalidOperationException($"Cannot calculate renderer bounds for '{modelInstance.name}'.");
+                Object.DestroyImmediate(nestedAnimator, true);
             }
-
-            modelInstance.transform.localPosition += new Vector3(-bounds.center.x, -bounds.min.y, -bounds.center.z);
         }
 
-        private static bool TryCalculateBoundsRelativeTo(Transform relativeTo, Renderer[] renderers, out Bounds combinedBounds)
+        private static void DestroyAllChildren(Transform parent)
         {
-            combinedBounds = default;
-            bool hasBounds = false;
-
-            foreach (Renderer renderer in renderers)
+            for (int index = parent.childCount - 1; index >= 0; index--)
             {
-                if (renderer == null)
-                {
-                    continue;
-                }
+                Object.DestroyImmediate(parent.GetChild(index).gameObject);
+            }
+        }
 
-                Bounds worldBounds = renderer.bounds;
-                Vector3 min = worldBounds.min;
-                Vector3 max = worldBounds.max;
-                for (int x = 0; x < 2; x++)
+        private static void DestroyOtherChildren(Transform parent, Transform modelInstance)
+        {
+            for (int index = parent.childCount - 1; index >= 0; index--)
+            {
+                Transform child = parent.GetChild(index);
+                if (child != modelInstance)
                 {
-                    for (int y = 0; y < 2; y++)
-                    {
-                        for (int z = 0; z < 2; z++)
-                        {
-                            Vector3 worldCorner = new Vector3(
-                                x == 0 ? min.x : max.x,
-                                y == 0 ? min.y : max.y,
-                                z == 0 ? min.z : max.z);
-                            Vector3 localCorner = relativeTo.InverseTransformPoint(worldCorner);
-                            if (!hasBounds)
-                            {
-                                combinedBounds = new Bounds(localCorner, Vector3.zero);
-                                hasBounds = true;
-                            }
-                            else
-                            {
-                                combinedBounds.Encapsulate(localCorner);
-                            }
-                        }
-                    }
+                    Object.DestroyImmediate(child.gameObject);
                 }
             }
-
-            return hasBounds;
         }
 
         private static Transform FindOrCreateChild(Transform parent, string childName)
@@ -465,10 +484,46 @@ namespace DormitoryMystery.Chapter1.Editor
             property.floatValue = value;
         }
 
+        private static void AssignBoolean(SerializedObject serializedObject, string propertyName, bool value)
+        {
+            SerializedProperty property = serializedObject.FindProperty(propertyName);
+            if (property == null)
+            {
+                throw new InvalidOperationException(
+                    $"Serialized field '{propertyName}' was not found on '{serializedObject.targetObject.GetType().Name}'.");
+            }
+
+            property.boolValue = value;
+        }
+
         private static bool HasObjectReference(SerializedObject serializedObject, string propertyName)
         {
             SerializedProperty property = serializedObject.FindProperty(propertyName);
             return property != null && property.objectReferenceValue != null;
+        }
+
+        private static bool HasObjectReferenceTo(
+            SerializedObject serializedObject,
+            string propertyName,
+            Object expectedValue)
+        {
+            SerializedProperty property = serializedObject.FindProperty(propertyName);
+            return property != null && property.objectReferenceValue == expectedValue;
+        }
+
+        private static bool HasNullObjectReference(SerializedObject serializedObject, string propertyName)
+        {
+            SerializedProperty property = serializedObject.FindProperty(propertyName);
+            return property != null && property.objectReferenceValue == null;
+        }
+
+        private static bool HasBooleanValue(
+            SerializedObject serializedObject,
+            string propertyName,
+            bool expectedValue)
+        {
+            SerializedProperty property = serializedObject.FindProperty(propertyName);
+            return property != null && property.boolValue == expectedValue;
         }
 
         private static void SetLayerRecursively(GameObject root, int layer)

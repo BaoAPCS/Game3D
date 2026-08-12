@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using DormitoryMystery.Chapter1;
 using UnityEditor;
 using UnityEditor.Animations;
@@ -17,8 +16,7 @@ namespace DormitoryMystery.Chapter1.Editor
         private const string PlayerPrefabPath = "Assets/Chapter1/Prefabs/Characters/Player.prefab";
         private const string PlayerPrototypeScenePath = "Assets/Chapter1/Scenes/Chapter1_PlayerPrototype.unity";
         private const string PlayerDormitoryScenePath = "Assets/Chapter1/Scenes/Chapter1_Dormitory.unity";
-        private const string PlayerModelFbxPath = "Assets/Chapter1/ExternalAssets/project upload edit/character man relax/Man relax.FBX";
-        private const string CombatAvatarSourceFbxPath = "Assets/Chapter1/Animations/Avatar/ManRelax_CombatAvatar.FBX";
+        private const string PlayerModelFbxPath = "Assets/Chapter1/ExternalAssets/Nam.fbx";
         private const string ControllerPath = "Assets/Chapter1/Animations/Controllers/Chapter1PlayerAnimator.controller";
         private const string KickInputReferencePath = "Assets/Chapter1/Settings/InputReferences/Kick.inputactionreference.asset";
         private const string JumpInputReferencePath = "Assets/Chapter1/Settings/InputReferences/Jump.inputactionreference.asset";
@@ -192,6 +190,15 @@ namespace DormitoryMystery.Chapter1.Editor
                 new[] { "jump" },
                 0.2f,
                 0.45f,
+                0.8f),
+            new AnimationRoleSpec(
+                CombatAnimationRole.Stunned,
+                "Stunned",
+                "Stunned",
+                false,
+                new[] { "stunned" },
+                0.2f,
+                0.5f,
                 0.8f)
         };
 
@@ -211,8 +218,6 @@ namespace DormitoryMystery.Chapter1.Editor
 
             BackupImportantAssets(report);
             ConfigurePlayerModelImporter(report);
-            EnsureCombatAvatarSource(report);
-            ConfigureCombatAvatarSourceImporter(report);
             ConfigureDownloadedAnimationImporters(downloadedAssets, report);
             AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
 
@@ -228,11 +233,9 @@ namespace DormitoryMystery.Chapter1.Editor
             downloadedAssets.LoadImportedClips(report);
 
             AnimatorController controller = EnsureAnimatorController(downloadedAssets, report);
-            Avatar playerAvatar = LoadAvatar(CombatAvatarSourceFbxPath);
-            AnimationClip walkClip = FindClipByName(PlayerModelFbxPath, "walk 1") ?? FindClipByName(PlayerModelFbxPath, "walk");
-            AnimationClip runClip = FindClipByName(PlayerModelFbxPath, "run ") ?? FindClipByName(PlayerModelFbxPath, "run");
+            Avatar playerAvatar = LoadAvatar(PlayerModelFbxPath);
 
-            ConfigureAnimatorController(controller, downloadedAssets, walkClip, runClip, report);
+            ConfigureAnimatorController(controller, downloadedAssets, report);
             ConfigurePlayerPrefab(controller, playerAvatar, downloadedAssets, report);
             ConfigureTargetScenes(controller, playerAvatar, downloadedAssets, report);
 
@@ -351,15 +354,6 @@ namespace DormitoryMystery.Chapter1.Editor
             EnsureFolder("Assets/Chapter1", "Backups");
             CopyAssetIfMissing(PlayerPrefabPath, BackupFolderPath + "/Player_BackupBeforeDownloadedCombat.prefab", report);
             CopyAssetIfMissing(ControllerPath, BackupFolderPath + "/Chapter1PlayerAnimator_BackupBeforeDownloadedCombat.controller", report);
-
-            string playerModelMetaPath = Path.Combine(Directory.GetCurrentDirectory(), PlayerModelFbxPath + ".meta");
-            string backupMetaPath = Path.Combine(Directory.GetCurrentDirectory(), BackupFolderPath + "/ManRelax_FBX_meta_before_downloaded_combat.txt");
-            if (File.Exists(playerModelMetaPath) && !File.Exists(backupMetaPath))
-            {
-                File.Copy(playerModelMetaPath, backupMetaPath);
-                AssetDatabase.ImportAsset(BackupFolderPath + "/ManRelax_FBX_meta_before_downloaded_combat.txt");
-                report.Pass("Backed up Player model importer meta before Humanoid conversion.");
-            }
         }
 
         private static void CopyAssetIfMissing(string sourcePath, string backupPath, IntegrationReport report)
@@ -395,58 +389,6 @@ namespace DormitoryMystery.Chapter1.Editor
             }
 
             bool changed = false;
-            if (importer.animationType != ModelImporterAnimationType.Legacy)
-            {
-                importer.animationType = ModelImporterAnimationType.Legacy;
-                changed = true;
-            }
-
-            if (!importer.importAnimation)
-            {
-                importer.importAnimation = true;
-                changed = true;
-            }
-
-            if (changed)
-            {
-                importer.SaveAndReimport();
-                report.Pass("Kept Player model importer as Legacy so original walk/run clips remain unchanged.");
-            }
-            else
-            {
-                report.Pass("Player model importer is already Legacy for original locomotion.");
-            }
-        }
-
-        private static void EnsureCombatAvatarSource(IntegrationReport report)
-        {
-            EnsureFolder("Assets/Chapter1/Animations", "Avatar");
-            if (AssetDatabase.LoadMainAssetAtPath(CombatAvatarSourceFbxPath) != null)
-            {
-                report.Pass($"Combat Avatar source exists: {CombatAvatarSourceFbxPath}.");
-                return;
-            }
-
-            if (AssetDatabase.CopyAsset(PlayerModelFbxPath, CombatAvatarSourceFbxPath))
-            {
-                report.Pass($"Created Combat Avatar source copy: {CombatAvatarSourceFbxPath}.");
-            }
-            else
-            {
-                report.Fail($"Could not create Combat Avatar source copy from {PlayerModelFbxPath}.");
-            }
-        }
-
-        private static void ConfigureCombatAvatarSourceImporter(IntegrationReport report)
-        {
-            ModelImporter importer = AssetImporter.GetAtPath(CombatAvatarSourceFbxPath) as ModelImporter;
-            if (importer == null)
-            {
-                report.Fail($"Combat Avatar source importer not found: {CombatAvatarSourceFbxPath}.");
-                return;
-            }
-
-            bool changed = false;
             if (importer.animationType != ModelImporterAnimationType.Human)
             {
                 importer.animationType = ModelImporterAnimationType.Human;
@@ -459,18 +401,15 @@ namespace DormitoryMystery.Chapter1.Editor
                 changed = true;
             }
 
-            if (!importer.importAnimation)
-            {
-                importer.importAnimation = true;
-                changed = true;
-            }
-
             if (changed)
             {
                 importer.SaveAndReimport();
+                report.Pass("Configured Nam as a Humanoid Avatar source for Animator retargeting.");
             }
-
-            report.Pass("Combat Avatar source is configured as Humanoid for attack retargeting.");
+            else
+            {
+                report.Pass("Nam is already configured as a Humanoid Avatar source.");
+            }
         }
 
         private static void ConfigureDownloadedAnimationImporters(DownloadedCombatAssetSet assets, IntegrationReport report)
@@ -633,8 +572,6 @@ namespace DormitoryMystery.Chapter1.Editor
         private static void ConfigureAnimatorController(
             AnimatorController controller,
             DownloadedCombatAssetSet assets,
-            AnimationClip walkClip,
-            AnimationClip runClip,
             IntegrationReport report)
         {
             if (controller == null)
@@ -665,8 +602,9 @@ namespace DormitoryMystery.Chapter1.Editor
             AnimationClip idleClip = assets.GetClip(CombatAnimationRole.StandIdle) ?? assets.GetClip(CombatAnimationRole.CombatIdle);
             AnimationClip sitClip = assets.GetClip(CombatAnimationRole.SitDown) ?? idleClip;
             AnimationClip jumpClip = assets.GetClip(CombatAnimationRole.Jump);
-            AnimationClip safeWalkClip = assets.GetClip(CombatAnimationRole.Walk) ?? walkClip ?? idleClip;
-            AnimationClip safeRunClip = assets.GetClip(CombatAnimationRole.Run) ?? runClip ?? safeWalkClip;
+            AnimationClip stunnedClip = assets.GetClip(CombatAnimationRole.Stunned);
+            AnimationClip safeWalkClip = assets.GetClip(CombatAnimationRole.Walk) ?? idleClip;
+            AnimationClip safeRunClip = assets.GetClip(CombatAnimationRole.Run) ?? safeWalkClip;
 
             if (safeWalkClip == null)
             {
@@ -684,6 +622,9 @@ namespace DormitoryMystery.Chapter1.Editor
             AnimatorState crouchIdle = EnsureState(stateMachine, "Crouch Idle", sitClip, new Vector3(220f, 300f, 0f), report);
             AnimatorState crouchWalk = EnsureState(stateMachine, "Crouch Walk", sitClip, new Vector3(220f, 380f, 0f), report);
             AnimatorState jump = EnsureState(stateMachine, "Jump", jumpClip, new Vector3(220f, 470f, 0f), report);
+            AnimatorState stunned = EnsureState(stateMachine, "Stunned", stunnedClip, new Vector3(520f, 700f, 0f), report);
+            stunned.writeDefaultValues = true;
+            stunned.speed = 1f;
             stateMachine.defaultState = idle;
 
             EnsureTransition(idle, walk, LocomotionTransitionDuration, false, report, Condition.Greater(MoveSpeed, MoveStartThreshold), Condition.IfNot(IsCrouching));
@@ -1083,7 +1024,7 @@ namespace DormitoryMystery.Chapter1.Editor
             animator.updateMode = AnimatorUpdateMode.Normal;
             animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
             animator.keepAnimatorStateOnDisable = true;
-            animator.enabled = false;
+            animator.enabled = true;
 
             CombatAnimationEventRelay relay = animator.GetComponent<CombatAnimationEventRelay>();
             if (relay == null)
@@ -1096,14 +1037,17 @@ namespace DormitoryMystery.Chapter1.Editor
             {
                 legacyAnimation.playAutomatically = false;
                 legacyAnimation.Stop();
-                legacyAnimation.enabled = true;
-                report.Pass($"Kept Legacy Animation enabled in {label} as a fallback while Animator drives walk/run.");
+                legacyAnimation.enabled = false;
+                report.Pass($"Disabled obsolete Legacy Animation in {label}; the root Animator now drives all poses continuously.");
             }
 
             SerializedObject serializedVisual = visualController != null ? new SerializedObject(visualController) : null;
             if (serializedVisual != null)
             {
-                SetBool(serializedVisual, "useLegacyLocomotion", true);
+                SetBool(serializedVisual, "useLegacyLocomotion", false);
+                SetObject(serializedVisual, "legacyAnimation", null);
+                SetObject(serializedVisual, "walkClip", null);
+                SetObject(serializedVisual, "runClip", null);
                 SetFloat(serializedVisual, "smoothTime", 0.1f);
                 SetFloat(serializedVisual, "animationFadeDuration", 0.16f);
                 serializedVisual.ApplyModifiedPropertiesWithoutUndo();
@@ -1142,18 +1086,18 @@ namespace DormitoryMystery.Chapter1.Editor
             SetObject(serializedCombat, "playerMotor", playerMotor);
             SetObject(serializedCombat, "inputLock", player.GetComponent<PlayerInputLock>());
             SetObject(serializedCombat, "playerVisualController", visualController);
-            SetObject(serializedCombat, "legacyAnimationToPause", legacyAnimation);
+            SetObject(serializedCombat, "legacyAnimationToPause", null);
             SetObject(serializedCombat, "animator", animator);
             SetObject(serializedCombat, "attackPoint", attackPoint);
             SetObject(serializedCombat, "proceduralAnimationRoot", FindChildRecursive(player.transform, "ModelAnchor") ?? FindChildRecursive(player.transform, "Visual"));
             SetFloat(serializedCombat, "postAttackInputBufferTime", 0.14f);
             SetFloat(serializedCombat, "attackMoveSpeedMultiplier", 0.6f);
-            SetBool(serializedCombat, "enableAnimatorOnlyDuringAttack", true);
+            SetBool(serializedCombat, "enableAnimatorOnlyDuringAttack", false);
             SetBool(serializedCombat, "enableAnimatorWhileCrouching", true);
-            SetBool(serializedCombat, "enableAnimatorWhileIdle", false);
+            SetBool(serializedCombat, "enableAnimatorWhileIdle", true);
             SetBool(serializedCombat, "enableAnimatorWhileMoving", true);
             SetBool(serializedCombat, "enableAnimatorWhileJumping", true);
-            SetBool(serializedCombat, "suspendLegacyAnimationDuringAttack", true);
+            SetBool(serializedCombat, "suspendLegacyAnimationDuringAttack", false);
             SetFloat(serializedCombat, "animatorReleaseDelay", 0.08f);
             SetFloat(serializedCombat, "locomotionBlendDuration", 0.14f);
             SetFloat(serializedCombat, "moveSpeedDampTime", 0.1f);
@@ -1168,7 +1112,7 @@ namespace DormitoryMystery.Chapter1.Editor
             EditorUtility.SetDirty(animator);
             EditorUtility.SetDirty(relay);
             EditorUtility.SetDirty(combatController);
-            report.Pass($"Assigned Animator, relay, combo timings, and real clips for {label}.");
+            report.Pass($"Assigned Nam Avatar, continuous Animator locomotion, relay, combo timings, and real clips for {label}.");
         }
 
         private static void SetComboFromClips(SerializedObject serializedCombat, DownloadedCombatAssetSet assets, IntegrationReport report)
@@ -1381,33 +1325,25 @@ namespace DormitoryMystery.Chapter1.Editor
         private static void ValidatePlayerModelRig(IntegrationReport report)
         {
             ModelImporter importer = AssetImporter.GetAtPath(PlayerModelFbxPath) as ModelImporter;
-            if (importer != null && importer.animationType == ModelImporterAnimationType.Legacy)
+            if (importer != null
+                && importer.animationType == ModelImporterAnimationType.Human
+                && importer.avatarSetup == ModelImporterAvatarSetup.CreateFromThisModel)
             {
-                report.Pass("Player model importer remains Legacy for original locomotion.");
+                report.Pass("Nam model importer is configured to create a Humanoid Avatar.");
             }
             else
             {
-                report.Fail("Player model importer is not Legacy; original walk/run may be changed.");
+                report.Fail("Nam model importer is not configured as a Humanoid Avatar source.");
             }
 
-            Avatar avatar = LoadAvatar(CombatAvatarSourceFbxPath);
-            ModelImporter avatarImporter = AssetImporter.GetAtPath(CombatAvatarSourceFbxPath) as ModelImporter;
-            if (avatarImporter != null && avatarImporter.animationType == ModelImporterAnimationType.Human)
-            {
-                report.Pass("Combat Avatar source importer is Humanoid.");
-            }
-            else
-            {
-                report.Fail("Combat Avatar source importer is not Humanoid.");
-            }
-
+            Avatar avatar = LoadAvatar(PlayerModelFbxPath);
             if (avatar != null && avatar.isValid && avatar.isHuman)
             {
-                report.Pass("Combat Avatar is valid Humanoid.");
+                report.Pass("Nam Avatar is valid Humanoid.");
             }
             else
             {
-                report.Fail("Combat Avatar is missing or invalid.");
+                report.Fail("Nam Avatar is missing or invalid.");
             }
         }
 
@@ -1468,6 +1404,15 @@ namespace DormitoryMystery.Chapter1.Editor
             AnimationClip jumpClip = assets.GetClip(CombatAnimationRole.Jump);
             report.Add(jumpState != null && jumpClip != null && jumpState.motion == jumpClip, $"Jump state uses Jump clip {jumpClip?.name}.");
             report.Add(CountAnyStateTransitions(stateMachine, Jump) == 1, "Jump trigger has exactly one Any State transition.");
+
+            AnimatorState stunnedState = FindState(stateMachine, "Stunned");
+            AnimationClip stunnedClip = assets.GetClip(CombatAnimationRole.Stunned);
+            report.Add(stunnedState != null, "Stunned state exists.");
+            report.Add(stunnedState != null && stunnedClip != null && stunnedState.motion == stunnedClip, $"Stunned state uses Stunned clip {stunnedClip?.name}.");
+            report.Add(stunnedState != null && Mathf.Approximately(stunnedState.speed, 1f), "Stunned state playback speed is 1.");
+            report.Add(stunnedState != null && stunnedState.transitions.Length == 0, "Stunned state has no outgoing transitions.");
+            report.Add(!ControllerHasParameter(controller, "Stunned"), "Stunned has no Animator parameter or trigger.");
+            report.Add(stunnedState != null && CountAnyStateTransitionsToState(stateMachine, stunnedState) == 0, "Stunned has no Any State transition.");
 
             for (int i = 0; i < RoleSpecs.Length; i++)
             {
@@ -1542,20 +1487,21 @@ namespace DormitoryMystery.Chapter1.Editor
             bool movingAnimatorEnabled = combatController != null && combatController.UsesAnimatorWhileMoving;
             bool jumpAnimatorEnabled = combatController != null && combatController.UsesAnimatorWhileJumping;
 
-            report.Add(animator != null && (animator.enabled || combatAnimatorOnly), $"{label} Animator exists and is available for attacks/walk/run/jump.");
+            report.Add(animator != null && animator.enabled, $"{label} Animator exists and remains enabled for continuous locomotion/combat.");
             report.Add(animator != null && animator.runtimeAnimatorController != null, $"{label} Animator Controller is assigned.");
             report.Add(animator != null && !animator.applyRootMotion, $"{label} Apply Root Motion is disabled.");
             report.Add(animator != null && animator.avatar != null && animator.avatar.isValid, $"{label} Animator Avatar is valid.");
+            report.Add(animator != null && AssetDatabase.GetAssetPath(animator.avatar) == PlayerModelFbxPath, $"{label} Animator uses the Nam Avatar.");
             report.Add(combatController != null, $"{label} PlayerCombatController exists.");
             report.Add(combatController != null && animator != null && combatController.CombatAnimator == animator, $"{label} PlayerCombatController references the Animator.");
-            report.Add(combatAnimatorOnly, $"{label} combat Animator is used only during attacks.");
+            report.Add(!combatAnimatorOnly, $"{label} Animator is not restricted to attacks.");
             report.Add(crouchAnimatorEnabled, $"{label} crouch/sit pose can use Animator.");
-            report.Add(!idleAnimatorEnabled, $"{label} normal standing idle keeps the original non-combat pose.");
+            report.Add(idleAnimatorEnabled, $"{label} standing idle uses Animator.");
             report.Add(movingAnimatorEnabled, $"{label} walking/running can use Animator clips.");
             report.Add(jumpAnimatorEnabled, $"{label} jump pose can use Animator.");
             report.Add(relay != null, $"{label} CombatAnimationEventRelay is attached to Animator object.");
-            report.Add(legacyAnimation == null || legacyAnimation.enabled, $"{label} Legacy Animation remains enabled as fallback and is suspended while Animator locomotion plays.");
-            report.Add(visualController == null || visualController.UsesLegacyLocomotion, $"{label} PlayerVisualController legacy fallback is enabled.");
+            report.Add(legacyAnimation == null || !legacyAnimation.enabled, $"{label} obsolete Legacy Animation is absent or disabled.");
+            report.Add(visualController == null || !visualController.UsesLegacyLocomotion, $"{label} PlayerVisualController legacy fallback is disabled.");
         }
 
         private static bool ControllerHasParameter(AnimatorController controller, string parameterName)
@@ -1579,6 +1525,21 @@ namespace DormitoryMystery.Chapter1.Editor
             for (int i = 0; i < transitions.Length; i++)
             {
                 if (HasCondition(transitions[i], triggerName, AnimatorConditionMode.If))
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        private static int CountAnyStateTransitionsToState(AnimatorStateMachine stateMachine, AnimatorState destination)
+        {
+            int count = 0;
+            AnimatorStateTransition[] transitions = stateMachine.anyStateTransitions;
+            for (int i = 0; i < transitions.Length; i++)
+            {
+                if (transitions[i].destinationState == destination)
                 {
                     count++;
                 }
@@ -1623,21 +1584,6 @@ namespace DormitoryMystery.Chapter1.Editor
                 if (match != null)
                 {
                     return match;
-                }
-            }
-
-            return null;
-        }
-
-        private static AnimationClip FindClipByName(string assetPath, string clipName)
-        {
-            Object[] assets = AssetDatabase.LoadAllAssetsAtPath(assetPath);
-            for (int i = 0; i < assets.Length; i++)
-            {
-                AnimationClip clip = assets[i] as AnimationClip;
-                if (clip != null && clip.name.IndexOf(clipName, StringComparison.OrdinalIgnoreCase) >= 0)
-                {
-                    return clip;
                 }
             }
 
@@ -1854,7 +1800,8 @@ namespace DormitoryMystery.Chapter1.Editor
             KickHeavy,
             SpinningBackKick,
             SitDown,
-            Jump
+            Jump,
+            Stunned
         }
 
         private readonly struct AnimationRoleSpec
