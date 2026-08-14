@@ -105,6 +105,7 @@ namespace DormitoryMystery.Chapter1
         public override bool CanInteract(InteractionContext context)
         {
             return Mission2HeistProgress.IsStarted &&
+                   !Mission2HeistProgress.HasDeliveredEquipment &&
                    base.CanInteract(context) &&
                    IsConversationAvailable(context.PlayerTransform);
         }
@@ -122,6 +123,7 @@ namespace DormitoryMystery.Chapter1
         {
             ResolveReferences();
             if (!Mission2HeistProgress.IsStarted ||
+                Mission2HeistProgress.HasDeliveredEquipment ||
                 context.PlayerObject == null ||
                 !IsConversationAvailable(context.PlayerTransform))
             {

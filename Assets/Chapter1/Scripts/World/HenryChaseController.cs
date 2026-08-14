@@ -393,6 +393,40 @@ namespace DormitoryMystery.Chapter1
                 this);
         }
 
+        /// <summary>
+        /// Ends any remaining Task-2 Henry behavior without producing a catch
+        /// or escape event, then sends him back to his original position.
+        /// </summary>
+        public void ConcludeEncounterAndReturnHome()
+        {
+            if (state == ChaseState.Caught)
+            {
+                return;
+            }
+
+            foodcartDistractionActive = false;
+            batterySwapRaceActive = false;
+            player = null;
+            activeEscapeDoor = null;
+            ReleaseForcedCatchInput();
+
+            if (HasReachedDestination(homePosition, 0.1f))
+            {
+                StopAgent();
+                if (agent != null && agent.enabled && agent.isOnNavMesh)
+                {
+                    agent.Warp(homePosition);
+                }
+
+                transform.rotation = homeRotation;
+                animationPlayer?.PlayIdle();
+                state = ChaseState.Idle;
+                return;
+            }
+
+            BeginReturnHome();
+        }
+
         public void BeginForcedCatch(Transform playerTarget)
         {
             if (state == ChaseState.Caught)

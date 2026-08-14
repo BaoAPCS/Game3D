@@ -269,7 +269,8 @@ namespace DormitoryMystery.Chapter1
                  interactable is PetrolCanInteractable) &&
                 targetDistance <= 1.5f;
             bypassObstruction = bypassObstruction ||
-                interactable is HenryDialogueInteractable;
+                interactable is HenryDialogueInteractable ||
+                interactable is JamesDialogueInteractable;
             if (!bypassObstruction && IsObstructed(targetPosition))
             {
                 return;

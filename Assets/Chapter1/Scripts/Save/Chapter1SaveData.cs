@@ -6,6 +6,8 @@ namespace DormitoryMystery.Chapter1
     [Serializable]
     public class Chapter1SaveData
     {
+        private const int CurrentSaveVersion = 2;
+
         public int SaveVersion;
         public Chapter1Step CurrentStep;
         public int NamTrust;
@@ -49,10 +51,19 @@ namespace DormitoryMystery.Chapter1
         public List<float> AudioSeparatorFaderValues;
         public bool Mission01Completed;
         public bool Mission01CalendarViewed;
+        public bool Mission02Started;
+        public bool Mission02HasPsu;
+        public bool Mission02HasUps;
+        public bool Mission02HasBrokenBattery;
+        public bool Mission02HasHenryBattery;
+        public bool Mission02EquipmentDelivered;
+        public bool Mission03JamesIntroPlayed;
+        public bool Mission03ChallengePassed;
+        public bool Mission03GangHostile;
 
         public Chapter1SaveData()
         {
-            SaveVersion = 1;
+            SaveVersion = CurrentSaveVersion;
             CurrentStep = Chapter1Step.TalkToNam;
             NamTrust = 45;
             HasLanRecording = false;
@@ -85,9 +96,9 @@ namespace DormitoryMystery.Chapter1
 
         public void EnsureValidDefaults()
         {
-            if (SaveVersion <= 0)
+            if (SaveVersion < CurrentSaveVersion)
             {
-                SaveVersion = 1;
+                SaveVersion = CurrentSaveVersion;
             }
 
             NamTrust = NamTrustCalculator.ClampTrust(NamTrust);
@@ -128,6 +139,59 @@ namespace DormitoryMystery.Chapter1
             if (FirstMissionStateValue < (int)FirstMissionState.None || FirstMissionStateValue > (int)FirstMissionState.Completed)
             {
                 FirstMissionStateValue = (int)FirstMissionState.None;
+            }
+
+            // Keep the newer story flags internally consistent when loading
+            // an older save or a save written part-way through a milestone.
+            if (Mission02EquipmentDelivered)
+            {
+                Mission02Started = true;
+                Mission02HasPsu = true;
+                Mission02HasUps = true;
+                Mission02HasHenryBattery = true;
+                Mission02HasBrokenBattery = false;
+            }
+
+            if (Mission02HasPsu ||
+                Mission02HasUps ||
+                Mission02HasBrokenBattery ||
+                Mission02HasHenryBattery)
+            {
+                Mission02Started = true;
+            }
+
+            if (Mission02HasUps)
+            {
+                Mission02HasHenryBattery = true;
+            }
+
+            if (Mission02HasHenryBattery)
+            {
+                Mission02HasBrokenBattery = false;
+            }
+
+            if (Mission03JamesIntroPlayed ||
+                Mission03ChallengePassed ||
+                Mission03GangHostile)
+            {
+                Mission02EquipmentDelivered = true;
+                Mission02Started = true;
+                Mission02HasPsu = true;
+                Mission02HasUps = true;
+                Mission02HasHenryBattery = true;
+                Mission02HasBrokenBattery = false;
+            }
+
+            if (Mission03ChallengePassed)
+            {
+                Mission03JamesIntroPlayed = true;
+                Mission03GangHostile = false;
+            }
+
+            if (Mission03GangHostile)
+            {
+                Mission03JamesIntroPlayed = true;
+                Mission03ChallengePassed = false;
             }
         }
 

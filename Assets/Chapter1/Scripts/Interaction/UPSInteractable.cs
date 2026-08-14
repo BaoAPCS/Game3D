@@ -5,27 +5,53 @@ using UnityEngine.SceneManagement;
 namespace DormitoryMystery.Chapter1
 {
     /// <summary>
-    /// Scene-local progress for the PSU/UPS battery side mission. The state is
-    /// deliberately reset when the scene is reloaded so it stays independent
-    /// from the main Chapter1Step save flow.
+    /// Save-backed progress for the PSU/UPS battery mission. The public shape
+    /// intentionally stays compatible with the original scene-local helper so
+    /// the existing pickup and Henry encounter code does not need rewiring.
     /// </summary>
     internal static class Mission2HeistProgress
     {
+        private const string BrokenBatteryObjectName = "broken_battery";
+
         private static ulong sceneHandle = ulong.MaxValue;
         private static GameObject brokenBatteryObject;
+        private static Chapter1SaveData fallbackData =
+            Chapter1SaveData.CreateDefault();
 
-        public static bool IsStarted { get; private set; }
-        public static bool HasPsu { get; private set; }
-        public static bool HasUps { get; private set; }
-        public static bool HasBrokenBattery { get; private set; }
-        public static bool HasHenryBattery { get; private set; }
+        public static bool IsStarted => Data.Mission02Started;
+        public static bool HasPsu => Data.Mission02HasPsu;
+        public static bool HasUps => Data.Mission02HasUps;
+        public static bool HasBrokenBattery =>
+            Data.Mission02HasBrokenBattery;
+        public static bool HasHenryBattery =>
+            Data.Mission02HasHenryBattery;
+        public static bool HasDeliveredEquipment =>
+            Data.Mission02EquipmentDelivered;
+        public static bool CanDeliverEquipment =>
+            IsStarted && HasPsu && HasUps && !HasDeliveredEquipment;
+
+        private static Chapter1SaveData Data
+        {
+            get
+            {
+                Chapter1Manager manager = Chapter1Manager.Instance;
+                if (manager != null)
+                {
+                    return manager.CurrentData;
+                }
+
+                fallbackData ??= Chapter1SaveData.CreateDefault();
+                return fallbackData;
+            }
+        }
 
         [RuntimeInitializeOnLoadMethod(
             RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetOnPlayModeStart()
         {
             sceneHandle = ulong.MaxValue;
-            ResetProgress();
+            brokenBatteryObject = null;
+            fallbackData = Chapter1SaveData.CreateDefault();
         }
 
         public static void EnsureScene(Scene scene)
@@ -42,63 +68,157 @@ namespace DormitoryMystery.Chapter1
             }
 
             sceneHandle = currentSceneHandle;
-            ResetProgress();
+            brokenBatteryObject = null;
         }
 
         public static bool CollectPsu()
         {
-            if (!IsStarted || HasPsu)
+            Chapter1SaveData data = Data;
+            if (!data.Mission02Started || data.Mission02HasPsu)
             {
                 return false;
             }
 
-            HasPsu = true;
+            data.Mission02HasPsu = true;
+            SaveProgress();
+            PublishCurrentObjective();
             return true;
         }
 
         public static bool CollectUps()
         {
-            if (!IsStarted || HasUps || !HasHenryBattery)
+            Chapter1SaveData data = Data;
+            if (!data.Mission02Started ||
+                data.Mission02HasUps ||
+                !data.Mission02HasHenryBattery)
             {
                 return false;
             }
 
-            HasUps = true;
+            data.Mission02HasUps = true;
+            SaveProgress();
+            PublishCurrentObjective();
             return true;
         }
 
         public static void CollectBrokenBattery(GameObject pickupObject)
         {
-            if (!IsStarted)
+            Chapter1SaveData data = Data;
+            if (!data.Mission02Started)
             {
                 return;
             }
 
-            HasBrokenBattery = true;
+            data.Mission02HasBrokenBattery = true;
             brokenBatteryObject = pickupObject;
+            SaveProgress();
+            PublishCurrentObjective();
         }
 
         public static bool CompleteBatterySwap()
         {
-            if (!IsStarted || HasHenryBattery || !HasBrokenBattery)
+            Chapter1SaveData data = Data;
+            if (!data.Mission02Started ||
+                data.Mission02HasHenryBattery ||
+                !data.Mission02HasBrokenBattery)
             {
                 return false;
             }
 
-            HasBrokenBattery = false;
-            HasHenryBattery = true;
+            data.Mission02HasBrokenBattery = false;
+            data.Mission02HasHenryBattery = true;
+            SaveProgress();
+            PublishCurrentObjective();
             return true;
         }
 
         public static void BeginMission(Scene scene)
         {
             EnsureScene(scene);
-            IsStarted = true;
+            Chapter1SaveData data = Data;
+            if (data.Mission02Started)
+            {
+                return;
+            }
+
+            data.Mission02Started = true;
+            SaveProgress();
+            PublishCurrentObjective();
+        }
+
+        public static bool TryDeliverEquipment()
+        {
+            Chapter1SaveData data = Data;
+            if (!data.Mission02Started ||
+                !data.Mission02HasPsu ||
+                !data.Mission02HasUps ||
+                data.Mission02EquipmentDelivered)
+            {
+                return false;
+            }
+
+            data.Mission02EquipmentDelivered = true;
+            data.EnsureValidDefaults();
+            SaveProgress();
+            Chapter1EventBus.RaiseObjectiveChanged(
+                "Qua nói chuyện với James ở băng nhóm đối diện.");
+            return true;
+        }
+
+        /// <summary>
+        /// Returns Henry to his normal post-Task-2 state before Mission 3 can
+        /// begin. This prevents the old distraction/chase encounter from
+        /// competing with the gang encounter and its game-over policy.
+        /// </summary>
+        public static void ConcludeHenryEncounter(Scene scene)
+        {
+            if (!scene.IsValid() || !scene.isLoaded)
+            {
+                return;
+            }
+
+            HenryChaseController[] controllers =
+                UnityEngine.Object.FindObjectsByType<HenryChaseController>(
+                    FindObjectsInactive.Include);
+            for (int i = 0; i < controllers.Length; i++)
+            {
+                HenryChaseController controller = controllers[i];
+                if (controller != null &&
+                    controller.gameObject.scene == scene)
+                {
+                    controller.ConcludeEncounterAndReturnHome();
+                }
+            }
         }
 
         public static void PlaceBrokenBatteryAt(Transform target)
         {
-            if (brokenBatteryObject == null || target == null)
+            if (target == null)
+            {
+                return;
+            }
+
+            if (brokenBatteryObject == null)
+            {
+                Transform[] candidates = UnityEngine.Object.FindObjectsByType<
+                    Transform>(FindObjectsInactive.Include);
+                for (int i = 0; i < candidates.Length; i++)
+                {
+                    Transform candidate = candidates[i];
+                    if (candidate != null &&
+                        candidate.gameObject.scene == target.gameObject.scene &&
+                        string.Equals(
+                            candidate.name,
+                            BrokenBatteryObjectName,
+                            StringComparison.OrdinalIgnoreCase))
+                    {
+                        brokenBatteryObject = candidate.gameObject;
+                        break;
+                    }
+                }
+            }
+
+            if (brokenBatteryObject == null)
             {
                 return;
             }
@@ -111,14 +231,103 @@ namespace DormitoryMystery.Chapter1
             brokenBatteryObject.SetActive(true);
         }
 
-        private static void ResetProgress()
+        internal static void RegisterBrokenBatteryObject(
+            GameObject pickupObject)
         {
-            IsStarted = false;
-            HasPsu = false;
-            HasUps = false;
-            HasBrokenBattery = false;
-            HasHenryBattery = false;
-            brokenBatteryObject = null;
+            brokenBatteryObject = pickupObject;
+        }
+
+        private static void SaveProgress()
+        {
+            Chapter1Manager.Instance?.SaveChapter();
+        }
+
+        private static void PublishCurrentObjective()
+        {
+            Chapter1Manager manager = Chapter1Manager.Instance;
+            if (manager != null)
+            {
+                Chapter1EventBus.RaiseObjectiveChanged(
+                    manager.GetCurrentObjective());
+            }
+        }
+    }
+
+    /// <summary>
+    /// Persistent hand-off between Minh's police lead and the James encounter.
+    /// </summary>
+    internal static class Mission3Progress
+    {
+        private static Chapter1SaveData fallbackData =
+            Chapter1SaveData.CreateDefault();
+
+        public static bool CanTalkToJames =>
+            Data.Mission02EquipmentDelivered;
+        public static bool JamesIntroPlayed =>
+            Data.Mission03JamesIntroPlayed;
+        public static bool ChallengePassed =>
+            Data.Mission03ChallengePassed;
+        public static bool GangHostile =>
+            Data.Mission03GangHostile;
+
+        private static Chapter1SaveData Data =>
+            Chapter1Manager.Instance != null
+                ? Chapter1Manager.Instance.CurrentData
+                : fallbackData;
+
+        [RuntimeInitializeOnLoadMethod(
+            RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetFallbackOnPlayModeStart()
+        {
+            fallbackData = Chapter1SaveData.CreateDefault();
+        }
+
+        public static void MarkJamesIntroPlayed()
+        {
+            if (!CanTalkToJames || Data.Mission03JamesIntroPlayed)
+            {
+                return;
+            }
+
+            Data.Mission03JamesIntroPlayed = true;
+            SaveProgress();
+            Chapter1EventBus.RaiseObjectiveChanged(
+                "Quay lại nói chuyện với James để bắt đầu thử thách.");
+        }
+
+        public static void MarkChallengePassed()
+        {
+            if (!CanTalkToJames || Data.Mission03ChallengePassed)
+            {
+                return;
+            }
+
+            Data.Mission03JamesIntroPlayed = true;
+            Data.Mission03ChallengePassed = true;
+            Data.Mission03GangHostile = false;
+            SaveProgress();
+            Chapter1EventBus.RaiseObjectiveChanged(
+                "Bạn đã vượt qua thử thách của băng nhóm.");
+        }
+
+        public static void MarkGangHostile()
+        {
+            if (!CanTalkToJames || Data.Mission03GangHostile)
+            {
+                return;
+            }
+
+            Data.Mission03JamesIntroPlayed = true;
+            Data.Mission03ChallengePassed = false;
+            Data.Mission03GangHostile = true;
+            SaveProgress();
+            Chapter1EventBus.RaiseObjectiveChanged(
+                "Chạy thoát khỏi James, David và Lewis.");
+        }
+
+        private static void SaveProgress()
+        {
+            Chapter1Manager.Instance?.SaveChapter();
         }
     }
 
@@ -138,6 +347,7 @@ namespace DormitoryMystery.Chapter1
 
         private const string PsuObjectName = "PSU";
         private const string UpsObjectName = "UPS";
+        private const string HenryBatteryObjectName = "battery";
         private const string LegacyPsuObjectName = "old_radio";
         private const string BrokenBatteryObjectName = "broken_battery";
         private const string InteractableLayerName = "Interactable";
@@ -185,8 +395,9 @@ namespace DormitoryMystery.Chapter1
             GameObject psuPickup = null;
             GameObject upsPickup = null;
             GameObject brokenBatteryPickup = null;
+            Transform henryBatteryTarget = null;
             Transform[] sceneTransforms = FindObjectsByType<Transform>(
-                FindObjectsInactive.Exclude);
+                FindObjectsInactive.Include);
             for (int i = 0; i < sceneTransforms.Length; i++)
             {
                 Transform candidate = sceneTransforms[i];
@@ -224,6 +435,13 @@ namespace DormitoryMystery.Chapter1
                 {
                     brokenBatteryPickup = candidate.gameObject;
                 }
+                else if (string.Equals(
+                             candidate.name,
+                             HenryBatteryObjectName,
+                             StringComparison.OrdinalIgnoreCase))
+                {
+                    henryBatteryTarget = candidate;
+                }
             }
 
             if (psuPickup == null &&
@@ -252,10 +470,55 @@ namespace DormitoryMystery.Chapter1
 
             if (brokenBatteryPickup != null)
             {
+                Mission2HeistProgress.RegisterBrokenBatteryObject(
+                    brokenBatteryPickup);
                 InstallInteraction(
                     brokenBatteryPickup,
                     interactableLayer,
                     PickupKind.BrokenBattery);
+            }
+
+            RestoreSavedPickupVisibility(
+                psuPickup,
+                upsPickup,
+                brokenBatteryPickup,
+                henryBatteryTarget);
+        }
+
+        private static void RestoreSavedPickupVisibility(
+            GameObject psuPickup,
+            GameObject upsPickup,
+            GameObject brokenBatteryPickup,
+            Transform henryBatteryTarget)
+        {
+            if (psuPickup != null && Mission2HeistProgress.HasPsu)
+            {
+                psuPickup.SetActive(false);
+            }
+
+            if (upsPickup != null && Mission2HeistProgress.HasUps)
+            {
+                upsPickup.SetActive(false);
+            }
+
+            if (brokenBatteryPickup == null)
+            {
+                return;
+            }
+
+            if (Mission2HeistProgress.HasHenryBattery &&
+                henryBatteryTarget != null)
+            {
+                Mission2HeistProgress.PlaceBrokenBatteryAt(
+                    henryBatteryTarget);
+                henryBatteryTarget.gameObject.SetActive(false);
+            }
+            else if (Mission2HeistProgress.HasBrokenBattery ||
+                     Mission2HeistProgress.HasHenryBattery)
+            {
+                // It is carried, or its saved replacement location cannot be
+                // reconstructed safely in this scene.
+                brokenBatteryPickup.SetActive(false);
             }
         }
 

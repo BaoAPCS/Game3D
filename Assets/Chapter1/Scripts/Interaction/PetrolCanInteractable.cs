@@ -75,6 +75,7 @@ namespace DormitoryMystery.Chapter1
         public override bool CanInteract(InteractionContext context)
         {
             if (!Mission2HeistProgress.IsStarted ||
+                Mission2HeistProgress.HasDeliveredEquipment ||
                 isHeld ||
                 !base.CanInteract(context) ||
                 context.PlayerTransform == null)
@@ -118,6 +119,7 @@ namespace DormitoryMystery.Chapter1
             InteractionContext context)
         {
             if (!Mission2HeistProgress.IsStarted ||
+                Mission2HeistProgress.HasDeliveredEquipment ||
                 isHeld ||
                 context.PlayerObject == null)
             {

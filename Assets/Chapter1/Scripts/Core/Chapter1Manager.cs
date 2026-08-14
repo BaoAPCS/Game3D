@@ -106,7 +106,7 @@ namespace DormitoryMystery.Chapter1
 
             CurrentData.EnsureValidDefaults();
             Chapter1EventBus.RaiseStepChanged(CurrentData.CurrentStep);
-            Chapter1EventBus.RaiseObjectiveChanged(GetObjective(CurrentData.CurrentStep));
+            Chapter1EventBus.RaiseObjectiveChanged(GetCurrentObjective());
 
             if (CurrentData.ChapterCompleted && !wasChapterCompleted)
             {
@@ -290,6 +290,58 @@ namespace DormitoryMystery.Chapter1
             }
         }
 
+        /// <summary>
+        /// Returns the objective that matches the persisted mission state.
+        /// Mission 2 and Mission 3 extend beyond the original Chapter1Step
+        /// enum, so they must take precedence once their milestones exist.
+        /// </summary>
+        public string GetCurrentObjective()
+        {
+            Chapter1SaveData data = CurrentData;
+            data.EnsureValidDefaults();
+
+            if (data.Mission03GangHostile)
+            {
+                return "Chạy thoát khỏi James, David và Lewis.";
+            }
+
+            if (data.Mission03ChallengePassed)
+            {
+                return "Bạn đã vượt qua thử thách của băng nhóm.";
+            }
+
+            if (data.Mission02EquipmentDelivered)
+            {
+                return data.Mission03JamesIntroPlayed
+                    ? "Quay lại nói chuyện với James để bắt đầu thử thách."
+                    : "Qua nói chuyện với James ở băng nhóm đối diện.";
+            }
+
+            if (data.Mission02Started)
+            {
+                if (data.Mission02HasPsu && data.Mission02HasUps)
+                {
+                    return "Mang PSU và UPS về cho Minh.";
+                }
+
+                if (!data.Mission02HasHenryBattery)
+                {
+                    return data.Mission02HasBrokenBattery
+                        ? "Đánh lạc hướng Henry rồi đánh tráo ắc quy."
+                        : "Tìm ắc quy hỏng để đánh tráo ắc quy của Henry.";
+                }
+
+                if (!data.Mission02HasUps)
+                {
+                    return "Quay lại nhặt UPS.";
+                }
+
+                return "Tìm và nhặt PSU.";
+            }
+
+            return GetObjective(data.CurrentStep);
+        }
+
         private bool HasFinalChoiceBeenApplied()
         {
             return CurrentData.CurrentStep >= Chapter1Step.EndingSequence
@@ -302,7 +354,7 @@ namespace DormitoryMystery.Chapter1
         {
             CurrentData.EnsureValidDefaults();
             Chapter1EventBus.RaiseStepChanged(CurrentData.CurrentStep);
-            Chapter1EventBus.RaiseObjectiveChanged(GetObjective(CurrentData.CurrentStep));
+            Chapter1EventBus.RaiseObjectiveChanged(GetCurrentObjective());
             Chapter1EventBus.RaiseInventoryChanged();
             Chapter1EventBus.RaiseNamTrustChanged(CurrentData.NamTrust);
             Chapter1EventBus.RaisePowerStateChanged(CurrentData.PowerRestored);

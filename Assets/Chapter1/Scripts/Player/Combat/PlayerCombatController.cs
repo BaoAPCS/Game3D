@@ -12,6 +12,7 @@ namespace DormitoryMystery.Chapter1
         private const int HitBufferSize = 32;
         private const string WalkStateName = "Walk";
         private const string RunStateName = "Run";
+        private const string ForcedStunInputLockReason = "ForcedStun";
         private static readonly int MoveSpeedParameter = Animator.StringToHash("MoveSpeed");
         private static readonly int IsGroundedParameter = Animator.StringToHash("IsGrounded");
         private static readonly int IsSprintingParameter = Animator.StringToHash("IsSprinting");
@@ -22,6 +23,7 @@ namespace DormitoryMystery.Chapter1
         private static readonly int JumpParameter = Animator.StringToHash("Jump");
         private static readonly int WalkStateHash = Animator.StringToHash("Base Layer.Walk");
         private static readonly int RunStateHash = Animator.StringToHash("Base Layer.Run");
+        private static readonly int StunnedStateHash = Animator.StringToHash("Base Layer.Stunned");
 
         [Header("References")]
         [SerializeField] private Chapter1InputReader inputReader;
@@ -105,8 +107,10 @@ namespace DormitoryMystery.Chapter1
         private int queuedKickFallbackPoseIndex;
         private float queuedInputExpireTime;
         private int requestedMovementStateHash;
+        private bool isForcedStunned;
 
         public bool IsAttacking => isAttackActive;
+        public bool IsForcedStunned => isForcedStunned;
         public int CurrentAttackIndex => currentAttackIndex;
         public Transform AttackPoint => attackPoint;
         public LayerMask EnemyLayerMask => enemyLayerMask;
@@ -172,10 +176,16 @@ namespace DormitoryMystery.Chapter1
             wasJumpingForAnimator = false;
             UpdateAnimatorActivity(true);
             SetLegacyAnimationSuspended(false);
+            ReleaseForcedStun();
         }
 
         private void Update()
         {
+            if (isForcedStunned)
+            {
+                return;
+            }
+
             UpdateAnimatorActivity(false);
             UpdateAnimatorMovementParameters();
         }
@@ -286,6 +296,74 @@ namespace DormitoryMystery.Chapter1
         {
             EnsureDefaultCombo();
             EnsureDefaultKicks();
+        }
+
+        /// <summary>
+        /// Cancels every active player attack, locks movement/input, and plays
+        /// the terminal Stunned state. The caller owns the later game-over flow.
+        /// </summary>
+        public bool EnterForcedStun(float transitionDuration = 0.08f)
+        {
+            if (isForcedStunned)
+            {
+                return true;
+            }
+
+            ResolveReferences();
+
+            // Validate the animation before changing gameplay state. If the
+            // controller reference is ever lost, Nam must not become locked in
+            // place without actually entering the Stunned animation.
+            if (animator == null || animator.runtimeAnimatorController == null)
+            {
+                Debug.LogWarning(
+                    "[PlayerCombatController] Không tìm thấy Animator để phát Stunned.",
+                    this);
+                return false;
+            }
+
+            if (!animator.HasState(0, StunnedStateHash))
+            {
+                Debug.LogWarning(
+                    "[PlayerCombatController] Animator Controller không có state 'Base Layer.Stunned'.",
+                    this);
+                return false;
+            }
+
+            StopAllCombatRoutines();
+            attackSequence++;
+            ClearAttackState();
+            ApplyCombatMovement(false);
+            isForcedStunned = true;
+
+            playerMotor?.SetMovementEnabled(false);
+            inputLock?.Lock(ForcedStunInputLockReason);
+            SetLegacyAnimationSuspended(true);
+
+            animator.keepAnimatorStateOnDisable = true;
+            animator.applyRootMotion = false;
+            animator.enabled = true;
+            animator.CrossFadeInFixedTime(
+                StunnedStateHash,
+                Mathf.Max(0f, transitionDuration),
+                0,
+                0f);
+            animator.Update(0f);
+            return true;
+        }
+
+        public void ReleaseForcedStun()
+        {
+            if (!isForcedStunned)
+            {
+                return;
+            }
+
+            isForcedStunned = false;
+            inputLock?.Unlock(ForcedStunInputLockReason);
+            playerMotor?.SetMovementEnabled(true);
+            SetLegacyAnimationSuspended(false);
+            UpdateAnimatorActivity(false);
         }
 
         private void ResolveReferences()
@@ -437,7 +515,7 @@ namespace DormitoryMystery.Chapter1
 
         private bool CanStartCombat()
         {
-            if (!isActiveAndEnabled)
+            if (!isActiveAndEnabled || isForcedStunned)
             {
                 return false;
             }

@@ -57,6 +57,7 @@ namespace DormitoryMystery.Chapter1
             ContactPoint contact)
         {
             if (!Mission2HeistProgress.IsStarted ||
+                Mission2HeistProgress.HasDeliveredEquipment ||
                 !configured ||
                 ignited ||
                 grillCollider == null ||
