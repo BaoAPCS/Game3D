@@ -31,15 +31,20 @@ namespace DormitoryMystery.Chapter1
         private Canvas canvas;
         private Image clueImage;
         private TMP_Text progressText;
-        private TMP_Text wordText;
+        private RectTransform wordCellsRoot;
         private TMP_Text statusText;
         private TMP_InputField inputField;
         private readonly List<Sprite> clueSprites = new List<Sprite>();
+        private readonly List<Image> wordCellBackgrounds = new List<Image>();
+        private readonly List<TMP_Text> wordCellTexts = new List<TMP_Text>();
+        private readonly List<Outline> wordCellOutlines = new List<Outline>();
         private PlayerInputLock inputLock;
+        private Chapter1InputReader inputReader;
         private Chapter1InteractionController interactionController;
         private JamesDialogueInteractable owner;
         private bool interactionControllerWasEnabled;
         private bool puzzleLockHeld;
+        private bool gameplayInputSuppressed;
         private bool isOpen;
         private int questionIndex;
 
@@ -94,6 +99,17 @@ namespace DormitoryMystery.Chapter1
             inputLock?.Lock(PlayerInputLock.PuzzleReason);
             puzzleLockHeld = inputLock != null;
 
+            inputReader = playerObject.GetComponent<Chapter1InputReader>();
+            gameplayInputSuppressed = inputReader != null &&
+                                      inputReader.GameplayInputEnabled;
+            if (gameplayInputSuppressed)
+            {
+                // Disable gameplay actions such as B/backpack, phone,
+                // interaction and combat. The UI Input System remains active,
+                // so the hidden TMP field can still receive typed letters.
+                inputReader.SetGameplayInputEnabled(false);
+            }
+
             interactionControllerWasEnabled = interactionController != null &&
                                               interactionController.enabled;
             if (interactionControllerWasEnabled)
@@ -120,7 +136,7 @@ namespace DormitoryMystery.Chapter1
             if (missingLetters.Length != CountMissingLetters(WordPatterns[questionIndex]))
             {
                 SetStatus("Hãy điền đủ các chữ còn thiếu.", false);
-                FocusInput();
+                StartCoroutine(FocusInputNextFrame());
                 return;
             }
 
@@ -144,7 +160,7 @@ namespace DormitoryMystery.Chapter1
             {
                 SetStatus("Sai rồi.", false);
                 inputField.text = string.Empty;
-                FocusInput();
+                StartCoroutine(FocusInputNextFrame());
                 return;
             }
 
@@ -159,7 +175,7 @@ namespace DormitoryMystery.Chapter1
 
             inputField.text = string.Empty;
             RefreshQuestion();
-            FocusInput();
+            StartCoroutine(FocusInputNextFrame());
         }
 
         private void Close(bool notifyOwner)
@@ -182,11 +198,18 @@ namespace DormitoryMystery.Chapter1
                 inputLock.Unlock(PlayerInputLock.PuzzleReason);
             }
 
+            if (inputReader != null && gameplayInputSuppressed)
+            {
+                inputReader.SetGameplayInputEnabled(true);
+            }
+
             Chapter1UICursorLock.ApplyAfterClose(inputLock);
             isOpen = false;
             puzzleLockHeld = false;
+            gameplayInputSuppressed = false;
             interactionControllerWasEnabled = false;
             interactionController = null;
+            inputReader = null;
             inputLock = null;
 
             JamesDialogueInteractable previousOwner = owner;
@@ -214,11 +237,6 @@ namespace DormitoryMystery.Chapter1
                 progressText.text = $"Câu {questionIndex + 1}/{PuzzleCount}";
             }
 
-            if (wordText != null)
-            {
-                wordText.text = AddSpacing(WordPatterns[questionIndex]);
-            }
-
             if (clueImage != null)
             {
                 Sprite sprite = questionIndex < clueSprites.Count
@@ -232,7 +250,10 @@ namespace DormitoryMystery.Chapter1
             {
                 inputField.characterLimit =
                     CountMissingLetters(WordPatterns[questionIndex]);
+                inputField.SetTextWithoutNotify(string.Empty);
             }
+
+            RenderWordCells(string.Empty);
         }
 
         private void EnsureUi()
@@ -296,28 +317,44 @@ namespace DormitoryMystery.Chapter1
             clueImage.color = Color.white;
             clueImage.preserveAspect = true;
 
-            wordText = CreateText(panel, "WordPattern", string.Empty, 46f,
-                FontStyles.Bold, TextAlignmentOptions.Center);
-            SetRect(wordText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-                new Vector2(0f, -130f), new Vector2(820f, 80f));
+            GameObject wordCellsObject = new GameObject(
+                "WordCells",
+                typeof(RectTransform),
+                typeof(HorizontalLayoutGroup));
+            wordCellsObject.transform.SetParent(panel, false);
+            wordCellsRoot = wordCellsObject.GetComponent<RectTransform>();
+            SetRect(wordCellsRoot, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                new Vector2(0f, -170f), new Vector2(820f, 92f));
+
+            HorizontalLayoutGroup wordLayout =
+                wordCellsObject.GetComponent<HorizontalLayoutGroup>();
+            wordLayout.childAlignment = TextAnchor.MiddleCenter;
+            wordLayout.spacing = 14f;
+            wordLayout.childControlWidth = false;
+            wordLayout.childControlHeight = false;
+            wordLayout.childForceExpandWidth = false;
+            wordLayout.childForceExpandHeight = false;
 
             TMP_Text instruction = CreateText(panel, "Instruction",
-                "Chỉ nhập các chữ còn thiếu", 22f, FontStyles.Italic,
+                "Gõ chữ trực tiếp vào các ô trống", 22f, FontStyles.Italic,
                 TextAlignmentOptions.Center);
             instruction.color = new Color(0.74f, 0.78f, 0.84f, 1f);
             SetRect(instruction.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-                new Vector2(0f, -184f), new Vector2(820f, 42f));
+                new Vector2(0f, -240f), new Vector2(820f, 42f));
 
-            inputField = CreateInputField(panel);
+            // This transparent field only captures keyboard input. The player
+            // sees each character appear directly inside the blank cells.
+            inputField = CreateHiddenInputField(panel);
             SetRect(inputField.GetComponent<RectTransform>(),
-                new Vector2(0.5f, 0f), new Vector2(0.5f, 0f),
-                new Vector2(-100f, 152f), new Vector2(500f, 74f));
+                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                new Vector2(0f, -170f), new Vector2(820f, 92f));
             inputField.onValidateInput += ValidateLetter;
+            inputField.onValueChanged.AddListener(HandleInputChanged);
 
             Button submit = CreateButton(panel, "Trả lời", Submit);
             SetRect(submit.GetComponent<RectTransform>(),
                 new Vector2(0.5f, 0f), new Vector2(0.5f, 0f),
-                new Vector2(260f, 152f), new Vector2(190f, 74f));
+                new Vector2(0f, 152f), new Vector2(220f, 74f));
 
             statusText = CreateText(panel, "Status", string.Empty, 24f,
                 FontStyles.Bold, TextAlignmentOptions.Center);
@@ -325,36 +362,157 @@ namespace DormitoryMystery.Chapter1
                 new Vector2(0f, 72f), new Vector2(820f, 48f));
         }
 
-        private static TMP_InputField CreateInputField(Transform parent)
+        private static TMP_InputField CreateHiddenInputField(Transform parent)
         {
             GameObject fieldObject = CreateImageObject(
-                "AnswerInput",
+                "InlineAnswerInput",
                 parent,
-                new Color(0.12f, 0.14f, 0.18f, 1f));
+                new Color(0f, 0f, 0f, 0.001f));
             TMP_InputField field = fieldObject.AddComponent<TMP_InputField>();
             field.contentType = TMP_InputField.ContentType.Standard;
             field.lineType = TMP_InputField.LineType.SingleLine;
             field.restoreOriginalTextOnEscape = false;
 
-            TMP_Text placeholder = CreateText(fieldObject.transform, "Placeholder",
-                "Nhập chữ...", 28f, FontStyles.Italic,
-                TextAlignmentOptions.Center);
-            placeholder.color = new Color(0.55f, 0.58f, 0.64f, 1f);
-            SetRect(placeholder.rectTransform, Vector2.zero, Vector2.one,
-                Vector2.zero, new Vector2(-30f, -16f));
-
             TMP_Text valueText = CreateText(fieldObject.transform, "Text", string.Empty,
-                32f, FontStyles.Bold, TextAlignmentOptions.Center);
+                1f, FontStyles.Normal, TextAlignmentOptions.Center);
+            valueText.color = Color.clear;
+            valueText.raycastTarget = false;
             SetRect(valueText.rectTransform, Vector2.zero, Vector2.one,
-                Vector2.zero, new Vector2(-30f, -16f));
+                Vector2.zero, Vector2.zero);
 
             field.textViewport = fieldObject.GetComponent<RectTransform>();
             field.textComponent = (TextMeshProUGUI)valueText;
-            field.placeholder = (Graphic)placeholder;
-            field.caretColor = Color.white;
+            field.caretColor = Color.clear;
             field.customCaretColor = true;
-            field.selectionColor = new Color(0.2f, 0.55f, 1f, 0.45f);
+            field.selectionColor = Color.clear;
             return field;
+        }
+
+        private void HandleInputChanged(string value)
+        {
+            if (inputField == null)
+            {
+                return;
+            }
+
+            string normalized = NormalizeLetters(value);
+            int characterLimit = CountMissingLetters(
+                WordPatterns[questionIndex]);
+            if (normalized.Length > characterLimit)
+            {
+                normalized = normalized.Substring(0, characterLimit);
+            }
+
+            if (!string.Equals(value, normalized, StringComparison.Ordinal))
+            {
+                inputField.SetTextWithoutNotify(normalized);
+            }
+
+            if (normalized.Length > 0 &&
+                statusText != null &&
+                !string.IsNullOrEmpty(statusText.text))
+            {
+                statusText.text = string.Empty;
+            }
+
+            RenderWordCells(normalized);
+        }
+
+        private void RenderWordCells(string missingLetters)
+        {
+            if (wordCellsRoot == null)
+            {
+                return;
+            }
+
+            string pattern = WordPatterns[questionIndex];
+            EnsureWordCellCount(pattern.Length);
+
+            int missingLetterIndex = 0;
+            int nextBlankIndex = Mathf.Min(
+                missingLetters != null ? missingLetters.Length : 0,
+                CountMissingLetters(pattern) - 1);
+            bool hasUnfilledBlank = missingLetters == null ||
+                                    missingLetters.Length <
+                                    CountMissingLetters(pattern);
+
+            for (int i = 0; i < wordCellTexts.Count; i++)
+            {
+                bool active = i < pattern.Length;
+                wordCellBackgrounds[i].gameObject.SetActive(active);
+                if (!active)
+                {
+                    continue;
+                }
+
+                bool isBlank = pattern[i] == '_';
+                Image background = wordCellBackgrounds[i];
+                TMP_Text label = wordCellTexts[i];
+                Outline outline = wordCellOutlines[i];
+
+                if (!isBlank)
+                {
+                    label.text = pattern[i].ToString();
+                    label.color = Color.white;
+                    background.color = Color.clear;
+                    outline.enabled = false;
+                    continue;
+                }
+
+                bool hasLetter = missingLetters != null &&
+                                 missingLetterIndex < missingLetters.Length;
+                label.text = hasLetter
+                    ? missingLetters[missingLetterIndex].ToString()
+                    : "_";
+                label.color = hasLetter
+                    ? Color.white
+                    : new Color(0.62f, 0.7f, 0.82f, 1f);
+                background.color = hasLetter
+                    ? new Color(0.12f, 0.36f, 0.58f, 1f)
+                    : new Color(0.1f, 0.17f, 0.27f, 1f);
+                outline.enabled = true;
+                outline.effectColor = hasUnfilledBlank &&
+                                      missingLetterIndex == nextBlankIndex
+                    ? new Color(0.28f, 0.78f, 1f, 1f)
+                    : new Color(0.28f, 0.42f, 0.58f, 1f);
+                missingLetterIndex++;
+            }
+        }
+
+        private void EnsureWordCellCount(int count)
+        {
+            while (wordCellTexts.Count < count)
+            {
+                int cellIndex = wordCellTexts.Count;
+                GameObject cellObject = CreateImageObject(
+                    $"LetterCell_{cellIndex + 1}",
+                    wordCellsRoot,
+                    new Color(0.1f, 0.17f, 0.27f, 1f));
+                RectTransform cellRect =
+                    cellObject.GetComponent<RectTransform>();
+                cellRect.sizeDelta = new Vector2(92f, 80f);
+
+                Image background = cellObject.GetComponent<Image>();
+                background.raycastTarget = false;
+
+                Outline outline = cellObject.AddComponent<Outline>();
+                outline.effectDistance = new Vector2(2f, -2f);
+                outline.useGraphicAlpha = false;
+
+                TMP_Text label = CreateText(
+                    cellObject.transform,
+                    "Letter",
+                    string.Empty,
+                    46f,
+                    FontStyles.Bold,
+                    TextAlignmentOptions.Center);
+                label.raycastTarget = false;
+                Stretch(label.rectTransform);
+
+                wordCellBackgrounds.Add(background);
+                wordCellTexts.Add(label);
+                wordCellOutlines.Add(outline);
+            }
         }
 
         private static Button CreateButton(
@@ -498,11 +656,6 @@ namespace DormitoryMystery.Chapter1
             }
 
             return count;
-        }
-
-        private static string AddSpacing(string pattern)
-        {
-            return string.Join("  ", pattern.ToCharArray());
         }
 
         private void SetVisible(bool visible)
