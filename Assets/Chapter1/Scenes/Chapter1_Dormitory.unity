@@ -18463,12 +18463,20 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8681642452852674115, guid: 1f7fa7d120775be4b87d5444023b9468, type: 3}
       propertyPath: m_Animations.Array.size
-      value: 2
+      value: 4
       objectReference: {fileID: 0}
     - target: {fileID: 8681642452852674115, guid: 1f7fa7d120775be4b87d5444023b9468, type: 3}
       propertyPath: 'm_Animations.Array.data[1]'
       value: 
       objectReference: {fileID: 7400000, guid: 0283710d830757843858389980a89804, type: 2}
+    - target: {fileID: 8681642452852674115, guid: 1f7fa7d120775be4b87d5444023b9468, type: 3}
+      propertyPath: 'm_Animations.Array.data[2]'
+      value:
+      objectReference: {fileID: 7400000, guid: f2caf50dcac3466d81342b230e0c1030, type: 2}
+    - target: {fileID: 8681642452852674115, guid: 1f7fa7d120775be4b87d5444023b9468, type: 3}
+      propertyPath: 'm_Animations.Array.data[3]'
+      value:
+      objectReference: {fileID: 7400000, guid: 303f96f8464c4ccaa3e491d84e952c80, type: 2}
     - target: {fileID: 8762607022780532688, guid: 1f7fa7d120775be4b87d5444023b9468, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
       value: 4.688926
