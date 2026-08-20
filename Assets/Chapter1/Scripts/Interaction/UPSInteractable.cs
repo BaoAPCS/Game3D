@@ -269,6 +269,12 @@ namespace DormitoryMystery.Chapter1
             Data.Mission03ChallengePassed;
         public static bool GangHostile =>
             Data.Mission03GangHostile;
+        public static bool PoliceKeyReceived =>
+            Data.Mission03PoliceKeyReceived;
+        public static bool TaskCompleted => PoliceKeyReceived;
+        public static bool HenryConfrontationCompleted =>
+            Data.Mission03HenryConfrontationCompleted;
+        public static bool CombatPending => HenryConfrontationCompleted;
 
         private static Chapter1SaveData Data =>
             Chapter1Manager.Instance != null
@@ -307,7 +313,48 @@ namespace DormitoryMystery.Chapter1
             Data.Mission03GangHostile = false;
             SaveProgress();
             Chapter1EventBus.RaiseObjectiveChanged(
-                "Bạn đã vượt qua thử thách của băng nhóm.");
+                "Nhận chìa khóa từ James.");
+        }
+
+        public static bool TryMarkPoliceKeyReceived()
+        {
+            if (!CanTalkToJames ||
+                !Data.Mission03ChallengePassed ||
+                Data.Mission03GangHostile)
+            {
+                return false;
+            }
+
+            if (Data.Mission03PoliceKeyReceived)
+            {
+                return true;
+            }
+
+            Data.Mission03PoliceKeyReceived = true;
+            SaveProgress();
+            Chapter1EventBus.RaiseObjectiveChanged(
+                "Henry đang chạy tới chỗ bạn.");
+            return true;
+        }
+
+        public static bool MarkHenryConfrontationCompleted()
+        {
+            if (!Data.Mission03PoliceKeyReceived ||
+                Data.Mission03GangHostile)
+            {
+                return false;
+            }
+
+            if (Data.Mission03HenryConfrontationCompleted)
+            {
+                return true;
+            }
+
+            Data.Mission03HenryConfrontationCompleted = true;
+            SaveProgress();
+            Chapter1EventBus.RaiseObjectiveChanged(
+                "Chuẩn bị đối đầu với Henry.");
+            return true;
         }
 
         public static void MarkGangHostile()
@@ -320,6 +367,8 @@ namespace DormitoryMystery.Chapter1
             Data.Mission03JamesIntroPlayed = true;
             Data.Mission03ChallengePassed = false;
             Data.Mission03GangHostile = true;
+            Data.Mission03PoliceKeyReceived = false;
+            Data.Mission03HenryConfrontationCompleted = false;
             SaveProgress();
             Chapter1EventBus.RaiseObjectiveChanged(
                 "Chạy thoát khỏi James, David và Lewis.");

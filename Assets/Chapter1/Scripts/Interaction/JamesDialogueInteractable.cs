@@ -163,7 +163,7 @@ namespace DormitoryMystery.Chapter1
         public override bool CanInteract(InteractionContext context)
         {
             return Mission3Progress.CanTalkToJames &&
-                   !Mission3Progress.ChallengePassed &&
+                   !Mission3Progress.PoliceKeyReceived &&
                    !Mission3Progress.GangHostile &&
                    base.CanInteract(context) &&
                    IsConversationAvailable(context.PlayerTransform);
@@ -178,7 +178,7 @@ namespace DormitoryMystery.Chapter1
         {
             if (context.PlayerObject == null ||
                 !Mission3Progress.CanTalkToJames ||
-                Mission3Progress.ChallengePassed ||
+                Mission3Progress.PoliceKeyReceived ||
                 Mission3Progress.GangHostile ||
                 !IsConversationAvailable(context.PlayerTransform))
             {
@@ -199,7 +199,11 @@ namespace DormitoryMystery.Chapter1
                     "Chưa thiết lập đủ camera cho hội thoại với James.");
             }
 
-            if (!Mission3Progress.JamesIntroPlayed)
+            if (Mission3Progress.ChallengePassed)
+            {
+                StartCoroutine(PlaySuccessDialogue(true));
+            }
+            else if (!Mission3Progress.JamesIntroPlayed)
             {
                 StartCoroutine(PlayIntroduction());
             }
@@ -305,7 +309,8 @@ namespace DormitoryMystery.Chapter1
         internal void HandlePuzzleCompleted()
         {
             puzzleRunning = false;
-            StartCoroutine(PlaySuccessLine());
+            Mission3Progress.MarkChallengePassed();
+            StartCoroutine(PlaySuccessDialogue(false));
         }
 
         internal void HandleForbiddenAnswer()
@@ -324,15 +329,54 @@ namespace DormitoryMystery.Chapter1
             RestoreGameplayState();
         }
 
-        private IEnumerator PlaySuccessLine()
+        private IEnumerator PlaySuccessDialogue(bool switchToBlackCamera)
         {
-            BeginDialogue(false);
+            BeginDialogue(switchToBlackCamera);
+            if (advanceHintText != null)
+            {
+                advanceHintText.text =
+                    "E / Space / Enter: hiện nhanh / tiếp tục";
+            }
+
             yield return WaitForAdvanceRelease();
             yield return StreamLine(
                 "James",
-                "Khá đấy. Tụi tao sẽ giúp mày đột nhập vào đồn cảnh sát.");
-            Mission3Progress.MarkChallengePassed();
+                "Khá đấy. Mày đã vượt qua thử thách của tụi tao.");
+            yield return StreamLine(
+                "James",
+                "Cầm lấy, đây là chìa khóa để vào đồn cảnh sát.");
+            if (advanceHintText != null)
+            {
+                advanceHintText.text = "[E] Nhận chìa khóa";
+            }
+
+            yield return StreamLine(
+                "James",
+                "Cất nó thật kỹ, đừng để ai phát hiện.",
+                true);
+
+            bool keyAddedThisAttempt;
+            bool keyReady =
+                Mission3PoliceKeyInventorySync.TryGrantPoliceKey(
+                    dialoguePlayer,
+                    out keyAddedThisAttempt);
+            if (!keyReady || !Mission3Progress.TryMarkPoliceKeyReceived())
+            {
+                Mission3PoliceKeyInventorySync
+                    .RollbackPoliceKeyGrant(
+                        dialoguePlayer,
+                        keyAddedThisAttempt);
+                Chapter1EventBus.RaiseNotification(
+                    "Không thể thêm chìa khóa vào balo. Hãy thử lại.");
+                RestoreGameplayState();
+                yield break;
+            }
+
+            Chapter1EventBus.RaiseNotification(
+                "Đã nhận chìa khóa đồn cảnh sát. Nhiệm vụ 3 hoàn thành.");
             RestoreGameplayState();
+            yield return null;
+            Mission3CompletionSequenceController.NotifyPoliceKeyGranted();
         }
 
         private IEnumerator PlayHostileLine()
@@ -374,7 +418,10 @@ namespace DormitoryMystery.Chapter1
             SetDialogueVisible(true);
         }
 
-        private IEnumerator StreamLine(string speaker, string line)
+        private IEnumerator StreamLine(
+            string speaker,
+            string line,
+            bool requireTalkKeyToFinish = false)
         {
             speakerText.text = speaker;
             speakerText.color = string.Equals(speaker, "James", StringComparison.Ordinal)
@@ -421,7 +468,9 @@ namespace DormitoryMystery.Chapter1
                 yield return WaitForAdvanceRelease();
             }
 
-            while (!IsAdvancePressed())
+            while (requireTalkKeyToFinish
+                       ? !IsTalkKeyPressed()
+                       : !IsAdvancePressed())
             {
                 yield return null;
             }
@@ -447,6 +496,13 @@ namespace DormitoryMystery.Chapter1
                    (keyboard.eKey.wasPressedThisFrame ||
                     keyboard.spaceKey.wasPressedThisFrame ||
                     keyboard.enterKey.wasPressedThisFrame);
+        }
+
+        private static bool IsTalkKeyPressed()
+        {
+            Keyboard keyboard = Keyboard.current;
+            return keyboard != null &&
+                   keyboard.eKey.wasPressedThisFrame;
         }
 
         private static bool IsAdvanceHeld()

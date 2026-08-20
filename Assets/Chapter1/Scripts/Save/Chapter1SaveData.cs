@@ -6,7 +6,7 @@ namespace DormitoryMystery.Chapter1
     [Serializable]
     public class Chapter1SaveData
     {
-        private const int CurrentSaveVersion = 2;
+        private const int CurrentSaveVersion = 3;
 
         public int SaveVersion;
         public Chapter1Step CurrentStep;
@@ -60,6 +60,8 @@ namespace DormitoryMystery.Chapter1
         public bool Mission03JamesIntroPlayed;
         public bool Mission03ChallengePassed;
         public bool Mission03GangHostile;
+        public bool Mission03PoliceKeyReceived;
+        public bool Mission03HenryConfrontationCompleted;
 
         public Chapter1SaveData()
         {
@@ -172,7 +174,9 @@ namespace DormitoryMystery.Chapter1
 
             if (Mission03JamesIntroPlayed ||
                 Mission03ChallengePassed ||
-                Mission03GangHostile)
+                Mission03GangHostile ||
+                Mission03PoliceKeyReceived ||
+                Mission03HenryConfrontationCompleted)
             {
                 Mission02EquipmentDelivered = true;
                 Mission02Started = true;
@@ -192,6 +196,21 @@ namespace DormitoryMystery.Chapter1
             {
                 Mission03JamesIntroPlayed = true;
                 Mission03ChallengePassed = false;
+            }
+
+            // The new Mission 3 milestones are intentionally one-way. A
+            // legacy v2 save with ChallengePassed remains at the James reward
+            // step; it is not silently upgraded to owning the key.
+            if (Mission03HenryConfrontationCompleted)
+            {
+                Mission03PoliceKeyReceived = true;
+            }
+
+            if (Mission03PoliceKeyReceived)
+            {
+                Mission03JamesIntroPlayed = true;
+                Mission03ChallengePassed = true;
+                Mission03GangHostile = false;
             }
         }
 

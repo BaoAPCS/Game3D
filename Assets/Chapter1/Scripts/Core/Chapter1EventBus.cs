@@ -42,6 +42,11 @@ namespace DormitoryMystery.Chapter1
         public static event Action OnFirstMissionCompleted;
         public static event Action OnAllLanAudioStemsSaved;
         public static event Action OnLanVoiceRecordingListened;
+        /// <summary>
+        /// Raised after Henry's Task-3 warning has finished and the story is
+        /// ready to hand control to the future Henry combat encounter.
+        /// </summary>
+        public static event Action HenryCombatReady;
 
         public static void RaiseStepChanged(Chapter1Step step)
         {
@@ -128,6 +133,11 @@ namespace DormitoryMystery.Chapter1
         public static void RaiseLanVoiceRecordingListened()
         {
             OnLanVoiceRecordingListened?.Invoke();
+        }
+
+        public static void RaiseHenryCombatReady()
+        {
+            HenryCombatReady?.Invoke();
         }
     }
 }
