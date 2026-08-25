@@ -38,6 +38,8 @@ namespace DormitoryMystery.Chapter1
         private const string FightDefeatInputReason = "HenryFightDefeat";
         private const string GameOverReason =
             "Henry \u0111\u00e3 \u0111\u00e1nh g\u1ee5c b\u1ea1n.";
+        private const string HenryDefeatedNotification =
+            "B\u1ea1n \u0111\u00e3 \u0111\u00e1nh b\u1ea1i Henry.";
 
         [SerializeField] private Chapter1PlayerMotor playerMotor;
         [SerializeField] private Transform henryRoot;
@@ -157,17 +159,21 @@ namespace DormitoryMystery.Chapter1
 
         private IEnumerator Start()
         {
+            // Restore the held final pose before the first rendered frame.
+            // Waiting here would let Henry flash Idle for one frame on reload.
+            if (initialized && Mission3Progress.HenryDefeated)
+            {
+                ApplyPersistentDefeatState();
+                yield break;
+            }
+
             yield return null;
             if (!initialized)
             {
                 yield break;
             }
 
-            if (Mission3Progress.HenryDefeated)
-            {
-                ApplyPersistentDefeatState();
-            }
-            else if (Mission3Progress.CombatPending)
+            if (Mission3Progress.CombatPending)
             {
                 RequestFightStart();
             }
@@ -650,7 +656,7 @@ namespace DormitoryMystery.Chapter1
             }
             else if (henryLost)
             {
-                FinishHenryDefeat();
+                yield return FinishHenryDefeat();
             }
 
             outcomeRoutine = null;
@@ -660,7 +666,9 @@ namespace DormitoryMystery.Chapter1
         {
             StopHenryAgent();
             henryCombat?.CancelAttack(false);
-            henryCombat?.ExitCombatMode();
+            // The final outcome animation decides the next pose. Returning to
+            // Idle here causes a visible one-frame pop before Defeated.
+            henryCombat?.ExitCombatMode(false);
         }
 
         private IEnumerator FinishPlayerDefeat()
@@ -688,11 +696,37 @@ namespace DormitoryMystery.Chapter1
                 GameOverRestartPolicy.ReloadScene);
         }
 
-        private void FinishHenryDefeat()
+        private IEnumerator FinishHenryDefeat()
         {
             state = FightState.HenryDefeated;
+
+            // Release the chase controller without asking it to play Idle.
+            // The defeated clip owns Henry's pose from this point onward.
+            henryChase?.EndFightControl(false);
+
+            bool defeatedAnimationStarted =
+                henryAnimation != null && henryAnimation.PlayDefeated();
+            if (defeatedAnimationStarted)
+            {
+                float duration = Mathf.Max(
+                    0f,
+                    henryAnimation.DefeatedDuration);
+                if (duration > 0f)
+                {
+                    yield return new WaitForSeconds(duration);
+                }
+
+                henryAnimation.HoldDefeatedFinalPose();
+            }
+            else
+            {
+                Debug.LogError(
+                    "[HenryFight] Henry's Defeated animation could not " +
+                    "be played.",
+                    this);
+            }
+
             HideFightPresentation();
-            henryChase?.EndFightControl(true);
 
             if (!Mission3Progress.TryMarkHenryDefeated())
             {
@@ -705,6 +739,8 @@ namespace DormitoryMystery.Chapter1
             ExitCombatInputMode();
             UnsubscribeHealthEvents();
             outcomePending = false;
+            Chapter1EventBus.RaiseNotification(
+                HenryDefeatedNotification);
             Debug.Log("[HenryFight] Henry was defeated.", this);
         }
 
@@ -781,15 +817,15 @@ namespace DormitoryMystery.Chapter1
             }
 
             ResolveReferences();
-            henryCombat?.ExitCombatMode();
+            henryCombat?.ExitCombatMode(false);
             if (henryChase != null && henryChase.IsUnderFightControl)
             {
-                henryChase.EndFightControl(true);
+                henryChase.EndFightControl(false);
             }
-            else
-            {
-                henryAnimation?.PlayIdle();
-            }
+
+            // A completed fight restores Henry directly in the last frame of
+            // the defeated clip instead of returning him to Idle on reload.
+            henryAnimation?.HoldDefeatedFinalPose();
 
             ExitCombatInputMode();
         }

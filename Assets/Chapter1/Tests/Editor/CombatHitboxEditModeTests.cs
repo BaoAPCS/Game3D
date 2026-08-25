@@ -12,6 +12,10 @@ namespace DormitoryMystery.Chapter1.Tests
             "Assets/Chapter1/Resources/Henry/Henry_Mma_Kick.anim";
         private const string HenryRoundhouseClipPath =
             "Assets/Chapter1/Resources/Henry/Henry_Roundhouse_Kick.anim";
+        private const string HenryDefeatedClipPath =
+            "Assets/Chapter1/Resources/Henry/Defeated.anim";
+        private const string HenryModelPath =
+            "Assets/Chapter1/ExternalAssets/henry_animated_cartoon_character.glb";
 
         [Test]
         public void PlayerPrefabContainsCombatHitboxAndHealthComponents()
@@ -294,17 +298,152 @@ namespace DormitoryMystery.Chapter1.Tests
             AnimationClip roundhouse =
                 AssetDatabase.LoadAssetAtPath<AnimationClip>(
                     HenryRoundhouseClipPath);
+            AnimationClip defeated =
+                AssetDatabase.LoadAssetAtPath<AnimationClip>(
+                    HenryDefeatedClipPath);
 
             Assert.NotNull(mma);
             Assert.NotNull(roundhouse);
+            Assert.NotNull(defeated);
             Assert.IsTrue(mma.legacy);
             Assert.IsTrue(roundhouse.legacy);
+            Assert.IsTrue(defeated.legacy);
             Assert.AreEqual(
                 HenryRunAnimationPlayer.MmaKickClipName,
                 mma.name);
             Assert.AreEqual(
                 HenryRunAnimationPlayer.RoundhouseKickClipName,
                 roundhouse.name);
+            Assert.AreEqual("Defeated", defeated.name);
+            Assert.AreEqual(WrapMode.ClampForever, defeated.wrapMode);
+            EditorCurveBinding[] defeatedBindings =
+                AnimationUtility.GetCurveBindings(defeated);
+            Assert.GreaterOrEqual(
+                defeatedBindings.Length,
+                200,
+                "Defeated must be baked onto Henry's CC_Base skeleton, " +
+                "not left as an empty placeholder or raw Mixamo clip.");
+
+            bool hasAnimatedBodyRotation = false;
+            bool hasHipVerticalMotion = false;
+            for (int i = 0; i < defeatedBindings.Length; i++)
+            {
+                EditorCurveBinding binding = defeatedBindings[i];
+                AnimationCurve curve =
+                    AnimationUtility.GetEditorCurve(defeated, binding);
+                if (curve == null || curve.length < 2)
+                {
+                    continue;
+                }
+
+                float minimum = float.PositiveInfinity;
+                float maximum = float.NegativeInfinity;
+                for (int keyIndex = 0; keyIndex < curve.length; keyIndex++)
+                {
+                    float value = curve.keys[keyIndex].value;
+                    minimum = Mathf.Min(minimum, value);
+                    maximum = Mathf.Max(maximum, value);
+                }
+
+                bool changesPose = maximum - minimum > 0.001f;
+                if (changesPose &&
+                    binding.propertyName.StartsWith("m_LocalRotation") &&
+                    (binding.path.Contains("CC_Base_Spine") ||
+                     binding.path.Contains("CC_Base_Thigh")))
+                {
+                    hasAnimatedBodyRotation = true;
+                }
+
+                if (changesPose &&
+                    binding.propertyName == "m_LocalPosition.y" &&
+                    binding.path.Contains("CC_Base_Hip"))
+                {
+                    hasHipVerticalMotion = true;
+                }
+            }
+
+            Assert.IsTrue(
+                hasAnimatedBodyRotation,
+                "Defeated contains bindings but no changing spine/leg pose.");
+            Assert.IsTrue(
+                hasHipVerticalMotion,
+                "Defeated must move Henry's hips vertically as he falls.");
+
+            AnimationClipSettings defeatedSettings =
+                AnimationUtility.GetAnimationClipSettings(defeated);
+            Assert.IsFalse(defeatedSettings.loopTime);
+        }
+
+        [Test]
+        public void HenryDefeatedClipAppliesAChangedFinalPoseToHenryModel()
+        {
+            GameObject modelAsset =
+                AssetDatabase.LoadAssetAtPath<GameObject>(HenryModelPath);
+            AnimationClip defeated =
+                AssetDatabase.LoadAssetAtPath<AnimationClip>(
+                    HenryDefeatedClipPath);
+
+            Assert.NotNull(modelAsset);
+            Assert.NotNull(defeated);
+
+            GameObject instance = Object.Instantiate(modelAsset);
+            try
+            {
+                Animation targetAnimation =
+                    instance.GetComponentInChildren<Animation>(true);
+                Assert.NotNull(targetAnimation);
+
+                Transform hips = FindTransformByPrefix(
+                    targetAnimation.transform,
+                    "CC_Base_Hip");
+                Transform leftThigh = FindTransformByPrefix(
+                    targetAnimation.transform,
+                    "CC_Base_L_Thigh");
+                Assert.NotNull(hips);
+                Assert.NotNull(leftThigh);
+
+                defeated.SampleAnimation(targetAnimation.gameObject, 0f);
+                float startHipY = hips.localPosition.y;
+                Quaternion startThighRotation = leftThigh.localRotation;
+
+                defeated.SampleAnimation(
+                    targetAnimation.gameObject,
+                    defeated.length);
+                float endHipY = hips.localPosition.y;
+                Quaternion endThighRotation = leftThigh.localRotation;
+
+                Assert.Greater(
+                    Mathf.Abs(endHipY - startHipY),
+                    0.001f,
+                    "The baked clip does not lower/move Henry's hips.");
+                Assert.Greater(
+                    Quaternion.Angle(
+                        startThighRotation,
+                        endThighRotation),
+                    1f,
+                    "The baked clip does not change Henry's leg pose.");
+            }
+            finally
+            {
+                Object.DestroyImmediate(instance);
+            }
+        }
+
+        private static Transform FindTransformByPrefix(
+            Transform root,
+            string prefix)
+        {
+            Transform[] transforms =
+                root.GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < transforms.Length; i++)
+            {
+                if (transforms[i].name.StartsWith(prefix))
+                {
+                    return transforms[i];
+                }
+            }
+
+            return null;
         }
     }
 }

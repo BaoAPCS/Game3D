@@ -231,7 +231,7 @@ namespace DormitoryMystery.Chapter1
             }
         }
 
-        public void ExitCombatMode()
+        public void ExitCombatMode(bool returnToIdle = true)
         {
             combatReady = false;
             if (hurtbox != null)
@@ -239,7 +239,7 @@ namespace DormitoryMystery.Chapter1
                 hurtbox.enabled = false;
             }
 
-            CancelAttack(true);
+            CancelAttack(returnToIdle);
         }
 
         public bool TryPlayMmaKick()
@@ -460,7 +460,10 @@ namespace DormitoryMystery.Chapter1
 
         private void HandleHenryDied()
         {
-            ExitCombatMode();
+            // The encounter director starts Defeated on the next frame so it
+            // can resolve a simultaneous KO deterministically. Do not briefly
+            // force Idle while that outcome is pending.
+            ExitCombatMode(false);
         }
 
         private float GetActiveAttackDamage()

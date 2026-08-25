@@ -81,9 +81,10 @@ namespace DormitoryMystery.Chapter1
         }
 
         /// <summary>
-        /// Keeps locomotion, camera, sprint, combat and pause available while
-        /// suppressing every non-combat gameplay action. Global gameplay
-        /// input disabling still takes precedence over this mode.
+        /// Keeps locomotion, camera, sprint, jump, crouch, combat and pause
+        /// available while suppressing every unrelated gameplay action.
+        /// Global gameplay input disabling still takes precedence over this
+        /// mode.
         /// </summary>
         public void SetCombatOnlyMode(bool active)
         {
@@ -241,6 +242,8 @@ namespace DormitoryMystery.Chapter1
             return action == GetAction(moveActionReference) ||
                    action == GetAction(lookActionReference) ||
                    action == GetAction(sprintActionReference) ||
+                   action == GetAction(jumpActionReference) ||
+                   action == GetAction(crouchActionReference) ||
                    action == GetAction(attackActionReference) ||
                    action == GetAction(kickActionReference) ||
                    action == GetAction(pauseActionReference);
@@ -364,7 +367,7 @@ namespace DormitoryMystery.Chapter1
 
         private void OnJumpPerformed(InputAction.CallbackContext context)
         {
-            if (CanProcessNonCombatAction())
+            if (gameplayInputEnabled)
             {
                 JumpPressed?.Invoke();
             }
@@ -372,7 +375,7 @@ namespace DormitoryMystery.Chapter1
 
         private void OnCrouchPerformed(InputAction.CallbackContext context)
         {
-            if (CanProcessNonCombatAction())
+            if (gameplayInputEnabled)
             {
                 CrouchPressed?.Invoke();
             }
