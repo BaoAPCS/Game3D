@@ -24,6 +24,7 @@ namespace DormitoryMystery.Chapter1
         private readonly List<InputAction> cachedActions = new List<InputAction>();
         private bool callbacksRegistered;
         private bool gameplayInputEnabled = true;
+        private bool combatOnlyMode;
         private bool referencesValidated;
 
         public Vector2 MoveInput { get; private set; }
@@ -33,6 +34,8 @@ namespace DormitoryMystery.Chapter1
         public bool ThrowCanHeld { get; private set; }
         public bool GameplayInputEnabled =>
             gameplayInputEnabled && isActiveAndEnabled;
+        public bool CombatOnlyMode =>
+            combatOnlyMode && isActiveAndEnabled;
 
         public event Action CrouchPressed;
         public event Action AttackPressed;
@@ -75,6 +78,31 @@ namespace DormitoryMystery.Chapter1
             {
                 ResetReadValues();
             }
+        }
+
+        /// <summary>
+        /// Keeps locomotion, camera, sprint, combat and pause available while
+        /// suppressing every non-combat gameplay action. Global gameplay
+        /// input disabling still takes precedence over this mode.
+        /// </summary>
+        public void SetCombatOnlyMode(bool active)
+        {
+            if (combatOnlyMode == active)
+            {
+                return;
+            }
+
+            if (active)
+            {
+                // Clear held values before disabling their InputActions so a
+                // generated canceled callback cannot be interpreted as an E
+                // interaction or a petrol-can throw during fight startup.
+                TalkHeld = false;
+                ThrowCanHeld = false;
+            }
+
+            combatOnlyMode = active;
+            ApplyGameplayInputState();
         }
 
         private void RegisterCallbacks()
@@ -187,22 +215,35 @@ namespace DormitoryMystery.Chapter1
 
         private void ApplyGameplayInputState()
         {
-            if (gameplayInputEnabled)
+            for (int i = 0; i < cachedActions.Count; i++)
             {
-                EnableAllActions();
-            }
-            else
-            {
-                DisableAllActions();
+                InputAction action = cachedActions[i];
+                if (action == null)
+                {
+                    continue;
+                }
+
+                bool shouldEnable = gameplayInputEnabled &&
+                    (!combatOnlyMode || IsCombatAllowedAction(action));
+                if (shouldEnable)
+                {
+                    action.Enable();
+                }
+                else
+                {
+                    action.Disable();
+                }
             }
         }
 
-        private void EnableAllActions()
+        private bool IsCombatAllowedAction(InputAction action)
         {
-            for (int i = 0; i < cachedActions.Count; i++)
-            {
-                cachedActions[i]?.Enable();
-            }
+            return action == GetAction(moveActionReference) ||
+                   action == GetAction(lookActionReference) ||
+                   action == GetAction(sprintActionReference) ||
+                   action == GetAction(attackActionReference) ||
+                   action == GetAction(kickActionReference) ||
+                   action == GetAction(pauseActionReference);
         }
 
         private void DisableAllActions()
@@ -323,7 +364,7 @@ namespace DormitoryMystery.Chapter1
 
         private void OnJumpPerformed(InputAction.CallbackContext context)
         {
-            if (gameplayInputEnabled)
+            if (CanProcessNonCombatAction())
             {
                 JumpPressed?.Invoke();
             }
@@ -331,7 +372,7 @@ namespace DormitoryMystery.Chapter1
 
         private void OnCrouchPerformed(InputAction.CallbackContext context)
         {
-            if (gameplayInputEnabled)
+            if (CanProcessNonCombatAction())
             {
                 CrouchPressed?.Invoke();
             }
@@ -339,7 +380,7 @@ namespace DormitoryMystery.Chapter1
 
         private void OnInteractPerformed(InputAction.CallbackContext context)
         {
-            if (gameplayInputEnabled)
+            if (CanProcessNonCombatAction())
             {
                 InteractPressed?.Invoke();
             }
@@ -347,7 +388,8 @@ namespace DormitoryMystery.Chapter1
 
         private void OnTalkPerformed(InputAction.CallbackContext context)
         {
-            TalkHeld = gameplayInputEnabled && context.ReadValueAsButton();
+            TalkHeld = CanProcessNonCombatAction() &&
+                       context.ReadValueAsButton();
             if (TalkHeld)
             {
                 TalkPressed?.Invoke();
@@ -366,7 +408,7 @@ namespace DormitoryMystery.Chapter1
 
         private void OnToggleFlashlightPerformed(InputAction.CallbackContext context)
         {
-            if (gameplayInputEnabled)
+            if (CanProcessNonCombatAction())
             {
                 ToggleFlashlightPressed?.Invoke();
             }
@@ -374,7 +416,8 @@ namespace DormitoryMystery.Chapter1
 
         private void OnThrowCanPerformed(InputAction.CallbackContext context)
         {
-            ThrowCanHeld = gameplayInputEnabled && context.ReadValueAsButton();
+            ThrowCanHeld = CanProcessNonCombatAction() &&
+                           context.ReadValueAsButton();
             if (ThrowCanHeld)
             {
                 ThrowCanPressed?.Invoke();
@@ -393,7 +436,7 @@ namespace DormitoryMystery.Chapter1
 
         private void OnInventoryPerformed(InputAction.CallbackContext context)
         {
-            if (gameplayInputEnabled)
+            if (CanProcessNonCombatAction())
             {
                 InventoryPressed?.Invoke();
             }
@@ -405,6 +448,11 @@ namespace DormitoryMystery.Chapter1
             {
                 PausePressed?.Invoke();
             }
+        }
+
+        private bool CanProcessNonCombatAction()
+        {
+            return gameplayInputEnabled && !combatOnlyMode;
         }
     }
 }

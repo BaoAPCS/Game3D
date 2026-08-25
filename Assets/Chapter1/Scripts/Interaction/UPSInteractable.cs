@@ -274,7 +274,10 @@ namespace DormitoryMystery.Chapter1
         public static bool TaskCompleted => PoliceKeyReceived;
         public static bool HenryConfrontationCompleted =>
             Data.Mission03HenryConfrontationCompleted;
-        public static bool CombatPending => HenryConfrontationCompleted;
+        public static bool HenryDefeated =>
+            Data.Mission03HenryDefeated;
+        public static bool CombatPending =>
+            HenryConfrontationCompleted && !HenryDefeated;
 
         private static Chapter1SaveData Data =>
             Chapter1Manager.Instance != null
@@ -357,6 +360,28 @@ namespace DormitoryMystery.Chapter1
             return true;
         }
 
+        public static bool TryMarkHenryDefeated()
+        {
+            if (!Data.Mission03HenryConfrontationCompleted ||
+                Data.Mission03GangHostile)
+            {
+                return false;
+            }
+
+            // Idempotent so death callbacks, animation completion and scene
+            // teardown can safely converge on the same persistent result.
+            if (Data.Mission03HenryDefeated)
+            {
+                return true;
+            }
+
+            Data.Mission03HenryDefeated = true;
+            SaveProgress();
+            Chapter1EventBus.RaiseObjectiveChanged(
+                "Henry đã bị đánh bại.");
+            return true;
+        }
+
         public static void MarkGangHostile()
         {
             if (!CanTalkToJames || Data.Mission03GangHostile)
@@ -369,6 +394,7 @@ namespace DormitoryMystery.Chapter1
             Data.Mission03GangHostile = true;
             Data.Mission03PoliceKeyReceived = false;
             Data.Mission03HenryConfrontationCompleted = false;
+            Data.Mission03HenryDefeated = false;
             SaveProgress();
             Chapter1EventBus.RaiseObjectiveChanged(
                 "Chạy thoát khỏi James, David và Lewis.");

@@ -278,6 +278,7 @@ namespace DormitoryMystery.Chapter1
             if (!isActiveAndEnabled ||
                 !Mission3Progress.PoliceKeyReceived ||
                 Mission3Progress.HenryConfrontationCompleted ||
+                Mission3Progress.HenryDefeated ||
                 sequenceRoutine != null ||
                 state == SequenceState.Approaching ||
                 state == SequenceState.Dialogue ||

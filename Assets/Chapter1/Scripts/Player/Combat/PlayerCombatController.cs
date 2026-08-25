@@ -1612,9 +1612,9 @@ namespace DormitoryMystery.Chapter1
 
             comboAttacks.Clear();
             comboAttacks.Add(CreateAttack("Punch Left", "PunchLeft", MeleeHitboxLimb.LeftHand, 10f, 1.1f, 0.3f, 0.29f, 0.58f, 0.203f, 0.4408f, 0.04f));
-            comboAttacks.Add(CreateAttack("Punch Right", "PunchRight", MeleeHitboxLimb.RightHand, 12f, 1.15f, 0.32f, 0.31f, 0.62f, 0.217f, 0.4712f, 0.0434f));
-            comboAttacks.Add(CreateAttack("Hook", "Hook", MeleeHitboxLimb.LeftHand, 15f, 1.15f, 0.34f, 0.374f, 0.68f, 0.2584f, 0.5576f, 0.068f));
-            comboAttacks.Add(CreateAttack("Right Hook", "RightHook", MeleeHitboxLimb.RightHand, 18f, 1.2f, 0.36f, 0.4032f, 0.72f, 0.2736f, 0.5904f, 0.072f));
+            comboAttacks.Add(CreateAttack("Punch Right", "PunchRight", MeleeHitboxLimb.RightHand, 10f, 1.15f, 0.32f, 0.31f, 0.62f, 0.217f, 0.4712f, 0.0434f));
+            comboAttacks.Add(CreateAttack("Hook", "Hook", MeleeHitboxLimb.LeftHand, 10f, 1.15f, 0.34f, 0.374f, 0.68f, 0.2584f, 0.5576f, 0.068f));
+            comboAttacks.Add(CreateAttack("Right Hook", "RightHook", MeleeHitboxLimb.RightHand, 10f, 1.2f, 0.36f, 0.4032f, 0.72f, 0.2736f, 0.5904f, 0.072f));
         }
 
         private bool HasAttackTrigger(string trigger)
@@ -1634,12 +1634,12 @@ namespace DormitoryMystery.Chapter1
         {
             if (neutralKickAttack == null || string.IsNullOrWhiteSpace(neutralKickAttack.animationTrigger))
             {
-                neutralKickAttack = CreateAttack("Heavy Kick", "KickHeavy", MeleeHitboxLimb.RightFoot, 28f, 1.6f, 0.42f, 0.58f, 1f, 0.36f, 0.84f, 0.18f);
+                neutralKickAttack = CreateAttack("Heavy Kick", "KickHeavy", MeleeHitboxLimb.RightFoot, 10f, 1.6f, 0.42f, 0.58f, 1f, 0.36f, 0.84f, 0.18f);
             }
 
             if (forwardKickAttack == null || string.IsNullOrWhiteSpace(forwardKickAttack.animationTrigger))
             {
-                forwardKickAttack = CreateAttack("Side Kick", "KickSide", MeleeHitboxLimb.LeftFoot, 18f, 1.45f, 0.38f, 0.476f, 0.85f, 0.2975f, 0.697f, 0.085f);
+                forwardKickAttack = CreateAttack("Side Kick", "KickSide", MeleeHitboxLimb.LeftFoot, 10f, 1.45f, 0.38f, 0.476f, 0.85f, 0.2975f, 0.697f, 0.085f);
             }
 
             if (backwardKickAttack == null || string.IsNullOrWhiteSpace(backwardKickAttack.animationTrigger))

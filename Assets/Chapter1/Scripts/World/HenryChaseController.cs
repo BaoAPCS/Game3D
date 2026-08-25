@@ -16,6 +16,7 @@ namespace DormitoryMystery.Chapter1
             WaitingAtFoodcart,
             ReturningHome,
             StoryApproach,
+            FightControl,
             Chasing,
             ForcedCatch,
             Escaped,
@@ -78,6 +79,8 @@ namespace DormitoryMystery.Chapter1
             batterySwapRaceActive && state == ChaseState.Chasing;
         public bool IsStoryApproachActive =>
             state == ChaseState.StoryApproach;
+        public bool IsUnderFightControl =>
+            state == ChaseState.FightControl;
         public bool IsReadyForStoryApproach
         {
             get
@@ -574,6 +577,78 @@ namespace DormitoryMystery.Chapter1
 
             state = ChaseState.Idle;
             animationPlayer?.PlayIdle();
+        }
+
+        /// <summary>
+        /// Gives the dedicated Henry fight encounter exclusive ownership of
+        /// Henry's NavMeshAgent and animation commands. No Task-2 catch,
+        /// escape, food-cart, or story-approach logic runs in this state.
+        /// </summary>
+        public bool BeginFightControl(
+            Transform playerTarget,
+            float movementSpeed = 6.5f)
+        {
+            if (playerTarget == null)
+            {
+                return false;
+            }
+
+            foodcartDistractionActive = false;
+            batterySwapRaceActive = false;
+            activeEscapeDoor = null;
+            storyApproachTarget = null;
+            storyApproachArrivalRaised = true;
+            ReleaseForcedCatchInput();
+
+            if (!EnsureAgentOnNavMesh())
+            {
+                Debug.LogError(
+                    "[Henry] Cannot hand navigation to the fight encounter " +
+                    "because Henry is not on the NavMesh.",
+                    this);
+                return false;
+            }
+
+            StopAgent();
+            player = playerTarget;
+            state = ChaseState.FightControl;
+
+            agent.speed = Mathf.Max(0.1f, movementSpeed);
+            agent.acceleration = acceleration;
+            agent.angularSpeed = angularSpeed;
+            agent.autoBraking = true;
+            agent.stoppingDistance = 0.1f;
+            return true;
+        }
+
+        /// <summary>
+        /// Releases exclusive fight ownership without starting any old chase
+        /// behavior. Henry remains where the fight ended.
+        /// </summary>
+        public void EndFightControl(bool playIdle = true)
+        {
+            if (state != ChaseState.FightControl)
+            {
+                return;
+            }
+
+            StopAgent();
+            if (agent != null)
+            {
+                agent.speed = chaseSpeed;
+                agent.acceleration = acceleration;
+                agent.angularSpeed = angularSpeed;
+                agent.autoBraking = false;
+                agent.stoppingDistance = GetChaseStoppingDistance();
+            }
+
+            player = null;
+            activeEscapeDoor = null;
+            state = ChaseState.Idle;
+            if (playIdle)
+            {
+                animationPlayer?.PlayIdle();
+            }
         }
 
         public void BeginForcedCatch(Transform playerTarget)

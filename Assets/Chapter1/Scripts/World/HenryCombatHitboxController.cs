@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -49,7 +48,6 @@ namespace DormitoryMystery.Chapter1
         private int loggedHitCount;
         private bool setupValid;
         private bool setupErrorLogged;
-        private Coroutine restoreCombatReadyRoutine;
 
         public bool IsCombatReady => combatReady;
         public bool IsAttacking => attacking;
@@ -113,27 +111,8 @@ namespace DormitoryMystery.Chapter1
             EnsureRuntimeSetup();
         }
 
-        private void OnEnable()
-        {
-            Chapter1EventBus.HenryCombatReady += HandleCombatReady;
-            if (restoreCombatReadyRoutine != null)
-            {
-                StopCoroutine(restoreCombatReadyRoutine);
-            }
-
-            restoreCombatReadyRoutine =
-                StartCoroutine(RestoreCombatReadyNextFrame());
-        }
-
         private void OnDisable()
         {
-            Chapter1EventBus.HenryCombatReady -= HandleCombatReady;
-            if (restoreCombatReadyRoutine != null)
-            {
-                StopCoroutine(restoreCombatReadyRoutine);
-                restoreCombatReadyRoutine = null;
-            }
-
             combatReady = false;
             if (hurtbox != null)
             {
@@ -479,24 +458,9 @@ namespace DormitoryMystery.Chapter1
             return hurtbox != null && combatHealth != null;
         }
 
-        private void HandleCombatReady()
-        {
-            EnterCombatMode();
-        }
-
         private void HandleHenryDied()
         {
             ExitCombatMode();
-        }
-
-        private IEnumerator RestoreCombatReadyNextFrame()
-        {
-            yield return null;
-            restoreCombatReadyRoutine = null;
-            if (Mission3Progress.CombatPending)
-            {
-                EnterCombatMode();
-            }
         }
 
         private float GetActiveAttackDamage()

@@ -44,7 +44,7 @@ namespace DormitoryMystery.Chapter1
         public static event Action OnLanVoiceRecordingListened;
         /// <summary>
         /// Raised after Henry's Task-3 warning has finished and the story is
-        /// ready to hand control to the future Henry combat encounter.
+        /// ready to hand control to the Henry combat encounter.
         /// </summary>
         public static event Action HenryCombatReady;
 

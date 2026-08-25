@@ -572,7 +572,7 @@ MonoBehaviour:
   - attackName: Punch Right
     animationTrigger: PunchRight
     hitLimb: 2
-    damage: 12
+    damage: 10
     attackRange: 1.15
     attackRadius: 0.32
     hitTime: 0.31
@@ -583,7 +583,7 @@ MonoBehaviour:
   - attackName: Hook
     animationTrigger: Hook
     hitLimb: 1
-    damage: 15
+    damage: 10
     attackRange: 1.15
     attackRadius: 0.34
     hitTime: 0.374
@@ -594,7 +594,7 @@ MonoBehaviour:
   - attackName: Right Hook
     animationTrigger: RightHook
     hitLimb: 2
-    damage: 18
+    damage: 10
     attackRange: 1.2
     attackRadius: 0.36
     hitTime: 0.40320003
@@ -608,7 +608,7 @@ MonoBehaviour:
     attackName: Heavy Kick
     animationTrigger: KickHeavy
     hitLimb: 4
-    damage: 28
+    damage: 10
     attackRange: 1.6
     attackRadius: 0.42
     hitTime: 0.58
@@ -620,7 +620,7 @@ MonoBehaviour:
     attackName: Side Kick
     animationTrigger: KickSide
     hitLimb: 3
-    damage: 18
+    damage: 10
     attackRange: 1.45
     attackRadius: 0.38
     hitTime: 0.476

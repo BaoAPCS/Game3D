@@ -420,7 +420,8 @@ namespace DormitoryMystery.Chapter1
                  chapterManager.CurrentData.Mission03ChallengePassed ||
                  chapterManager.CurrentData.Mission03GangHostile ||
                  chapterManager.CurrentData.Mission03PoliceKeyReceived ||
-                 chapterManager.CurrentData.Mission03HenryConfrontationCompleted))
+                 chapterManager.CurrentData.Mission03HenryConfrontationCompleted ||
+                 chapterManager.CurrentData.Mission03HenryDefeated))
             {
                 Chapter1EventBus.RaiseObjectiveChanged(
                     chapterManager.GetCurrentObjective());

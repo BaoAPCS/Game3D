@@ -305,6 +305,11 @@ namespace DormitoryMystery.Chapter1
                 return "Chạy thoát khỏi James, David và Lewis.";
             }
 
+            if (data.Mission03HenryDefeated)
+            {
+                return "Henry đã bị đánh bại.";
+            }
+
             if (data.Mission03HenryConfrontationCompleted)
             {
                 return "Chuẩn bị đối đầu với Henry.";
