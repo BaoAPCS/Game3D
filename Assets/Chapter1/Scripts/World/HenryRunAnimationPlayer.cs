@@ -2,6 +2,12 @@ using UnityEngine;
 
 namespace DormitoryMystery.Chapter1
 {
+    public enum HenryCombatAttack
+    {
+        MmaKick = 0,
+        RoundhouseKick = 1
+    }
+
     [DisallowMultipleComponent]
     public sealed class HenryRunAnimationPlayer : MonoBehaviour
     {
@@ -9,11 +15,21 @@ namespace DormitoryMystery.Chapter1
         public const string RunClipName = "Henry_Run";
         public const string RunClipResourcePath =
             "Henry/Henry_Run_FastRun";
+        public const string MmaKickClipName = "Henry_Mma_Kick";
+        public const string RoundhouseKickClipName =
+            "Henry_Roundhouse_Kick";
+        public const string MmaKickClipResourcePath =
+            "Henry/Henry_Mma_Kick";
+        public const string RoundhouseKickClipResourcePath =
+            "Henry/Henry_Roundhouse_Kick";
 
         private Animation legacyAnimation;
         private AnimationClip initialClip;
         private AnimationClip runClip;
+        private AnimationClip mmaKickClip;
+        private AnimationClip roundhouseKickClip;
         private bool configured;
+        private bool combatClipsConfigured;
         private bool missingAnimationLogged;
 
         public bool IsRunPlaying =>
@@ -25,6 +41,8 @@ namespace DormitoryMystery.Chapter1
 
         public AnimationClip IdleClip => initialClip;
         public AnimationClip RunClip => runClip;
+        public AnimationClip MmaKickClip => mmaKickClip;
+        public AnimationClip RoundhouseKickClip => roundhouseKickClip;
 
         private void Awake()
         {
@@ -34,7 +52,9 @@ namespace DormitoryMystery.Chapter1
 
         private void Start()
         {
-            if (!IsRunPlaying)
+            if (!IsRunPlaying &&
+                !IsCombatAttackPlaying(HenryCombatAttack.MmaKick) &&
+                !IsCombatAttackPlaying(HenryCombatAttack.RoundhouseKick))
             {
                 PlayIdle();
             }
@@ -168,6 +188,96 @@ namespace DormitoryMystery.Chapter1
             return started;
         }
 
+        public bool ConfigureCombatClips()
+        {
+            if (combatClipsConfigured)
+            {
+                return legacyAnimation != null &&
+                       mmaKickClip != null &&
+                       roundhouseKickClip != null &&
+                       legacyAnimation.GetClip(MmaKickClipName) != null &&
+                       legacyAnimation.GetClip(RoundhouseKickClipName) != null;
+            }
+
+            if (!Configure())
+            {
+                return false;
+            }
+
+            mmaKickClip = Resources.Load<AnimationClip>(
+                MmaKickClipResourcePath);
+            roundhouseKickClip = Resources.Load<AnimationClip>(
+                RoundhouseKickClipResourcePath);
+            if (mmaKickClip == null || roundhouseKickClip == null)
+            {
+                LogMissingAnimation(
+                    "Không tải được hai animation đá của Henry trong Resources/Henry.");
+                return false;
+            }
+
+            bool mmaReady = ConfigureCombatClip(
+                mmaKickClip,
+                MmaKickClipName);
+            bool roundhouseReady = ConfigureCombatClip(
+                roundhouseKickClip,
+                RoundhouseKickClipName);
+            combatClipsConfigured = mmaReady && roundhouseReady;
+            return combatClipsConfigured;
+        }
+
+        public bool TryPlayCombatAttack(
+            HenryCombatAttack attack,
+            out AnimationState state)
+        {
+            state = null;
+            if (!ConfigureCombatClips())
+            {
+                return false;
+            }
+
+            string clipName = GetCombatClipName(attack);
+            state = legacyAnimation[clipName];
+            if (state == null)
+            {
+                return false;
+            }
+
+            legacyAnimation.Stop();
+            SampleInitialPose();
+            state.time = 0f;
+            state.speed = 1f;
+            bool started = legacyAnimation.Play(
+                clipName,
+                PlayMode.StopAll);
+            if (!started)
+            {
+                Debug.LogError(
+                    $"[Henry] Không thể phát animation '{clipName}'.",
+                    this);
+            }
+
+            return started;
+        }
+
+        public bool IsCombatAttackPlaying(HenryCombatAttack attack)
+        {
+            return legacyAnimation != null &&
+                   legacyAnimation.IsPlaying(GetCombatClipName(attack));
+        }
+
+        public float GetCombatAttackNormalizedTime(
+            HenryCombatAttack attack)
+        {
+            if (legacyAnimation == null)
+            {
+                return 0f;
+            }
+
+            AnimationState state =
+                legacyAnimation[GetCombatClipName(attack)];
+            return state != null ? state.normalizedTime : 0f;
+        }
+
         public void StopAtInitialPose()
         {
             if (!Configure() || legacyAnimation == null)
@@ -192,6 +302,40 @@ namespace DormitoryMystery.Chapter1
                     legacyAnimation.gameObject,
                     0f);
             }
+        }
+
+        private bool ConfigureCombatClip(
+            AnimationClip clip,
+            string clipName)
+        {
+            if (legacyAnimation.GetClip(clipName) != null)
+            {
+                legacyAnimation.RemoveClip(clipName);
+            }
+
+            legacyAnimation.AddClip(clip, clipName);
+            AnimationState state = legacyAnimation[clipName];
+            if (state == null)
+            {
+                LogMissingAnimation(
+                    $"Không gắn được clip '{clipName}' cho Henry.");
+                return false;
+            }
+
+            state.wrapMode = WrapMode.Once;
+            state.speed = 1f;
+            state.layer = 0;
+            state.weight = 1f;
+            state.blendMode = AnimationBlendMode.Blend;
+            return true;
+        }
+
+        private static string GetCombatClipName(
+            HenryCombatAttack attack)
+        {
+            return attack == HenryCombatAttack.RoundhouseKick
+                ? RoundhouseKickClipName
+                : MmaKickClipName;
         }
 
         private void LogMissingAnimation(string message)

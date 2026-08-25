@@ -1145,6 +1145,10 @@ namespace DormitoryMystery.Chapter1.Editor
 
                 SetString(element, "attackName", spec.DisplayName);
                 SetString(element, "animationTrigger", spec.StateName);
+                SetEnum(
+                    element,
+                    "hitLimb",
+                    ResolveHitLimb(spec.Role));
                 SetFloat(element, "damage", spec.Damage);
                 SetFloat(element, "attackRange", spec.Range);
                 SetFloat(element, "attackRadius", spec.Radius);
@@ -1183,6 +1187,10 @@ namespace DormitoryMystery.Chapter1.Editor
 
             SetString(element, "attackName", spec.DisplayName);
             SetString(element, "animationTrigger", spec.StateName);
+            SetEnum(
+                element,
+                "hitLimb",
+                ResolveHitLimb(spec.Role));
             SetFloat(element, "damage", spec.Damage);
             SetFloat(element, "attackRange", spec.Range);
             SetFloat(element, "attackRadius", spec.Radius);
@@ -1777,6 +1785,40 @@ namespace DormitoryMystery.Chapter1.Editor
             if (property != null)
             {
                 property.floatValue = value;
+            }
+        }
+
+        private static void SetEnum(
+            SerializedProperty element,
+            string propertyName,
+            MeleeHitboxLimb value)
+        {
+            SerializedProperty property =
+                element.FindPropertyRelative(propertyName);
+            if (property != null)
+            {
+                property.enumValueIndex = (int)value;
+            }
+        }
+
+        private static MeleeHitboxLimb ResolveHitLimb(
+            CombatAnimationRole role)
+        {
+            switch (role)
+            {
+                case CombatAnimationRole.PunchLeft:
+                case CombatAnimationRole.Hook:
+                    return MeleeHitboxLimb.LeftHand;
+                case CombatAnimationRole.PunchRight:
+                case CombatAnimationRole.RightHook:
+                    return MeleeHitboxLimb.RightHand;
+                case CombatAnimationRole.KickSide:
+                    return MeleeHitboxLimb.LeftFoot;
+                case CombatAnimationRole.KickHeavy:
+                case CombatAnimationRole.SpinningBackKick:
+                    return MeleeHitboxLimb.RightFoot;
+                default:
+                    return MeleeHitboxLimb.None;
             }
         }
 
