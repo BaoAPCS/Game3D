@@ -786,7 +786,8 @@ namespace DormitoryMystery.Chapter1
 
             if (interactionController != null)
             {
-                interactionController.enabled = false;
+                interactionController.SetCombatDoorOnlyMode(true);
+                interactionController.enabled = true;
             }
 
             inputReader?.SetCombatOnlyMode(true);
@@ -797,7 +798,16 @@ namespace DormitoryMystery.Chapter1
             inputReader?.SetCombatOnlyMode(false);
             if (interactionStateCaptured && interactionController != null)
             {
-                interactionController.enabled = interactionWasEnabled;
+                if (interactionWasEnabled)
+                {
+                    interactionController.SetCombatDoorOnlyMode(false);
+                    interactionController.enabled = true;
+                }
+                else
+                {
+                    interactionController.enabled = false;
+                    interactionController.SetCombatDoorOnlyMode(false);
+                }
             }
 
             interactionStateCaptured = false;

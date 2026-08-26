@@ -30,6 +30,7 @@ namespace DormitoryMystery.Chapter1
         private string currentPrompt = string.Empty;
         private float nextAllowedInteractionTime;
         private int lastInteractionFrame = -1;
+        private bool combatDoorOnlyMode;
 
         private struct InteractionCandidate
         {
@@ -51,6 +52,7 @@ namespace DormitoryMystery.Chapter1
         public float InteractionDistance => interactionDistance;
         public float SphereRadius => sphereRadius;
         public bool ShowInteractionDebug => showInteractionDebug;
+        public bool CombatDoorOnlyMode => combatDoorOnlyMode;
         public string CurrentTargetName { get; private set; } = string.Empty;
         public string LastHitName { get; private set; } = string.Empty;
         public float LastHitDistance { get; private set; }
@@ -119,6 +121,23 @@ namespace DormitoryMystery.Chapter1
             inventory = playerInventory;
         }
 
+        public void SetCombatDoorOnlyMode(bool active)
+        {
+            if (combatDoorOnlyMode == active)
+            {
+                return;
+            }
+
+            combatDoorOnlyMode = active;
+            currentInteractTarget = null;
+            currentTalkTarget = null;
+            SetFocusedInteractable(null, string.Empty);
+            if (isActiveAndEnabled)
+            {
+                ScanForInteractable();
+            }
+        }
+
         public void SetReferences(Chapter1InputReader reader, PlayerInputLock lockReference, PlayerInventory playerInventory, Chapter1Manager manager)
         {
             inputReader = reader;
@@ -165,6 +184,11 @@ namespace DormitoryMystery.Chapter1
 
                 IChapter1Interactable interactable = hitCollider.GetComponentInParent<IChapter1Interactable>();
                 if (interactable == null)
+                {
+                    continue;
+                }
+
+                if (!IsAllowedInCurrentInteractionMode(interactable))
                 {
                     continue;
                 }
@@ -368,6 +392,11 @@ namespace DormitoryMystery.Chapter1
                 return;
             }
 
+            if (!IsAllowedInCurrentInteractionMode(target))
+            {
+                return;
+            }
+
             if (lastInteractionFrame == Time.frameCount || Time.unscaledTime < nextAllowedInteractionTime)
             {
                 return;
@@ -396,6 +425,12 @@ namespace DormitoryMystery.Chapter1
 
             InteractionPerformed?.Invoke(target, result);
             ScanForInteractable();
+        }
+
+        private bool IsAllowedInCurrentInteractionMode(
+            IChapter1Interactable interactable)
+        {
+            return !combatDoorOnlyMode || interactable is DoorInteractable;
         }
 
         private InteractionContext CreateContext()
