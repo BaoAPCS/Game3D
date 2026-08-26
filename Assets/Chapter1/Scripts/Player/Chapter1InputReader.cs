@@ -25,6 +25,7 @@ namespace DormitoryMystery.Chapter1
         private bool callbacksRegistered;
         private bool gameplayInputEnabled = true;
         private bool combatOnlyMode;
+        private bool policeArrestMode;
         private bool referencesValidated;
 
         public Vector2 MoveInput { get; private set; }
@@ -36,6 +37,8 @@ namespace DormitoryMystery.Chapter1
             gameplayInputEnabled && isActiveAndEnabled;
         public bool CombatOnlyMode =>
             combatOnlyMode && isActiveAndEnabled;
+        public bool PoliceArrestMode =>
+            policeArrestMode && isActiveAndEnabled;
 
         public event Action CrouchPressed;
         public event Action AttackPressed;
@@ -104,6 +107,28 @@ namespace DormitoryMystery.Chapter1
             }
 
             combatOnlyMode = active;
+            ApplyGameplayInputState();
+        }
+
+        /// <summary>
+        /// Restricts input to camera look and pause while the police arrest
+        /// sequence owns the player. This mode takes precedence over combat
+        /// mode, but global gameplay input disabling still takes precedence
+        /// over both modes.
+        /// </summary>
+        public void SetPoliceArrestMode(bool active)
+        {
+            if (policeArrestMode == active)
+            {
+                return;
+            }
+
+            // Clear values before disabling actions. In particular, Talk and
+            // ThrowCan must be false before their canceled callbacks run so
+            // releasing E cannot complete an interaction or throw a can while
+            // the arrest sequence is starting.
+            ResetReadValues();
+            policeArrestMode = active;
             ApplyGameplayInputState();
         }
 
@@ -226,7 +251,9 @@ namespace DormitoryMystery.Chapter1
                 }
 
                 bool shouldEnable = gameplayInputEnabled &&
-                    (!combatOnlyMode || IsCombatAllowedAction(action));
+                    (policeArrestMode
+                        ? IsPoliceArrestAllowedAction(action)
+                        : !combatOnlyMode || IsCombatAllowedAction(action));
                 if (shouldEnable)
                 {
                     action.Enable();
@@ -248,6 +275,12 @@ namespace DormitoryMystery.Chapter1
                    action == GetAction(attackActionReference) ||
                    action == GetAction(kickActionReference) ||
                    action == GetAction(interactActionReference) ||
+                   action == GetAction(pauseActionReference);
+        }
+
+        private bool IsPoliceArrestAllowedAction(InputAction action)
+        {
+            return action == GetAction(lookActionReference) ||
                    action == GetAction(pauseActionReference);
         }
 
@@ -314,7 +347,7 @@ namespace DormitoryMystery.Chapter1
 
         private void OnMovePerformed(InputAction.CallbackContext context)
         {
-            if (gameplayInputEnabled)
+            if (CanProcessGameplayAction())
             {
                 MoveInput = context.ReadValue<Vector2>();
             }
@@ -340,7 +373,7 @@ namespace DormitoryMystery.Chapter1
 
         private void OnSprintPerformed(InputAction.CallbackContext context)
         {
-            if (gameplayInputEnabled)
+            if (CanProcessGameplayAction())
             {
                 SprintHeld = context.ReadValueAsButton();
             }
@@ -353,7 +386,7 @@ namespace DormitoryMystery.Chapter1
 
         private void OnAttackPerformed(InputAction.CallbackContext context)
         {
-            if (gameplayInputEnabled)
+            if (CanProcessGameplayAction())
             {
                 AttackPressed?.Invoke();
             }
@@ -361,7 +394,7 @@ namespace DormitoryMystery.Chapter1
 
         private void OnKickPerformed(InputAction.CallbackContext context)
         {
-            if (gameplayInputEnabled)
+            if (CanProcessGameplayAction())
             {
                 KickPressed?.Invoke();
             }
@@ -369,7 +402,7 @@ namespace DormitoryMystery.Chapter1
 
         private void OnJumpPerformed(InputAction.CallbackContext context)
         {
-            if (gameplayInputEnabled)
+            if (CanProcessGameplayAction())
             {
                 JumpPressed?.Invoke();
             }
@@ -377,7 +410,7 @@ namespace DormitoryMystery.Chapter1
 
         private void OnCrouchPerformed(InputAction.CallbackContext context)
         {
-            if (gameplayInputEnabled)
+            if (CanProcessGameplayAction())
             {
                 CrouchPressed?.Invoke();
             }
@@ -387,7 +420,7 @@ namespace DormitoryMystery.Chapter1
         {
             // Interact remains enabled in combat so the interaction
             // controller can route it exclusively to DoorInteractable.
-            if (gameplayInputEnabled)
+            if (CanProcessGameplayAction())
             {
                 InteractPressed?.Invoke();
             }
@@ -459,7 +492,12 @@ namespace DormitoryMystery.Chapter1
 
         private bool CanProcessNonCombatAction()
         {
-            return gameplayInputEnabled && !combatOnlyMode;
+            return CanProcessGameplayAction() && !combatOnlyMode;
+        }
+
+        private bool CanProcessGameplayAction()
+        {
+            return gameplayInputEnabled && !policeArrestMode;
         }
     }
 }

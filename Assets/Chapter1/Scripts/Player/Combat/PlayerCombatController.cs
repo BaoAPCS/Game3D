@@ -12,7 +12,7 @@ namespace DormitoryMystery.Chapter1
         private const int HitBufferSize = 32;
         private const string WalkStateName = "Walk";
         private const string RunStateName = "Run";
-        private const string ForcedStunInputLockReason = "ForcedStun";
+        public const string ForcedStunInputLockReason = "ForcedStun";
         private static readonly int MoveSpeedParameter = Animator.StringToHash("MoveSpeed");
         private static readonly int IsGroundedParameter = Animator.StringToHash("IsGrounded");
         private static readonly int IsSprintingParameter = Animator.StringToHash("IsSprinting");

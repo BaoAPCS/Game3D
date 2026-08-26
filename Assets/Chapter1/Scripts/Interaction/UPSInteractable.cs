@@ -276,6 +276,8 @@ namespace DormitoryMystery.Chapter1
             Data.Mission03HenryConfrontationCompleted;
         public static bool HenryDefeated =>
             Data.Mission03HenryDefeated;
+        public static bool PoliceArrestCompleted =>
+            Data.Mission03PoliceArrestCompleted;
         public static bool CombatPending =>
             HenryConfrontationCompleted && !HenryDefeated;
 
@@ -378,7 +380,29 @@ namespace DormitoryMystery.Chapter1
             Data.Mission03HenryDefeated = true;
             SaveProgress();
             Chapter1EventBus.RaiseObjectiveChanged(
-                "Henry đã bị đánh bại.");
+                "Cảnh sát đang chạy tới chỗ bạn.");
+            return true;
+        }
+
+        public static bool TryMarkPoliceArrestCompleted()
+        {
+            if (!Data.Mission03HenryDefeated ||
+                Data.Mission03GangHostile)
+            {
+                return false;
+            }
+
+            // Idempotent so duplicate arrival callbacks and reload recovery
+            // cannot create divergent terminal Mission 3 state.
+            if (Data.Mission03PoliceArrestCompleted)
+            {
+                return true;
+            }
+
+            Data.Mission03PoliceArrestCompleted = true;
+            SaveProgress();
+            Chapter1EventBus.RaiseObjectiveChanged(
+                "Cảnh sát đã bắt giữ bạn.");
             return true;
         }
 
@@ -395,6 +419,7 @@ namespace DormitoryMystery.Chapter1
             Data.Mission03PoliceKeyReceived = false;
             Data.Mission03HenryConfrontationCompleted = false;
             Data.Mission03HenryDefeated = false;
+            Data.Mission03PoliceArrestCompleted = false;
             SaveProgress();
             Chapter1EventBus.RaiseObjectiveChanged(
                 "Chạy thoát khỏi James, David và Lewis.");

@@ -1,10 +1,13 @@
 using NUnit.Framework;
+using System;
 using System.IO;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
+using Object = UnityEngine.Object;
 
 namespace DormitoryMystery.Chapter1.Tests
 {
@@ -15,6 +18,12 @@ namespace DormitoryMystery.Chapter1.Tests
 
         private const string ChapterSceneRelativePath =
             "Chapter1/Scenes/Chapter1_Dormitory.unity";
+
+        private const string FightControllerRelativePath =
+            "Chapter1/Scripts/World/HenryFightEncounterController.cs";
+
+        private const string PoliceSirenGuid =
+            "488c9851604b9e7478527dff42f59f05";
 
         [Test]
         public void PlayerFightDamageMatchesApprovedBalance()
@@ -72,6 +81,234 @@ namespace DormitoryMystery.Chapter1.Tests
             Assert.IsTrue(data.Mission03ChallengePassed);
             Assert.IsTrue(data.Mission03JamesIntroPlayed);
             Assert.IsFalse(data.Mission03GangHostile);
+        }
+
+        [Test]
+        public void PoliceArrestSaveRepairsHenryDefeatAndAllPrerequisites()
+        {
+            Chapter1SaveData data = new Chapter1SaveData
+            {
+                Mission02Started = false,
+                Mission02EquipmentDelivered = false,
+                Mission02HasPsu = false,
+                Mission02HasUps = false,
+                Mission02HasHenryBattery = false,
+                Mission03JamesIntroPlayed = false,
+                Mission03ChallengePassed = false,
+                Mission03GangHostile = true,
+                Mission03PoliceKeyReceived = false,
+                Mission03HenryConfrontationCompleted = false,
+                Mission03HenryDefeated = false,
+                Mission03PoliceArrestCompleted = true
+            };
+
+            data.EnsureValidDefaults();
+
+            Assert.IsTrue(data.Mission03PoliceArrestCompleted);
+            Assert.IsTrue(data.Mission03HenryDefeated);
+            Assert.IsTrue(data.Mission03HenryConfrontationCompleted);
+            Assert.IsTrue(data.Mission03PoliceKeyReceived);
+            Assert.IsTrue(data.Mission03ChallengePassed);
+            Assert.IsTrue(data.Mission03JamesIntroPlayed);
+            Assert.IsFalse(data.Mission03GangHostile);
+            Assert.IsTrue(data.Mission02Started);
+            Assert.IsTrue(data.Mission02EquipmentDelivered);
+            Assert.IsTrue(data.Mission02HasPsu);
+            Assert.IsTrue(data.Mission02HasUps);
+            Assert.IsTrue(data.Mission02HasHenryBattery);
+        }
+
+        [Test]
+        public void ChapterSceneHasExactInactivePoliceCarWithThreeDimensionalSiren()
+        {
+            string scenePath = Path.Combine(
+                Application.dataPath,
+                ChapterSceneRelativePath);
+            Assert.IsTrue(File.Exists(scenePath), scenePath);
+
+            string sceneYaml = File.ReadAllText(scenePath);
+            MatchCollection policeCarMatches = Regex.Matches(
+                sceneYaml,
+                @"(?ms)^--- !u!1001 &\d+\r?$\nPrefabInstance:.*?" +
+                @"propertyPath: m_Name\s+value: police_car\s+" +
+                @"objectReference: \{fileID: 0\}.*?" +
+                @"propertyPath: m_IsActive\s+value: 0\s+" +
+                @"objectReference: \{fileID: 0\}.*?" +
+                @"m_AddedComponents:(?<addedComponents>.*?)" +
+                @"m_SourcePrefab:");
+            Assert.AreEqual(
+                1,
+                policeCarMatches.Count,
+                "The scene must contain one exact inactive police_car root.");
+
+            Match audioSourceMatch = Regex.Match(
+                sceneYaml,
+                @"(?ms)^--- !u!82 &(?<audioId>\d+)\r?$\n" +
+                @"AudioSource:.*?m_Resource: \{fileID: 8300000, guid: " +
+                PoliceSirenGuid +
+                @", type: 3\}.*?(?=^--- !u!|\z)");
+            Assert.IsTrue(
+                audioSourceMatch.Success,
+                "police_car must reference the authored police siren clip.");
+
+            string audioId = audioSourceMatch.Groups["audioId"].Value;
+            string addedComponents = policeCarMatches[0]
+                .Groups["addedComponents"].Value;
+            StringAssert.Contains(
+                $"addedObject: {{fileID: {audioId}}}",
+                addedComponents,
+                "The configured AudioSource must belong to police_car.");
+
+            string audioSourceYaml = audioSourceMatch.Value;
+            StringAssert.Contains("m_PlayOnAwake: 0", audioSourceYaml);
+            StringAssert.Contains("Loop: 1", audioSourceYaml);
+            Assert.IsTrue(
+                Regex.IsMatch(
+                    audioSourceYaml,
+                    @"(?ms)panLevelCustomCurve:.*?time: 0\s+value: 1"),
+                "The siren AudioSource must use Spatial Blend 3D (1.0)." );
+        }
+
+        [Test]
+        public void PoliceArrestRuntimeApisAndFightStatesAreAvailable()
+        {
+            Assert.AreEqual(
+                12f,
+                PoliceArrestSequenceController.PoliceCarSpeed);
+            Assert.AreEqual(
+                4.1f,
+                PoliceArrestSequenceController.PoliceCarStopOffset);
+            Assert.AreEqual(
+                15f,
+                PoliceArrestSequenceController.PoliceCarTimeout);
+
+            Assert.IsTrue(Enum.IsDefined(
+                typeof(HenryFightEncounterController.FightState),
+                "PoliceArriving"));
+            Assert.IsTrue(Enum.IsDefined(
+                typeof(HenryFightEncounterController.FightState),
+                "PoliceArrested"));
+
+            MethodInfo inputModeMethod =
+                typeof(Chapter1InputReader).GetMethod(
+                    "SetPoliceArrestMode",
+                    BindingFlags.Public | BindingFlags.Instance,
+                    null,
+                    new[] { typeof(bool) },
+                    null);
+            Assert.NotNull(inputModeMethod);
+
+            MethodInfo beginArrestMethod =
+                typeof(PoliceArrestSequenceController).GetMethod(
+                    "BeginArrest",
+                    BindingFlags.Public | BindingFlags.Instance);
+            Assert.NotNull(beginArrestMethod);
+
+            Type missionProgressType = typeof(UPSInteractable).Assembly
+                .GetType("DormitoryMystery.Chapter1.Mission3Progress");
+            Assert.NotNull(missionProgressType);
+            Assert.NotNull(missionProgressType.GetProperty(
+                "PoliceArrestCompleted",
+                BindingFlags.Public | BindingFlags.Static));
+            Assert.NotNull(missionProgressType.GetMethod(
+                "TryMarkPoliceArrestCompleted",
+                BindingFlags.Public | BindingFlags.Static));
+        }
+
+        [Test]
+        public void FightOutcomeLocksNamAndStartsPoliceBeforeResolutionYield()
+        {
+            string sourcePath = Path.Combine(
+                Application.dataPath,
+                FightControllerRelativePath);
+            Assert.IsTrue(File.Exists(sourcePath), sourcePath);
+
+            string source = File.ReadAllText(sourcePath);
+            string scheduleOutcome = ExtractMethodBody(
+                source,
+                "private void ScheduleOutcomeResolution()");
+            string playerDefeat = ExtractMethodBody(
+                source,
+                "private IEnumerator FinishPlayerDefeat()");
+            string henryDefeat = ExtractMethodBody(
+                source,
+                "private IEnumerator FinishHenryDefeat()");
+
+            int outcomePending = scheduleOutcome.IndexOf(
+                "outcomePending = true;",
+                StringComparison.Ordinal);
+            int lockNam = scheduleOutcome.IndexOf(
+                "EnterPoliceArrestInputMode(false);",
+                StringComparison.Ordinal);
+            int beginPolice = scheduleOutcome.IndexOf(
+                "BeginPoliceArrest();",
+                StringComparison.Ordinal);
+            int startResolver = scheduleOutcome.IndexOf(
+                "StartCoroutine(ResolveOutcomeNextFrame())",
+                StringComparison.Ordinal);
+            Assert.GreaterOrEqual(outcomePending, 0);
+            Assert.Greater(lockNam, outcomePending);
+            Assert.Greater(beginPolice, lockNam);
+            Assert.Greater(
+                startResolver,
+                beginPolice,
+                "Nam must be locked and police must start before the " +
+                "one-frame simultaneous-KO resolution yield.");
+
+            int playerWait = playerDefeat.IndexOf(
+                "while (!policeArrivalResolved)",
+                StringComparison.Ordinal);
+            int gameOver = playerDefeat.IndexOf(
+                "Chapter1EventBus.RaiseGameOver(",
+                StringComparison.Ordinal);
+            Assert.GreaterOrEqual(playerWait, 0);
+            Assert.Greater(
+                gameOver,
+                playerWait,
+                "Player Game Over must wait until police arrival resolves.");
+
+            int henryWait = henryDefeat.IndexOf(
+                "while (!policeArrivalResolved)",
+                StringComparison.Ordinal);
+            int arrestComplete = henryDefeat.IndexOf(
+                "CompletePoliceArrestAfterVictory();",
+                StringComparison.Ordinal);
+            Assert.GreaterOrEqual(henryWait, 0);
+            Assert.Greater(arrestComplete, henryWait);
+            StringAssert.DoesNotContain(
+                "Chapter1EventBus.RaiseGameOver(",
+                henryDefeat);
+        }
+
+        [Test]
+        public void FailedPoliceArrivalDoesNotClaimNamWasArrested()
+        {
+            string sourcePath = Path.Combine(
+                Application.dataPath,
+                FightControllerRelativePath);
+            Assert.IsTrue(File.Exists(sourcePath), sourcePath);
+
+            string methodBody = ExtractMethodBody(
+                File.ReadAllText(sourcePath),
+                "private void CompletePoliceArrestAfterVictory()");
+            int failedGuard = methodBody.IndexOf(
+                "if (!policeArrivalSucceeded)",
+                StringComparison.Ordinal);
+            int failedReturn = methodBody.IndexOf(
+                "return;",
+                failedGuard,
+                StringComparison.Ordinal);
+            int arrestedState = methodBody.IndexOf(
+                "state = FightState.PoliceArrested;",
+                StringComparison.Ordinal);
+            int arrestedNotification = methodBody.IndexOf(
+                "PoliceArrestedNotification",
+                StringComparison.Ordinal);
+
+            Assert.GreaterOrEqual(failedGuard, 0);
+            Assert.Greater(failedReturn, failedGuard);
+            Assert.Greater(arrestedState, failedReturn);
+            Assert.Greater(arrestedNotification, arrestedState);
         }
 
         [Test]
@@ -305,6 +542,44 @@ namespace DormitoryMystery.Chapter1.Tests
                 BindingFlags.NonPublic | BindingFlags.Instance);
             Assert.NotNull(field, fieldName);
             field.SetValue(target, value);
+        }
+
+        private static string ExtractMethodBody(
+            string source,
+            string signature)
+        {
+            int signatureIndex = source.IndexOf(
+                signature,
+                StringComparison.Ordinal);
+            Assert.GreaterOrEqual(
+                signatureIndex,
+                0,
+                $"Method signature not found: {signature}");
+
+            int openingBrace = source.IndexOf('{', signatureIndex);
+            Assert.Greater(openingBrace, signatureIndex);
+
+            int depth = 0;
+            for (int i = openingBrace; i < source.Length; i++)
+            {
+                if (source[i] == '{')
+                {
+                    depth++;
+                }
+                else if (source[i] == '}')
+                {
+                    depth--;
+                    if (depth == 0)
+                    {
+                        return source.Substring(
+                            openingBrace + 1,
+                            i - openingBrace - 1);
+                    }
+                }
+            }
+
+            Assert.Fail($"Method body is not balanced: {signature}");
+            return string.Empty;
         }
 
         private sealed class FakeInteractable : IChapter1Interactable

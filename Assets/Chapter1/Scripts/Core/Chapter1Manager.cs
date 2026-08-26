@@ -300,6 +300,11 @@ namespace DormitoryMystery.Chapter1
             Chapter1SaveData data = CurrentData;
             data.EnsureValidDefaults();
 
+            if (data.Mission03PoliceArrestCompleted)
+            {
+                return "Cảnh sát đã bắt giữ bạn.";
+            }
+
             if (data.Mission03GangHostile)
             {
                 return "Chạy thoát khỏi James, David và Lewis.";
@@ -307,7 +312,7 @@ namespace DormitoryMystery.Chapter1
 
             if (data.Mission03HenryDefeated)
             {
-                return "Henry đã bị đánh bại.";
+                return "Cảnh sát đang chạy tới chỗ bạn.";
             }
 
             if (data.Mission03HenryConfrontationCompleted)

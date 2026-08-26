@@ -6,7 +6,7 @@ namespace DormitoryMystery.Chapter1
     [Serializable]
     public class Chapter1SaveData
     {
-        private const int CurrentSaveVersion = 4;
+        private const int CurrentSaveVersion = 5;
 
         public int SaveVersion;
         public Chapter1Step CurrentStep;
@@ -63,6 +63,7 @@ namespace DormitoryMystery.Chapter1
         public bool Mission03PoliceKeyReceived;
         public bool Mission03HenryConfrontationCompleted;
         public bool Mission03HenryDefeated;
+        public bool Mission03PoliceArrestCompleted;
 
         public Chapter1SaveData()
         {
@@ -173,9 +174,13 @@ namespace DormitoryMystery.Chapter1
                 Mission02HasBrokenBattery = false;
             }
 
-            // Defeating Henry is the terminal Mission 3 combat milestone.
             // Repair partially-written/newer saves from the most advanced
-            // flag backwards so every prerequisite remains one-way.
+            // Mission 3 flag backwards so every prerequisite remains one-way.
+            if (Mission03PoliceArrestCompleted)
+            {
+                Mission03HenryDefeated = true;
+            }
+
             if (Mission03HenryDefeated)
             {
                 Mission03HenryConfrontationCompleted = true;
@@ -186,7 +191,8 @@ namespace DormitoryMystery.Chapter1
                 Mission03GangHostile ||
                 Mission03PoliceKeyReceived ||
                 Mission03HenryConfrontationCompleted ||
-                Mission03HenryDefeated)
+                Mission03HenryDefeated ||
+                Mission03PoliceArrestCompleted)
             {
                 Mission02EquipmentDelivered = true;
                 Mission02Started = true;
