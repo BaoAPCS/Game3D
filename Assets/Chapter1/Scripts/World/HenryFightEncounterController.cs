@@ -58,7 +58,7 @@ namespace DormitoryMystery.Chapter1
         private FightCombatHUD fightHud;
 
         private FightState state;
-        private HenryCombatAttack nextAttack = HenryCombatAttack.MmaKick;
+        private HenryCombatAttack nextAttack = HenryCombatAttack.Punch;
         private float recoveryEndsAt;
         private float nextDestinationRefreshAt;
         private bool initialized;
@@ -387,7 +387,7 @@ namespace DormitoryMystery.Chapter1
             henryDeathObserved = false;
             outcomePending = false;
             encounterActive = true;
-            nextAttack = HenryCombatAttack.MmaKick;
+            nextAttack = HenryCombatAttack.Punch;
             nextDestinationRefreshAt = 0f;
             state = FightState.Pursuing;
             StartHenryPursuit(true);
@@ -415,9 +415,7 @@ namespace DormitoryMystery.Chapter1
                 FacePlayer(Time.deltaTime);
                 if (henryCombat.TryPlayAttack(nextAttack))
                 {
-                    nextAttack = nextAttack == HenryCombatAttack.MmaKick
-                        ? HenryCombatAttack.RoundhouseKick
-                        : HenryCombatAttack.MmaKick;
+                    nextAttack = GetNextAttack(nextAttack);
                     state = FightState.Attacking;
                 }
                 else
@@ -430,6 +428,20 @@ namespace DormitoryMystery.Chapter1
             }
 
             StartHenryPursuit(false);
+        }
+
+        private static HenryCombatAttack GetNextAttack(
+            HenryCombatAttack completedAttack)
+        {
+            switch (completedAttack)
+            {
+                case HenryCombatAttack.Punch:
+                    return HenryCombatAttack.MmaKick;
+                case HenryCombatAttack.MmaKick:
+                    return HenryCombatAttack.RoundhouseKick;
+                default:
+                    return HenryCombatAttack.Punch;
+            }
         }
 
         private bool CanHenryAttackPlayer()

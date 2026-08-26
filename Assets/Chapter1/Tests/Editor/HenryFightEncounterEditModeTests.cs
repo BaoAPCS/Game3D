@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using System.IO;
+using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
@@ -138,6 +139,51 @@ namespace DormitoryMystery.Chapter1.Tests
             Assert.AreEqual(
                 0.35f,
                 HenryFightEncounterController.HenryAttackRecovery);
+        }
+
+        [Test]
+        public void HenryUsesPunchThenBothKicksWithSharedDamage()
+        {
+            MethodInfo getNextAttack =
+                typeof(HenryFightEncounterController).GetMethod(
+                    "GetNextAttack",
+                    BindingFlags.NonPublic | BindingFlags.Static);
+            Assert.NotNull(getNextAttack);
+            Assert.AreEqual(
+                HenryCombatAttack.MmaKick,
+                getNextAttack.Invoke(
+                    null,
+                    new object[] { HenryCombatAttack.Punch }));
+            Assert.AreEqual(
+                HenryCombatAttack.RoundhouseKick,
+                getNextAttack.Invoke(
+                    null,
+                    new object[] { HenryCombatAttack.MmaKick }));
+            Assert.AreEqual(
+                HenryCombatAttack.Punch,
+                getNextAttack.Invoke(
+                    null,
+                    new object[] { HenryCombatAttack.RoundhouseKick }));
+
+            GameObject owner = new GameObject("HenryCombatDamageTest");
+            owner.SetActive(false);
+            try
+            {
+                HenryCombatHitboxController combat =
+                    owner.AddComponent<HenryCombatHitboxController>();
+                SerializedObject serializedCombat =
+                    new SerializedObject(combat);
+                Assert.AreEqual(
+                    20f,
+                    serializedCombat.FindProperty("attackDamage").floatValue);
+                Assert.IsNull(serializedCombat.FindProperty("mmaKickDamage"));
+                Assert.IsNull(
+                    serializedCombat.FindProperty("roundhouseKickDamage"));
+            }
+            finally
+            {
+                Object.DestroyImmediate(owner);
+            }
         }
 
         [Test]

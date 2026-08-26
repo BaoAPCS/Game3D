@@ -12,6 +12,8 @@ namespace DormitoryMystery.Chapter1.Tests
             "Assets/Chapter1/Resources/Henry/Henry_Mma_Kick.anim";
         private const string HenryRoundhouseClipPath =
             "Assets/Chapter1/Resources/Henry/Henry_Roundhouse_Kick.anim";
+        private const string HenryPunchClipPath =
+            "Assets/Chapter1/Resources/Henry/Punch.anim";
         private const string HenryDefeatedClipPath =
             "Assets/Chapter1/Resources/Henry/Defeated.anim";
         private const string HenryModelPath =
@@ -160,13 +162,15 @@ namespace DormitoryMystery.Chapter1.Tests
             GameObject target = new GameObject("NamHurtboxTest");
             try
             {
+                GameObject hand = new GameObject("CC_Base_R_Hand_086");
+                hand.transform.SetParent(attacker.transform, false);
                 GameObject foot = new GameObject("CC_Base_R_Foot_024");
                 foot.transform.SetParent(attacker.transform, false);
 
                 MeleeHitboxRig rig = attacker.AddComponent<MeleeHitboxRig>();
                 Assert.IsTrue(rig.ConfigureForHenry());
                 Assert.IsTrue(rig.TryGetHitbox(
-                    MeleeHitboxLimb.RightFoot,
+                    MeleeHitboxLimb.RightHand,
                     out BoxCollider attackVolume));
                 attackVolume.center = Vector3.zero;
                 attackVolume.size = Vector3.one;
@@ -191,7 +195,7 @@ namespace DormitoryMystery.Chapter1.Tests
 
                 Physics.SyncTransforms();
                 int hitCount = dealer.PerformSingleHit(
-                    MeleeHitboxLimb.RightFoot,
+                    MeleeHitboxLimb.RightHand,
                     25f,
                     1);
 
@@ -215,6 +219,8 @@ namespace DormitoryMystery.Chapter1.Tests
             GameObject target = new GameObject("SweptTarget");
             try
             {
+                GameObject hand = new GameObject("CC_Base_R_Hand_086");
+                hand.transform.SetParent(attacker.transform, false);
                 GameObject foot = new GameObject("CC_Base_R_Foot_024");
                 foot.transform.SetParent(attacker.transform, false);
                 foot.transform.position = new Vector3(-2f, 0f, 0f);
@@ -269,6 +275,8 @@ namespace DormitoryMystery.Chapter1.Tests
             GameObject henry = new GameObject("HenryRigVolumeTest");
             try
             {
+                GameObject hand = new GameObject("CC_Base_R_Hand_086");
+                hand.transform.SetParent(henry.transform, false);
                 GameObject foot = new GameObject("CC_Base_R_Foot_024");
                 foot.transform.SetParent(henry.transform, false);
 
@@ -290,6 +298,34 @@ namespace DormitoryMystery.Chapter1.Tests
         }
 
         [Test]
+        public void HenryRightHandHitboxUsesExpectedLocalVolume()
+        {
+            GameObject henry = new GameObject("HenryHandRigVolumeTest");
+            try
+            {
+                GameObject hand = new GameObject("CC_Base_R_Hand_086");
+                hand.transform.SetParent(henry.transform, false);
+                GameObject foot = new GameObject("CC_Base_R_Foot_024");
+                foot.transform.SetParent(henry.transform, false);
+
+                MeleeHitboxRig rig = henry.AddComponent<MeleeHitboxRig>();
+                Assert.IsTrue(rig.ConfigureForHenry());
+                Assert.IsTrue(rig.TryGetHitbox(
+                    MeleeHitboxLimb.RightHand,
+                    out BoxCollider volume));
+
+                Assert.AreEqual(new Vector3(0f, 7f, 0f), volume.center);
+                Assert.AreEqual(new Vector3(12f, 18f, 12f), volume.size);
+                Assert.IsTrue(volume.isTrigger);
+                Assert.IsFalse(volume.enabled);
+            }
+            finally
+            {
+                Object.DestroyImmediate(henry);
+            }
+        }
+
+        [Test]
         public void HenryCombatClipsRemainLegacyAndAvailable()
         {
             AnimationClip mma =
@@ -298,15 +334,20 @@ namespace DormitoryMystery.Chapter1.Tests
             AnimationClip roundhouse =
                 AssetDatabase.LoadAssetAtPath<AnimationClip>(
                     HenryRoundhouseClipPath);
+            AnimationClip punch =
+                AssetDatabase.LoadAssetAtPath<AnimationClip>(
+                    HenryPunchClipPath);
             AnimationClip defeated =
                 AssetDatabase.LoadAssetAtPath<AnimationClip>(
                     HenryDefeatedClipPath);
 
             Assert.NotNull(mma);
             Assert.NotNull(roundhouse);
+            Assert.NotNull(punch);
             Assert.NotNull(defeated);
             Assert.IsTrue(mma.legacy);
             Assert.IsTrue(roundhouse.legacy);
+            Assert.IsTrue(punch.legacy);
             Assert.IsTrue(defeated.legacy);
             Assert.AreEqual(
                 HenryRunAnimationPlayer.MmaKickClipName,
@@ -314,6 +355,60 @@ namespace DormitoryMystery.Chapter1.Tests
             Assert.AreEqual(
                 HenryRunAnimationPlayer.RoundhouseKickClipName,
                 roundhouse.name);
+            Assert.AreEqual("Punch", punch.name);
+            Assert.AreEqual(WrapMode.Once, punch.wrapMode);
+
+            EditorCurveBinding[] punchBindings =
+                AnimationUtility.GetCurveBindings(punch);
+            Assert.GreaterOrEqual(
+                punchBindings.Length,
+                200,
+                "Punch must be baked onto Henry's CC_Base skeleton.");
+            bool hasAnimatedRightPunchArm = false;
+            for (int i = 0; i < punchBindings.Length; i++)
+            {
+                EditorCurveBinding binding = punchBindings[i];
+                if (!binding.propertyName.StartsWith("m_LocalRotation") ||
+                    (!binding.path.Contains("CC_Base_R_Upperarm") &&
+                     !binding.path.Contains("CC_Base_R_Forearm") &&
+                     !binding.path.Contains("CC_Base_R_Hand")))
+                {
+                    continue;
+                }
+
+                AnimationCurve curve =
+                    AnimationUtility.GetEditorCurve(punch, binding);
+                if (curve == null || curve.length < 2)
+                {
+                    continue;
+                }
+
+                float minimum = float.PositiveInfinity;
+                float maximum = float.NegativeInfinity;
+                for (int keyIndex = 0; keyIndex < curve.length; keyIndex++)
+                {
+                    minimum = Mathf.Min(
+                        minimum,
+                        curve.keys[keyIndex].value);
+                    maximum = Mathf.Max(
+                        maximum,
+                        curve.keys[keyIndex].value);
+                }
+
+                if (maximum - minimum > 0.001f)
+                {
+                    hasAnimatedRightPunchArm = true;
+                    break;
+                }
+            }
+
+            Assert.IsTrue(
+                hasAnimatedRightPunchArm,
+                "Punch contains bindings but no changing right-arm pose.");
+
+            AnimationClipSettings punchSettings =
+                AnimationUtility.GetAnimationClipSettings(punch);
+            Assert.IsFalse(punchSettings.loopTime);
             Assert.AreEqual("Defeated", defeated.name);
             Assert.AreEqual(WrapMode.ClampForever, defeated.wrapMode);
             EditorCurveBinding[] defeatedBindings =
@@ -422,6 +517,157 @@ namespace DormitoryMystery.Chapter1.Tests
                         endThighRotation),
                     1f,
                     "The baked clip does not change Henry's leg pose.");
+            }
+            finally
+            {
+                Object.DestroyImmediate(instance);
+            }
+        }
+
+        [Test]
+        public void HenryPunchStartsInGuardAndReachesFullExtension()
+        {
+            GameObject modelAsset =
+                AssetDatabase.LoadAssetAtPath<GameObject>(HenryModelPath);
+            AnimationClip punch =
+                AssetDatabase.LoadAssetAtPath<AnimationClip>(
+                    HenryPunchClipPath);
+
+            Assert.NotNull(modelAsset);
+            Assert.NotNull(punch);
+
+            GameObject instance = Object.Instantiate(modelAsset);
+            try
+            {
+                Animation targetAnimation =
+                    instance.GetComponentInChildren<Animation>(true);
+                Assert.NotNull(targetAnimation);
+
+                Transform hips = FindTransformByPrefix(
+                    targetAnimation.transform,
+                    "CC_Base_Hip");
+                Transform rightForearm = FindTransformByPrefix(
+                    targetAnimation.transform,
+                    "CC_Base_R_Forearm_082");
+                Transform rightHand = FindTransformByPrefix(
+                    targetAnimation.transform,
+                    "CC_Base_R_Hand_086");
+                Assert.NotNull(hips);
+                Assert.NotNull(rightForearm);
+                Assert.NotNull(rightHand);
+
+                Quaternion bindForearmRotation = rightForearm.localRotation;
+                punch.SampleAnimation(targetAnimation.gameObject, 0f);
+                Quaternion guardForearmRotation = rightForearm.localRotation;
+                Vector3 guardHandPosition =
+                    hips.InverseTransformPoint(rightHand.position);
+
+                punch.SampleAnimation(
+                    targetAnimation.gameObject,
+                    punch.length * 0.3f);
+                Vector3 strikeHandPosition =
+                    hips.InverseTransformPoint(rightHand.position);
+
+                Assert.Greater(
+                    Quaternion.Angle(
+                        bindForearmRotation,
+                        guardForearmRotation),
+                    45f,
+                    "Punch starts from Henry's bind/idle arm instead of " +
+                    "a fighting guard pose.");
+                Assert.Greater(
+                    Vector3.Distance(
+                        guardHandPosition,
+                        strikeHandPosition),
+                    25f,
+                    "Punch never extends Henry's right fist far enough " +
+                    "from the guard pose.");
+            }
+            finally
+            {
+                Object.DestroyImmediate(instance);
+            }
+        }
+
+        [Test]
+        public void HenryPunchGuardKeepsBothHandsClearOfTorso()
+        {
+            GameObject modelAsset =
+                AssetDatabase.LoadAssetAtPath<GameObject>(HenryModelPath);
+            AnimationClip punch =
+                AssetDatabase.LoadAssetAtPath<AnimationClip>(
+                    HenryPunchClipPath);
+
+            Assert.NotNull(modelAsset);
+            Assert.NotNull(punch);
+
+            GameObject instance = Object.Instantiate(modelAsset);
+            try
+            {
+                Animation targetAnimation =
+                    instance.GetComponentInChildren<Animation>(true);
+                Assert.NotNull(targetAnimation);
+
+                Transform animationRoot = targetAnimation.transform;
+                Transform chest = FindTransformByPrefix(
+                    animationRoot,
+                    "CC_Base_Spine02_038");
+                Transform leftHand = FindTransformByPrefix(
+                    animationRoot,
+                    "CC_Base_L_Hand_058");
+                Transform rightHand = FindTransformByPrefix(
+                    animationRoot,
+                    "CC_Base_R_Hand_086");
+                Assert.NotNull(chest);
+                Assert.NotNull(leftHand);
+                Assert.NotNull(rightHand);
+
+                float[] guardSamples =
+                    { 0f, 0.1f, 0.2f, 0.25f, 0.4f, 0.55f, 0.75f, 1f };
+                for (int i = 0; i < guardSamples.Length; i++)
+                {
+                    float normalizedTime = guardSamples[i];
+                    punch.SampleAnimation(
+                        targetAnimation.gameObject,
+                        punch.length * normalizedTime);
+                    Vector3 chestPosition =
+                        animationRoot.InverseTransformPoint(chest.position);
+                    Vector3 leftPosition =
+                        animationRoot.InverseTransformPoint(leftHand.position);
+                    Vector3 rightPosition =
+                        animationRoot.InverseTransformPoint(rightHand.position);
+
+                    Assert.LessOrEqual(
+                        leftPosition.x,
+                        chestPosition.x - 0.19f,
+                        $"Left fist moved back into Henry's torso at " +
+                        $"normalized time {normalizedTime:0.00}.");
+                    Assert.GreaterOrEqual(
+                        rightPosition.x,
+                        chestPosition.x + 0.18f,
+                        $"Right fist moved back into Henry's torso at " +
+                        $"normalized time {normalizedTime:0.00}.");
+                    Assert.GreaterOrEqual(
+                        leftPosition.y,
+                        chestPosition.y + 0.14f,
+                        $"Left fist dropped into Henry's torso at " +
+                        $"normalized time {normalizedTime:0.00}.");
+                    Assert.GreaterOrEqual(
+                        rightPosition.y,
+                        chestPosition.y + 0.125f,
+                        $"Right fist dropped into Henry's torso at " +
+                        $"normalized time {normalizedTime:0.00}.");
+                    Assert.GreaterOrEqual(
+                        leftPosition.z,
+                        chestPosition.z + 0.23f,
+                        $"Left fist is not far enough in front of Henry's " +
+                        $"torso at normalized time {normalizedTime:0.00}.");
+                    Assert.GreaterOrEqual(
+                        rightPosition.z,
+                        chestPosition.z + 0.215f,
+                        $"Right fist is not far enough in front of Henry's " +
+                        $"torso at normalized time {normalizedTime:0.00}.");
+                }
             }
             finally
             {

@@ -39,6 +39,7 @@ namespace DormitoryMystery.Chapter1
         private const string NamRightHandBone = "mixamorig:RightHand";
         private const string NamLeftFootBone = "mixamorig:LeftFoot";
         private const string NamRightFootBone = "mixamorig:RightFoot";
+        private const string HenryRightHandBone = "CC_Base_R_Hand_086";
         private const string HenryRightFootBone = "CC_Base_R_Foot_024";
 
         [SerializeField] private MeleeHitboxRigPreset preset =
@@ -201,13 +202,21 @@ namespace DormitoryMystery.Chapter1
 
         private bool ConfigureHenryHitboxes()
         {
+            Transform rightHand =
+                FindChildRecursive(transform, HenryRightHandBone);
             Transform rightFoot =
                 FindChildRecursive(transform, HenryRightFootBone);
-            return EnsureHitbox(
+            bool handReady = EnsureHitbox(
+                MeleeHitboxLimb.RightHand,
+                rightHand,
+                new Vector3(0f, 7f, 0f),
+                new Vector3(12f, 18f, 12f));
+            bool footReady = EnsureHitbox(
                 MeleeHitboxLimb.RightFoot,
                 rightFoot,
                 new Vector3(0f, 9f, 1f),
                 new Vector3(14f, 28f, 10f));
+            return handReady && footReady;
         }
 
         private Animator ResolveHumanoidAnimator()

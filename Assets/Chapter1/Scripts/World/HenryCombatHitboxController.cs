@@ -5,9 +5,9 @@ using UnityEngine.SceneManagement;
 namespace DormitoryMystery.Chapter1
 {
     /// <summary>
-    /// Owns Henry's two kick timelines and their right-foot hitbox. It exposes
-    /// attack commands for the later combat AI but never chooses or starts an
-    /// attack by itself.
+    /// Owns Henry's punch and kick timelines plus their animated limb hitboxes.
+    /// It exposes attack commands for the combat AI but never chooses or starts
+    /// an attack by itself.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class HenryCombatHitboxController : MonoBehaviour
@@ -22,15 +22,22 @@ namespace DormitoryMystery.Chapter1
         [SerializeField] private BoxCollider hurtbox;
         [SerializeField] private CombatHurtbox hurtboxMarker;
 
+        [Header("Damage")]
+        [SerializeField, Min(0f)] private float attackDamage = 20f;
+
+        [Header("Punch")]
+        [SerializeField, Range(0f, 1f)]
+        private float punchHitWindowStart = 0.29f;
+        [SerializeField, Range(0f, 1f)]
+        private float punchHitWindowEnd = 0.43f;
+
         [Header("MMA Kick")]
-        [SerializeField, Min(0f)] private float mmaKickDamage = 20f;
         [SerializeField, Range(0f, 1f)]
         private float mmaKickHitWindowStart = 0.34f;
         [SerializeField, Range(0f, 1f)]
         private float mmaKickHitWindowEnd = 0.58f;
 
         [Header("Roundhouse Kick")]
-        [SerializeField, Min(0f)] private float roundhouseKickDamage = 30f;
         [SerializeField, Range(0f, 1f)]
         private float roundhouseHitWindowStart = 0.29f;
         [SerializeField, Range(0f, 1f)]
@@ -146,9 +153,10 @@ namespace DormitoryMystery.Chapter1
             float normalizedTime =
                 animationPlayer.GetCombatAttackNormalizedTime(activeAttack);
             ResolveActiveAttack(
-                out _,
+                out float damage,
                 out float hitWindowStart,
-                out float hitWindowEnd);
+                out float hitWindowEnd,
+                out MeleeHitboxLimb hitLimb);
 
             if (!hitWindowOpened &&
                 !hitWindowConsumed &&
@@ -163,8 +171,8 @@ namespace DormitoryMystery.Chapter1
             {
                 hitWindowOpened = meleeDamageDealer != null &&
                     meleeDamageDealer.BeginHitWindow(
-                        MeleeHitboxLimb.RightFoot,
-                        GetActiveAttackDamage(),
+                        hitLimb,
+                        damage,
                         attackSequence);
                 if (!hitWindowOpened)
                 {
@@ -194,8 +202,12 @@ namespace DormitoryMystery.Chapter1
 
         private void OnValidate()
         {
-            mmaKickDamage = Mathf.Max(0f, mmaKickDamage);
-            roundhouseKickDamage = Mathf.Max(0f, roundhouseKickDamage);
+            attackDamage = Mathf.Max(0f, attackDamage);
+            punchHitWindowStart = Mathf.Clamp01(punchHitWindowStart);
+            punchHitWindowEnd = Mathf.Clamp(
+                punchHitWindowEnd,
+                punchHitWindowStart,
+                1f);
             mmaKickHitWindowStart = Mathf.Clamp01(mmaKickHitWindowStart);
             mmaKickHitWindowEnd = Mathf.Clamp(
                 mmaKickHitWindowEnd,
@@ -245,6 +257,11 @@ namespace DormitoryMystery.Chapter1
         public bool TryPlayMmaKick()
         {
             return TryPlayAttack(HenryCombatAttack.MmaKick);
+        }
+
+        public bool TryPlayPunch()
+        {
+            return TryPlayAttack(HenryCombatAttack.Punch);
         }
 
         public bool TryPlayRoundhouseKick()
@@ -345,6 +362,9 @@ namespace DormitoryMystery.Chapter1
 
             bool hitboxReady = meleeHitboxRig.ConfigureForHenry() &&
                 meleeHitboxRig.TryGetPose(
+                    MeleeHitboxLimb.RightHand,
+                    out _) &&
+                meleeHitboxRig.TryGetPose(
                     MeleeHitboxLimb.RightFoot,
                     out _);
 
@@ -389,7 +409,9 @@ namespace DormitoryMystery.Chapter1
             {
                 setupErrorLogged = true;
                 Debug.LogError(
-                    "[HenryCombat] Combat setup is incomplete. Required: both kick clips, right-foot bone, Player/Enemy layers, damage dealer, health, and hurtbox.",
+                    "[HenryCombat] Combat setup is incomplete. Required: " +
+                    "Punch and both kick clips, right-hand/right-foot bones, " +
+                    "Player/Enemy layers, damage dealer, health, and hurtbox.",
                     this);
             }
 
@@ -466,31 +488,32 @@ namespace DormitoryMystery.Chapter1
             ExitCombatMode(false);
         }
 
-        private float GetActiveAttackDamage()
-        {
-            ResolveActiveAttack(
-                out float damage,
-                out _,
-                out _);
-            return damage;
-        }
-
         private void ResolveActiveAttack(
             out float damage,
             out float hitWindowStart,
-            out float hitWindowEnd)
+            out float hitWindowEnd,
+            out MeleeHitboxLimb hitLimb)
         {
-            if (activeAttack == HenryCombatAttack.RoundhouseKick)
+            damage = attackDamage;
+            if (activeAttack == HenryCombatAttack.Punch)
             {
-                damage = roundhouseKickDamage;
-                hitWindowStart = roundhouseHitWindowStart;
-                hitWindowEnd = roundhouseHitWindowEnd;
+                hitWindowStart = punchHitWindowStart;
+                hitWindowEnd = punchHitWindowEnd;
+                hitLimb = MeleeHitboxLimb.RightHand;
                 return;
             }
 
-            damage = mmaKickDamage;
+            if (activeAttack == HenryCombatAttack.RoundhouseKick)
+            {
+                hitWindowStart = roundhouseHitWindowStart;
+                hitWindowEnd = roundhouseHitWindowEnd;
+                hitLimb = MeleeHitboxLimb.RightFoot;
+                return;
+            }
+
             hitWindowStart = mmaKickHitWindowStart;
             hitWindowEnd = mmaKickHitWindowEnd;
+            hitLimb = MeleeHitboxLimb.RightFoot;
         }
 
         private static Transform FindDirectChild(
