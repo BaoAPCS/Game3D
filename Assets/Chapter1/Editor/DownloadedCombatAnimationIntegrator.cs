@@ -99,7 +99,7 @@ namespace DormitoryMystery.Chapter1.Editor
                 0.5f,
                 0.76f,
                 0.62f,
-                12f,
+                10f,
                 1.15f,
                 0.32f,
                 0.07f),
@@ -113,7 +113,7 @@ namespace DormitoryMystery.Chapter1.Editor
                 0.55f,
                 0.82f,
                 0.68f,
-                15f,
+                10f,
                 1.15f,
                 0.34f,
                 0.1f),
@@ -127,7 +127,7 @@ namespace DormitoryMystery.Chapter1.Editor
                 0.56f,
                 0.82f,
                 0.72f,
-                18f,
+                10f,
                 1.2f,
                 0.36f,
                 0.1f),
@@ -141,7 +141,7 @@ namespace DormitoryMystery.Chapter1.Editor
                 0.56f,
                 0.82f,
                 0.85f,
-                18f,
+                10f,
                 1.45f,
                 0.38f,
                 0.1f),
@@ -155,7 +155,7 @@ namespace DormitoryMystery.Chapter1.Editor
                 0.58f,
                 0.84f,
                 1f,
-                28f,
+                10f,
                 1.6f,
                 0.42f,
                 0.18f),
@@ -1145,6 +1145,10 @@ namespace DormitoryMystery.Chapter1.Editor
 
                 SetString(element, "attackName", spec.DisplayName);
                 SetString(element, "animationTrigger", spec.StateName);
+                SetEnum(
+                    element,
+                    "hitLimb",
+                    ResolveHitLimb(spec.Role));
                 SetFloat(element, "damage", spec.Damage);
                 SetFloat(element, "attackRange", spec.Range);
                 SetFloat(element, "attackRadius", spec.Radius);
@@ -1183,6 +1187,10 @@ namespace DormitoryMystery.Chapter1.Editor
 
             SetString(element, "attackName", spec.DisplayName);
             SetString(element, "animationTrigger", spec.StateName);
+            SetEnum(
+                element,
+                "hitLimb",
+                ResolveHitLimb(spec.Role));
             SetFloat(element, "damage", spec.Damage);
             SetFloat(element, "attackRange", spec.Range);
             SetFloat(element, "attackRadius", spec.Radius);
@@ -1777,6 +1785,40 @@ namespace DormitoryMystery.Chapter1.Editor
             if (property != null)
             {
                 property.floatValue = value;
+            }
+        }
+
+        private static void SetEnum(
+            SerializedProperty element,
+            string propertyName,
+            MeleeHitboxLimb value)
+        {
+            SerializedProperty property =
+                element.FindPropertyRelative(propertyName);
+            if (property != null)
+            {
+                property.enumValueIndex = (int)value;
+            }
+        }
+
+        private static MeleeHitboxLimb ResolveHitLimb(
+            CombatAnimationRole role)
+        {
+            switch (role)
+            {
+                case CombatAnimationRole.PunchLeft:
+                case CombatAnimationRole.Hook:
+                    return MeleeHitboxLimb.LeftHand;
+                case CombatAnimationRole.PunchRight:
+                case CombatAnimationRole.RightHook:
+                    return MeleeHitboxLimb.RightHand;
+                case CombatAnimationRole.KickSide:
+                    return MeleeHitboxLimb.LeftFoot;
+                case CombatAnimationRole.KickHeavy:
+                case CombatAnimationRole.SpinningBackKick:
+                    return MeleeHitboxLimb.RightFoot;
+                default:
+                    return MeleeHitboxLimb.None;
             }
         }
 

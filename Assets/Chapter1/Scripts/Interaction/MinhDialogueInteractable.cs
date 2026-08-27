@@ -240,9 +240,17 @@ namespace DormitoryMystery.Chapter1
 
             if (state == FirstMissionState.Completed)
             {
-                return Mission2HeistProgress.IsStarted
-                    ? MinhMissionDialogueMode.AlreadyCompleted
-                    : MinhMissionDialogueMode.Task2Briefing;
+                if (!Mission2HeistProgress.IsStarted)
+                {
+                    return MinhMissionDialogueMode.Task2Briefing;
+                }
+
+                if (Mission2HeistProgress.CanDeliverEquipment)
+                {
+                    return MinhMissionDialogueMode.Task2TurnIn;
+                }
+
+                return MinhMissionDialogueMode.AlreadyCompleted;
             }
 
             return MinhMissionDialogueMode.Default;
@@ -264,8 +272,13 @@ namespace DormitoryMystery.Chapter1
                 case MinhMissionDialogueMode.Task2Briefing:
                     AddTask2BriefingLines(lines);
                     break;
+                case MinhMissionDialogueMode.Task2TurnIn:
+                    AddPoliceLeadLines(lines);
+                    break;
                 case MinhMissionDialogueMode.AlreadyCompleted:
-                    lines.Add(new DialogueLine(minhSpeaker, "Tớ đang nghe lại phần ghi âm đã được tách."));
+                    lines.Add(new DialogueLine(
+                        minhSpeaker,
+                        GetPostTask2Reminder()));
                     break;
             }
 
@@ -305,10 +318,41 @@ namespace DormitoryMystery.Chapter1
             {
                 Mission2HeistProgress.BeginMission(gameObject.scene);
             }
+            else if (activeMissionMode ==
+                     MinhMissionDialogueMode.Task2TurnIn)
+            {
+                if (Mission2HeistProgress.TryDeliverEquipment())
+                {
+                    Mission2HeistProgress.ConcludeHenryEncounter(
+                        gameObject.scene);
+                }
+            }
 
             activeMissionMode = MinhMissionDialogueMode.Default;
             activeMissionLines = null;
             activeInventory = null;
+        }
+
+        private static string GetPostTask2Reminder()
+        {
+            if (!Mission2HeistProgress.HasDeliveredEquipment)
+            {
+                return "Tớ vẫn đang chờ PSU và UPS để train model AI.";
+            }
+
+            if (Mission3Progress.ChallengePassed)
+            {
+                return "Cậu đã vượt qua thử thách của băng nhóm. Hãy chuẩn bị đến đồn cảnh sát.";
+            }
+
+            if (Mission3Progress.GangHostile)
+            {
+                return "Băng nhóm đang truy đuổi cậu. Mau chạy đi!";
+            }
+
+            return Mission3Progress.JamesIntroPlayed
+                ? "Quay lại chỗ James và bắt đầu thử thách đi."
+                : "Qua nói chuyện với James ở băng nhóm đối diện.";
         }
 
         private void AddTask2BriefingLines(List<DialogueLine> lines)
@@ -337,6 +381,22 @@ namespace DormitoryMystery.Chapter1
             lines.Add(new DialogueLine(
                 playerSpeaker,
                 secondPlayerAcceptLine));
+        }
+
+        private void AddPoliceLeadLines(List<DialogueLine> lines)
+        {
+            lines.Add(new DialogueLine(
+                minhSpeaker,
+                "Đây chính là tiếng còi cảnh sát."));
+            lines.Add(new DialogueLine(
+                minhSpeaker,
+                "Từ những âm thanh còn lại, tôi đã tra ra được vị trí chị bạn đã ghi âm là một đồn cảnh sát. Bạn phải đến đó."));
+            lines.Add(new DialogueLine(
+                playerSpeaker,
+                "Thế làm sao để tôi có thể đột nhập vào được đồn cảnh sát?"));
+            lines.Add(new DialogueLine(
+                minhSpeaker,
+                "Phía đối diện bên kia đường có một băng đảng da đen. Họ đã từng gây náo loạn ở đồn cảnh sát và bị bắt. Bạn qua hỏi thăm thử xem."));
         }
 
         private IEnumerator StreamLine(string speaker, string line)
@@ -875,6 +935,7 @@ namespace DormitoryMystery.Chapter1
             Reminder,
             Completion,
             Task2Briefing,
+            Task2TurnIn,
             AlreadyCompleted
         }
 

@@ -295,6 +295,10 @@ GameObject:
   - component: {fileID: 3234517627012300010}
   - component: {fileID: 7618332874887176514}
   - component: {fileID: 831201755241820960}
+  - component: {fileID: 910100100100100101}
+  - component: {fileID: 910100100100100102}
+  - component: {fileID: 910100100100100103}
+  - component: {fileID: 910100100100100104}
   m_Layer: 8
   m_Name: Player
   m_TagString: Player
@@ -549,9 +553,14 @@ MonoBehaviour:
   animator: {fileID: 1943409525567369318}
   attackPoint: {fileID: 7289411469025911647}
   proceduralAnimationRoot: {fileID: 2480943109296301907}
+  meleeHitboxRig: {fileID: 910100100100100101}
+  meleeDamageDealer: {fileID: 910100100100100102}
+  combatHealth: {fileID: 910100100100100103}
+  combatHurtbox: {fileID: 910100100100100104}
   comboAttacks:
   - attackName: Punch Left
     animationTrigger: PunchLeft
+    hitLimb: 1
     damage: 10
     attackRange: 1.1
     attackRadius: 0.3
@@ -562,7 +571,8 @@ MonoBehaviour:
     recoveryTime: 0.04
   - attackName: Punch Right
     animationTrigger: PunchRight
-    damage: 12
+    hitLimb: 2
+    damage: 10
     attackRange: 1.15
     attackRadius: 0.32
     hitTime: 0.31
@@ -572,7 +582,8 @@ MonoBehaviour:
     recoveryTime: 0.0434
   - attackName: Hook
     animationTrigger: Hook
-    damage: 15
+    hitLimb: 1
+    damage: 10
     attackRange: 1.15
     attackRadius: 0.34
     hitTime: 0.374
@@ -582,7 +593,8 @@ MonoBehaviour:
     recoveryTime: 0.068
   - attackName: Right Hook
     animationTrigger: RightHook
-    damage: 18
+    hitLimb: 2
+    damage: 10
     attackRange: 1.2
     attackRadius: 0.36
     hitTime: 0.40320003
@@ -595,7 +607,8 @@ MonoBehaviour:
   neutralKickAttack:
     attackName: Heavy Kick
     animationTrigger: KickHeavy
-    damage: 28
+    hitLimb: 4
+    damage: 10
     attackRange: 1.6
     attackRadius: 0.42
     hitTime: 0.58
@@ -606,7 +619,8 @@ MonoBehaviour:
   forwardKickAttack:
     attackName: Side Kick
     animationTrigger: KickSide
-    damage: 18
+    hitLimb: 3
+    damage: 10
     attackRange: 1.45
     attackRadius: 0.38
     hitTime: 0.476
@@ -617,6 +631,7 @@ MonoBehaviour:
   backwardKickAttack:
     attackName: Spinning Back Kick
     animationTrigger: SpinningBackKick
+    hitLimb: 4
     damage: 30
     attackRange: 1.55
     attackRadius: 0.42
@@ -630,6 +645,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 2048
   triggerInteraction: 2
+  attackHitboxActiveDuration: 0.12
   lockMovementDuringAttack: 0
   attackMoveSpeedMultiplier: 0.6
   allowCombatWhileCrouching: 0
@@ -682,6 +698,68 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DormitoryMystery.Chapter1.CombatAnimationEventRelay
   combatController: {fileID: 2608203049918446400}
+--- !u!114 &910100100100100101
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6620642945003662220}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 52dc8c4601754abeaa67381dc16749d8, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::DormitoryMystery.Chapter1.MeleeHitboxRig
+  preset: 1
+  humanoidAnimator: {fileID: 1943409525567369318}
+  drawDebugGizmos: 1
+--- !u!114 &910100100100100102
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6620642945003662220}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2cff651181324798a096260909096089, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::DormitoryMystery.Chapter1.MeleeDamageDealer
+  hitboxRig: {fileID: 910100100100100101}
+  targetLayerMask:
+    serializedVersion: 2
+    m_Bits: 2048
+  triggerInteraction: 2
+  useSweptQuery: 1
+--- !u!114 &910100100100100103
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6620642945003662220}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6c50686b77c7496f9617371a139a9328, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::DormitoryMystery.Chapter1.CombatHealth
+  maxHealth: 100
+  currentHealth: 100
+  startAtMaximumHealth: 1
+--- !u!114 &910100100100100104
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6620642945003662220}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c70adeed23e942a7867038b7c98efd0f, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::DormitoryMystery.Chapter1.CombatHurtbox
+  volume: {fileID: 132529182369247979}
+  ownerHealth: {fileID: 910100100100100103}
 --- !u!114 &7618332874887176514
 MonoBehaviour:
   m_ObjectHideFlags: 0

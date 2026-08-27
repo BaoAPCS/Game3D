@@ -22,7 +22,7 @@ namespace DormitoryMystery.Chapter1
         {
             if (chapterManager != null)
             {
-                SetObjective(Chapter1Manager.GetObjective(chapterManager.CurrentStep), false);
+                SetObjective(chapterManager.GetCurrentObjective(), false);
             }
         }
 
@@ -41,7 +41,7 @@ namespace DormitoryMystery.Chapter1
             chapterManager = manager;
             if (chapterManager != null)
             {
-                SetObjective(Chapter1Manager.GetObjective(chapterManager.CurrentStep), false);
+                SetObjective(chapterManager.GetCurrentObjective(), false);
             }
         }
 

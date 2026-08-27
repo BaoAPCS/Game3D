@@ -15,6 +15,8 @@ namespace DormitoryMystery.Chapter1
             MovingToFoodcart,
             WaitingAtFoodcart,
             ReturningHome,
+            StoryApproach,
+            FightControl,
             Chasing,
             ForcedCatch,
             Escaped,
@@ -58,6 +60,9 @@ namespace DormitoryMystery.Chapter1
         private bool batterySwapRaceActive;
         private PlayerInputLock forcedCatchInputLock;
         private float forcedCatchDeadline;
+        private Transform storyApproachTarget;
+        private float storyApproachStoppingDistance = 1.6f;
+        private bool storyApproachArrivalRaised;
 
         private const string ForcedCatchInputReason = "HenryForcedCatch";
 
@@ -72,6 +77,25 @@ namespace DormitoryMystery.Chapter1
             state == ChaseState.ReturningHome;
         public bool IsBatterySwapRaceActive =>
             batterySwapRaceActive && state == ChaseState.Chasing;
+        public bool IsStoryApproachActive =>
+            state == ChaseState.StoryApproach;
+        public bool IsUnderFightControl =>
+            state == ChaseState.FightControl;
+        public bool IsReadyForStoryApproach
+        {
+            get
+            {
+                if (state != ChaseState.Idle)
+                {
+                    return false;
+                }
+
+                Vector3 homeSeparation =
+                    homePosition - transform.position;
+                homeSeparation.y = 0f;
+                return homeSeparation.sqrMagnitude <= 0.25f * 0.25f;
+            }
+        }
         public bool CanStartDistraction => state == ChaseState.Idle;
         public bool HasEscaped => state == ChaseState.Escaped;
         public bool HasCaughtPlayer => state == ChaseState.Caught;
@@ -81,6 +105,7 @@ namespace DormitoryMystery.Chapter1
         public event Action ChaseStarted;
         public event Action PlayerEscaped;
         public event Action PlayerCaught;
+        public event Action StoryApproachArrived;
 
         private void Awake()
         {
@@ -116,6 +141,9 @@ namespace DormitoryMystery.Chapter1
                     break;
                 case ChaseState.ReturningHome:
                     UpdateReturnHome();
+                    break;
+                case ChaseState.StoryApproach:
+                    UpdateStoryApproach();
                     break;
             }
         }
@@ -166,8 +194,20 @@ namespace DormitoryMystery.Chapter1
         {
             foodcartDistractionActive = false;
             batterySwapRaceActive = false;
+            storyApproachTarget = null;
+            storyApproachArrivalRaised = true;
+            if (state == ChaseState.StoryApproach)
+            {
+                state = ChaseState.Idle;
+            }
+
             ReleaseForcedCatchInput();
             StopAgent();
+            if (agent != null)
+            {
+                agent.autoBraking = false;
+            }
+
             if (animationPlayer != null)
             {
                 animationPlayer.StopAtInitialPose();
@@ -393,6 +433,224 @@ namespace DormitoryMystery.Chapter1
                 this);
         }
 
+        /// <summary>
+        /// Ends any remaining Task-2 Henry behavior without producing a catch
+        /// or escape event, then sends him back to his original position.
+        /// </summary>
+        public void ConcludeEncounterAndReturnHome()
+        {
+            if (state == ChaseState.Caught)
+            {
+                return;
+            }
+
+            foodcartDistractionActive = false;
+            batterySwapRaceActive = false;
+            player = null;
+            activeEscapeDoor = null;
+            storyApproachTarget = null;
+            storyApproachArrivalRaised = true;
+            ReleaseForcedCatchInput();
+
+            if (agent != null)
+            {
+                agent.autoBraking = false;
+            }
+
+            if (HasReachedDestination(homePosition, 0.1f))
+            {
+                StopAgent();
+                if (agent != null && agent.enabled && agent.isOnNavMesh)
+                {
+                    agent.Warp(homePosition);
+                }
+
+                transform.rotation = homeRotation;
+                animationPlayer?.PlayIdle();
+                state = ChaseState.Idle;
+                return;
+            }
+
+            BeginReturnHome();
+        }
+
+        /// <summary>
+        /// Moves Henry towards a story target without enabling any chase,
+        /// catch, escape, or game-over behavior. Henry must first finish
+        /// returning to his original position after the previous encounter.
+        /// </summary>
+        public bool BeginStoryApproach(
+            Transform target,
+            float stoppingDistance = 1.6f)
+        {
+            if (!IsReadyForStoryApproach || target == null)
+            {
+                return false;
+            }
+
+            if (!EnsureAgentOnNavMesh())
+            {
+                Debug.LogError(
+                    "[Henry] Cannot begin the story approach because " +
+                    "Henry is not on the NavMesh.",
+                    this);
+                return false;
+            }
+
+            if (!TryCalculateStoryApproachPath(
+                    target.position,
+                    out NavMeshPath initialPath))
+            {
+                Debug.LogError(
+                    "[Henry] Cannot find a complete NavMesh route to " +
+                    "the story target.",
+                    this);
+                return false;
+            }
+
+            if (animationPlayer == null ||
+                !animationPlayer.PlayRun())
+            {
+                Debug.LogError(
+                    "[Henry] Cannot begin the story approach because " +
+                    "the run animation is unavailable.",
+                    this);
+                return false;
+            }
+
+            StopAgent();
+
+            player = null;
+            activeEscapeDoor = null;
+            foodcartDistractionActive = false;
+            batterySwapRaceActive = false;
+            ReleaseForcedCatchInput();
+
+            storyApproachTarget = target;
+            storyApproachStoppingDistance =
+                Mathf.Max(0.1f, stoppingDistance);
+            storyApproachArrivalRaised = false;
+            state = ChaseState.StoryApproach;
+
+            agent.autoBraking = true;
+            agent.stoppingDistance = storyApproachStoppingDistance;
+            agent.isStopped = false;
+            nextDestinationRefreshAt =
+                Time.time + destinationRefreshInterval;
+
+            if (!agent.SetPath(initialPath))
+            {
+                storyApproachTarget = null;
+                storyApproachArrivalRaised = true;
+                agent.autoBraking = false;
+
+                state = ChaseState.Idle;
+                StopAgent();
+                animationPlayer.PlayIdle();
+
+                Debug.LogError(
+                    "[Henry] Failed to assign the story approach path.",
+                    this);
+                return false;
+            }
+
+            Debug.Log(
+                "[Henry] Starting the neutral story approach.",
+                this);
+            return true;
+        }
+
+        public void CancelStoryApproach()
+        {
+            if (state != ChaseState.StoryApproach)
+            {
+                return;
+            }
+
+            storyApproachTarget = null;
+            storyApproachArrivalRaised = true;
+            StopAgent();
+            if (agent != null)
+            {
+                agent.autoBraking = false;
+            }
+
+            state = ChaseState.Idle;
+            animationPlayer?.PlayIdle();
+        }
+
+        /// <summary>
+        /// Gives the dedicated Henry fight encounter exclusive ownership of
+        /// Henry's NavMeshAgent and animation commands. No Task-2 catch,
+        /// escape, food-cart, or story-approach logic runs in this state.
+        /// </summary>
+        public bool BeginFightControl(
+            Transform playerTarget,
+            float movementSpeed = 6.5f)
+        {
+            if (playerTarget == null)
+            {
+                return false;
+            }
+
+            foodcartDistractionActive = false;
+            batterySwapRaceActive = false;
+            activeEscapeDoor = null;
+            storyApproachTarget = null;
+            storyApproachArrivalRaised = true;
+            ReleaseForcedCatchInput();
+
+            if (!EnsureAgentOnNavMesh())
+            {
+                Debug.LogError(
+                    "[Henry] Cannot hand navigation to the fight encounter " +
+                    "because Henry is not on the NavMesh.",
+                    this);
+                return false;
+            }
+
+            StopAgent();
+            player = playerTarget;
+            state = ChaseState.FightControl;
+
+            agent.speed = Mathf.Max(0.1f, movementSpeed);
+            agent.acceleration = acceleration;
+            agent.angularSpeed = angularSpeed;
+            agent.autoBraking = true;
+            agent.stoppingDistance = 0.1f;
+            return true;
+        }
+
+        /// <summary>
+        /// Releases exclusive fight ownership without starting any old chase
+        /// behavior. Henry remains where the fight ended.
+        /// </summary>
+        public void EndFightControl(bool playIdle = true)
+        {
+            if (state != ChaseState.FightControl)
+            {
+                return;
+            }
+
+            StopAgent();
+            if (agent != null)
+            {
+                agent.speed = chaseSpeed;
+                agent.acceleration = acceleration;
+                agent.angularSpeed = angularSpeed;
+                agent.autoBraking = false;
+                agent.stoppingDistance = GetChaseStoppingDistance();
+            }
+
+            player = null;
+            activeEscapeDoor = null;
+            state = ChaseState.Idle;
+            if (playIdle)
+            {
+                animationPlayer?.PlayIdle();
+            }
+        }
+
         public void BeginForcedCatch(Transform playerTarget)
         {
             if (state == ChaseState.Caught)
@@ -484,6 +742,157 @@ namespace DormitoryMystery.Chapter1
                 this);
         }
 
+        private void UpdateStoryApproach()
+        {
+            if (storyApproachTarget == null)
+            {
+                CancelStoryApproach();
+                return;
+            }
+
+            if (agent == null ||
+                !agent.enabled ||
+                !agent.isOnNavMesh)
+            {
+                if (!EnsureAgentOnNavMesh())
+                {
+                    Debug.LogError(
+                        "[Henry] Story approach stopped because Henry " +
+                        "could not be placed on the NavMesh.",
+                        this);
+                    CancelStoryApproach();
+                    return;
+                }
+
+                agent.autoBraking = true;
+                agent.stoppingDistance =
+                    storyApproachStoppingDistance;
+                agent.isStopped = false;
+                nextDestinationRefreshAt = 0f;
+            }
+
+            RefreshStoryApproachDestination();
+            if (!HasReachedStoryApproachTarget())
+            {
+                return;
+            }
+
+            CompleteStoryApproach();
+        }
+
+        private void RefreshStoryApproachDestination()
+        {
+            if (storyApproachTarget == null ||
+                Time.time < nextDestinationRefreshAt)
+            {
+                return;
+            }
+
+            nextDestinationRefreshAt =
+                Time.time + destinationRefreshInterval;
+
+            if (TryCalculateStoryApproachPath(
+                    storyApproachTarget.position,
+                    out NavMeshPath path))
+            {
+                agent.SetPath(path);
+            }
+        }
+
+        private bool TryCalculateStoryApproachPath(
+            Vector3 targetPosition,
+            out NavMeshPath path)
+        {
+            path = new NavMeshPath();
+            if (agent == null ||
+                !agent.enabled ||
+                !agent.isOnNavMesh ||
+                !NavMesh.SamplePosition(
+                    targetPosition,
+                    out NavMeshHit targetHit,
+                    2.5f,
+                    NavMesh.AllAreas) ||
+                !agent.CalculatePath(targetHit.position, path))
+            {
+                return false;
+            }
+
+            return path.status == NavMeshPathStatus.PathComplete;
+        }
+
+        private bool HasReachedStoryApproachTarget()
+        {
+            if (storyApproachTarget == null ||
+                agent == null ||
+                agent.pathPending ||
+                agent.pathStatus == NavMeshPathStatus.PathInvalid)
+            {
+                return false;
+            }
+
+            Vector3 separation =
+                storyApproachTarget.position - transform.position;
+            separation.y = 0f;
+            float directTolerance =
+                storyApproachStoppingDistance + 0.25f;
+            if (separation.sqrMagnitude >
+                directTolerance * directTolerance)
+            {
+                return false;
+            }
+
+            return !agent.hasPath ||
+                   agent.remainingDistance <=
+                   storyApproachStoppingDistance + 0.15f;
+        }
+
+        private void CompleteStoryApproach()
+        {
+            if (state != ChaseState.StoryApproach ||
+                storyApproachArrivalRaised)
+            {
+                return;
+            }
+
+            Transform reachedTarget = storyApproachTarget;
+            StopAgent();
+            if (agent != null)
+            {
+                agent.autoBraking = false;
+            }
+
+            FaceTarget(reachedTarget);
+            animationPlayer?.PlayIdle();
+
+            storyApproachTarget = null;
+            storyApproachArrivalRaised = true;
+            state = ChaseState.Idle;
+
+            Debug.Log(
+                "[Henry] Reached the story target.",
+                this);
+            StoryApproachArrived?.Invoke();
+        }
+
+        private void FaceTarget(Transform target)
+        {
+            if (target == null)
+            {
+                return;
+            }
+
+            Vector3 direction = target.position - transform.position;
+            direction.y = 0f;
+            if (direction.sqrMagnitude <= 0.0001f)
+            {
+                return;
+            }
+
+            transform.rotation = Quaternion.LookRotation(
+                direction.normalized,
+                Vector3.up);
+        }
+
         private void BeginReturnHome()
         {
             if (!EnsureAgentOnNavMesh())
@@ -495,6 +904,7 @@ namespace DormitoryMystery.Chapter1
             }
 
             state = ChaseState.ReturningHome;
+            agent.autoBraking = false;
             agent.isStopped = false;
             agent.stoppingDistance = 0.1f;
             nextDestinationRefreshAt = 0f;

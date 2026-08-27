@@ -93,6 +93,22 @@ namespace DormitoryMystery.Chapter1
 
             if (nextStep == previousStep)
             {
+                // Repair a partially-written terminal save in-place. Older
+                // code could persist ChapterCompleted as the current step
+                // before persisting the matching boolean. Treating that as a
+                // no-op would make callers believe Chapter 1 was completed
+                // while the runtime data still said otherwise.
+                if (nextStep == Chapter1Step.ChapterCompleted &&
+                    !CurrentData.ChapterCompleted)
+                {
+                    CurrentData.ChapterCompleted = true;
+                    CurrentData.EnsureValidDefaults();
+                    Chapter1EventBus.RaiseObjectiveChanged(
+                        GetCurrentObjective());
+                    Chapter1EventBus.RaiseChapterCompleted();
+                    SaveIfAutoSaveEnabled();
+                }
+
                 return true;
             }
 
@@ -106,7 +122,7 @@ namespace DormitoryMystery.Chapter1
 
             CurrentData.EnsureValidDefaults();
             Chapter1EventBus.RaiseStepChanged(CurrentData.CurrentStep);
-            Chapter1EventBus.RaiseObjectiveChanged(GetObjective(CurrentData.CurrentStep));
+            Chapter1EventBus.RaiseObjectiveChanged(GetCurrentObjective());
 
             if (CurrentData.ChapterCompleted && !wasChapterCompleted)
             {
@@ -290,6 +306,78 @@ namespace DormitoryMystery.Chapter1
             }
         }
 
+        /// <summary>
+        /// Returns the objective that matches the persisted mission state.
+        /// Mission 2 and Mission 3 extend beyond the original Chapter1Step
+        /// enum, so they must take precedence once their milestones exist.
+        /// </summary>
+        public string GetCurrentObjective()
+        {
+            Chapter1SaveData data = CurrentData;
+            data.EnsureValidDefaults();
+
+            if (data.Mission03PoliceArrestCompleted)
+            {
+                return "Chương 1 hoàn thành.";
+            }
+
+            if (data.Mission03GangHostile)
+            {
+                return "Chạy thoát khỏi James, David và Lewis.";
+            }
+
+            if (data.Mission03HenryDefeated)
+            {
+                return "Cảnh sát đang chạy tới chỗ bạn.";
+            }
+
+            if (data.Mission03HenryConfrontationCompleted)
+            {
+                return "Chuẩn bị đối đầu với Henry.";
+            }
+
+            if (data.Mission03PoliceKeyReceived)
+            {
+                return "Henry đang chạy tới chỗ bạn.";
+            }
+
+            if (data.Mission03ChallengePassed)
+            {
+                return "Nhận chìa khóa từ James.";
+            }
+
+            if (data.Mission02EquipmentDelivered)
+            {
+                return data.Mission03JamesIntroPlayed
+                    ? "Quay lại nói chuyện với James để bắt đầu thử thách."
+                    : "Qua nói chuyện với James ở băng nhóm đối diện.";
+            }
+
+            if (data.Mission02Started)
+            {
+                if (data.Mission02HasPsu && data.Mission02HasUps)
+                {
+                    return "Mang PSU và UPS về cho Minh.";
+                }
+
+                if (!data.Mission02HasHenryBattery)
+                {
+                    return data.Mission02HasBrokenBattery
+                        ? "Đánh lạc hướng Henry rồi đánh tráo ắc quy."
+                        : "Tìm ắc quy hỏng để đánh tráo ắc quy của Henry.";
+                }
+
+                if (!data.Mission02HasUps)
+                {
+                    return "Quay lại nhặt UPS.";
+                }
+
+                return "Tìm và nhặt PSU.";
+            }
+
+            return GetObjective(data.CurrentStep);
+        }
+
         private bool HasFinalChoiceBeenApplied()
         {
             return CurrentData.CurrentStep >= Chapter1Step.EndingSequence
@@ -302,7 +390,7 @@ namespace DormitoryMystery.Chapter1
         {
             CurrentData.EnsureValidDefaults();
             Chapter1EventBus.RaiseStepChanged(CurrentData.CurrentStep);
-            Chapter1EventBus.RaiseObjectiveChanged(GetObjective(CurrentData.CurrentStep));
+            Chapter1EventBus.RaiseObjectiveChanged(GetCurrentObjective());
             Chapter1EventBus.RaiseInventoryChanged();
             Chapter1EventBus.RaiseNamTrustChanged(CurrentData.NamTrust);
             Chapter1EventBus.RaisePowerStateChanged(CurrentData.PowerRestored);

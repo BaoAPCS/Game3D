@@ -2,6 +2,28 @@
 
 namespace DormitoryMystery.Chapter1
 {
+    public enum GameOverRestartPolicy
+    {
+        ReloadScene,
+        ResetChapterThenReload
+    }
+
+    public readonly struct GameOverRequest
+    {
+        public GameOverRequest(
+            string reason,
+            GameOverRestartPolicy restartPolicy)
+        {
+            Reason = string.IsNullOrWhiteSpace(reason)
+                ? "Bạn đã thua"
+                : reason;
+            RestartPolicy = restartPolicy;
+        }
+
+        public string Reason { get; }
+        public GameOverRestartPolicy RestartPolicy { get; }
+    }
+
     public static class Chapter1EventBus
     {
         public static event Action<Chapter1Step> StepChanged;
@@ -11,6 +33,7 @@ namespace DormitoryMystery.Chapter1
         public static event Action<bool> PowerStateChanged;
         public static event Action<bool> PlayerHiddenChanged;
         public static event Action PlayerCaught;
+        public static event Action<GameOverRequest> GameOverRequested;
         public static event Action<string> CheckpointChanged;
         public static event Action<string> NotificationRequested;
         public static event Action<string> UrgentNotificationRequested;
@@ -19,6 +42,11 @@ namespace DormitoryMystery.Chapter1
         public static event Action OnFirstMissionCompleted;
         public static event Action OnAllLanAudioStemsSaved;
         public static event Action OnLanVoiceRecordingListened;
+        /// <summary>
+        /// Raised after Henry's Task-3 warning has finished and the story is
+        /// ready to hand control to the Henry combat encounter.
+        /// </summary>
+        public static event Action HenryCombatReady;
 
         public static void RaiseStepChanged(Chapter1Step step)
         {
@@ -53,6 +81,18 @@ namespace DormitoryMystery.Chapter1
         public static void RaisePlayerCaught()
         {
             PlayerCaught?.Invoke();
+            RaiseGameOver(
+                "Henry đã bắt được bạn",
+                GameOverRestartPolicy.ReloadScene);
+        }
+
+        public static void RaiseGameOver(
+            string reason,
+            GameOverRestartPolicy restartPolicy =
+                GameOverRestartPolicy.ReloadScene)
+        {
+            GameOverRequested?.Invoke(
+                new GameOverRequest(reason, restartPolicy));
         }
 
         public static void RaiseCheckpointChanged(string checkpointId)
@@ -93,6 +133,11 @@ namespace DormitoryMystery.Chapter1
         public static void RaiseLanVoiceRecordingListened()
         {
             OnLanVoiceRecordingListened?.Invoke();
+        }
+
+        public static void RaiseHenryCombatReady()
+        {
+            HenryCombatReady?.Invoke();
         }
     }
 }

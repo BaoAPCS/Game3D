@@ -6,6 +6,8 @@ namespace DormitoryMystery.Chapter1
     [Serializable]
     public class Chapter1SaveData
     {
+        private const int CurrentSaveVersion = 6;
+
         public int SaveVersion;
         public Chapter1Step CurrentStep;
         public int NamTrust;
@@ -49,10 +51,23 @@ namespace DormitoryMystery.Chapter1
         public List<float> AudioSeparatorFaderValues;
         public bool Mission01Completed;
         public bool Mission01CalendarViewed;
+        public bool Mission02Started;
+        public bool Mission02HasPsu;
+        public bool Mission02HasUps;
+        public bool Mission02HasBrokenBattery;
+        public bool Mission02HasHenryBattery;
+        public bool Mission02EquipmentDelivered;
+        public bool Mission03JamesIntroPlayed;
+        public bool Mission03ChallengePassed;
+        public bool Mission03GangHostile;
+        public bool Mission03PoliceKeyReceived;
+        public bool Mission03HenryConfrontationCompleted;
+        public bool Mission03HenryDefeated;
+        public bool Mission03PoliceArrestCompleted;
 
         public Chapter1SaveData()
         {
-            SaveVersion = 1;
+            SaveVersion = CurrentSaveVersion;
             CurrentStep = Chapter1Step.TalkToNam;
             NamTrust = 45;
             HasLanRecording = false;
@@ -85,9 +100,22 @@ namespace DormitoryMystery.Chapter1
 
         public void EnsureValidDefaults()
         {
-            if (SaveVersion <= 0)
+            // In version 5 this flag meant only that police_car had reached
+            // Nam after Henry was defeated. Version 6 moves the flag to the
+            // end of the Police dialogue and shares it between both combat
+            // outcomes. Preserve the old victory, but replay the new pursuit
+            // and dialogue for a legacy save.
+            bool migrateLegacyPoliceArrival =
+                SaveVersion < 6 && Mission03PoliceArrestCompleted;
+            if (migrateLegacyPoliceArrival)
             {
-                SaveVersion = 1;
+                Mission03HenryDefeated = true;
+                Mission03PoliceArrestCompleted = false;
+            }
+
+            if (SaveVersion < CurrentSaveVersion)
+            {
+                SaveVersion = CurrentSaveVersion;
             }
 
             NamTrust = NamTrustCalculator.ClampTrust(NamTrust);
@@ -128,6 +156,95 @@ namespace DormitoryMystery.Chapter1
             if (FirstMissionStateValue < (int)FirstMissionState.None || FirstMissionStateValue > (int)FirstMissionState.Completed)
             {
                 FirstMissionStateValue = (int)FirstMissionState.None;
+            }
+
+            // Keep the newer story flags internally consistent when loading
+            // an older save or a save written part-way through a milestone.
+            if (Mission02EquipmentDelivered)
+            {
+                Mission02Started = true;
+                Mission02HasPsu = true;
+                Mission02HasUps = true;
+                Mission02HasHenryBattery = true;
+                Mission02HasBrokenBattery = false;
+            }
+
+            if (Mission02HasPsu ||
+                Mission02HasUps ||
+                Mission02HasBrokenBattery ||
+                Mission02HasHenryBattery)
+            {
+                Mission02Started = true;
+            }
+
+            if (Mission02HasUps)
+            {
+                Mission02HasHenryBattery = true;
+            }
+
+            if (Mission02HasHenryBattery)
+            {
+                Mission02HasBrokenBattery = false;
+            }
+
+            // Repair partially-written/newer saves from the most advanced
+            // Mission 3 flag backwards so every prerequisite remains one-way.
+            if (Mission03HenryDefeated)
+            {
+                Mission03HenryConfrontationCompleted = true;
+            }
+
+            // The final arrest dialogue does not reveal who won the fight.
+            // It does close Chapter 1 and repair the shared prerequisite
+            // chain for either outcome.
+            if (Mission03PoliceArrestCompleted)
+            {
+                Mission03HenryConfrontationCompleted = true;
+                ChapterCompleted = true;
+                CurrentStep = Chapter1Step.ChapterCompleted;
+            }
+
+            if (Mission03JamesIntroPlayed ||
+                Mission03ChallengePassed ||
+                Mission03GangHostile ||
+                Mission03PoliceKeyReceived ||
+                Mission03HenryConfrontationCompleted ||
+                Mission03HenryDefeated ||
+                Mission03PoliceArrestCompleted)
+            {
+                Mission02EquipmentDelivered = true;
+                Mission02Started = true;
+                Mission02HasPsu = true;
+                Mission02HasUps = true;
+                Mission02HasHenryBattery = true;
+                Mission02HasBrokenBattery = false;
+            }
+
+            if (Mission03ChallengePassed)
+            {
+                Mission03JamesIntroPlayed = true;
+                Mission03GangHostile = false;
+            }
+
+            if (Mission03GangHostile)
+            {
+                Mission03JamesIntroPlayed = true;
+                Mission03ChallengePassed = false;
+            }
+
+            // The new Mission 3 milestones are intentionally one-way. A
+            // legacy v2 save with ChallengePassed remains at the James reward
+            // step; it is not silently upgraded to owning the key.
+            if (Mission03HenryConfrontationCompleted)
+            {
+                Mission03PoliceKeyReceived = true;
+            }
+
+            if (Mission03PoliceKeyReceived)
+            {
+                Mission03JamesIntroPlayed = true;
+                Mission03ChallengePassed = true;
+                Mission03GangHostile = false;
             }
         }
 

@@ -12,6 +12,7 @@ namespace DormitoryMystery.Chapter1
         private const int HitBufferSize = 32;
         private const string WalkStateName = "Walk";
         private const string RunStateName = "Run";
+        public const string ForcedStunInputLockReason = "ForcedStun";
         private static readonly int MoveSpeedParameter = Animator.StringToHash("MoveSpeed");
         private static readonly int IsGroundedParameter = Animator.StringToHash("IsGrounded");
         private static readonly int IsSprintingParameter = Animator.StringToHash("IsSprinting");
@@ -22,6 +23,7 @@ namespace DormitoryMystery.Chapter1
         private static readonly int JumpParameter = Animator.StringToHash("Jump");
         private static readonly int WalkStateHash = Animator.StringToHash("Base Layer.Walk");
         private static readonly int RunStateHash = Animator.StringToHash("Base Layer.Run");
+        private static readonly int StunnedStateHash = Animator.StringToHash("Base Layer.Stunned");
 
         [Header("References")]
         [SerializeField] private Chapter1InputReader inputReader;
@@ -32,6 +34,10 @@ namespace DormitoryMystery.Chapter1
         [SerializeField] private Animator animator;
         [SerializeField] private Transform attackPoint;
         [SerializeField] private Transform proceduralAnimationRoot;
+        [SerializeField] private MeleeHitboxRig meleeHitboxRig;
+        [SerializeField] private MeleeDamageDealer meleeDamageDealer;
+        [SerializeField] private CombatHealth combatHealth;
+        [SerializeField] private CombatHurtbox combatHurtbox;
 
         [Header("Combo")]
         [SerializeField] private List<ComboAttack> comboAttacks = new List<ComboAttack>();
@@ -47,6 +53,7 @@ namespace DormitoryMystery.Chapter1
         [Header("Hit Detection")]
         [SerializeField] private LayerMask enemyLayerMask;
         [SerializeField] private QueryTriggerInteraction triggerInteraction = QueryTriggerInteraction.Collide;
+        [SerializeField, Min(0.02f)] private float attackHitboxActiveDuration = 0.12f;
 
         [Header("Movement")]
         [SerializeField] private bool lockMovementDuringAttack;
@@ -99,18 +106,26 @@ namespace DormitoryMystery.Chapter1
         private bool comboWindowOpen;
         private bool bufferedNextAttack;
         private bool hitPerformed;
+        private bool meleeHitWindowOpen;
+        private float meleeHitWindowEndElapsed;
+        private int meleeLoggedHitCount;
         private bool wasJumpingForAnimator;
         private bool queuedHandAttackAfterAttack;
         private ComboAttack queuedKickAttackAfterAttack;
         private int queuedKickFallbackPoseIndex;
         private float queuedInputExpireTime;
         private int requestedMovementStateHash;
+        private bool isForcedStunned;
 
         public bool IsAttacking => isAttackActive;
+        public bool IsForcedStunned => isForcedStunned;
         public int CurrentAttackIndex => currentAttackIndex;
         public Transform AttackPoint => attackPoint;
         public LayerMask EnemyLayerMask => enemyLayerMask;
         public Animator CombatAnimator => animator;
+        public MeleeHitboxRig MeleeHitboxRig => meleeHitboxRig;
+        public CombatHealth CombatHealth => combatHealth;
+        public CombatHurtbox CombatHurtbox => combatHurtbox;
         public Animation LegacyAnimationToPause => legacyAnimationToPause;
         public bool UsesCombatAnimatorOnlyDuringAttack => enableAnimatorOnlyDuringAttack;
         public bool SuspendsLegacyAnimationDuringAttack => suspendLegacyAnimationDuringAttack;
@@ -136,6 +151,7 @@ namespace DormitoryMystery.Chapter1
         private void Awake()
         {
             ResolveReferences();
+            EnsureMeleeCombatSetup();
             EnsureDefaultCombo();
             EnsureDefaultKicks();
             UpdateAnimatorActivity(false);
@@ -172,12 +188,23 @@ namespace DormitoryMystery.Chapter1
             wasJumpingForAnimator = false;
             UpdateAnimatorActivity(true);
             SetLegacyAnimationSuspended(false);
+            ReleaseForcedStun();
         }
 
         private void Update()
         {
+            if (isForcedStunned)
+            {
+                return;
+            }
+
             UpdateAnimatorActivity(false);
             UpdateAnimatorMovementParameters();
+        }
+
+        private void LateUpdate()
+        {
+            UpdateMeleeHitWindow();
         }
 
         private void OnValidate()
@@ -191,6 +218,7 @@ namespace DormitoryMystery.Chapter1
             runStateSpeedThreshold = Mathf.Max(0f, runStateSpeedThreshold);
             proceduralFallbackStrength = Mathf.Clamp01(proceduralFallbackStrength);
             directionalKickThreshold = Mathf.Clamp(directionalKickThreshold, 0.05f, 1f);
+            attackHitboxActiveDuration = Mathf.Max(0.02f, attackHitboxActiveDuration);
             for (int i = 0; i < comboAttacks.Count; i++)
             {
                 comboAttacks[i]?.Sanitize();
@@ -224,6 +252,41 @@ namespace DormitoryMystery.Chapter1
 
             hitPerformed = true;
             damagedTargets.Clear();
+
+            MeleeHitboxLimb hitLimb = attack.ResolveHitLimb();
+            if (meleeDamageDealer != null &&
+                hitLimb != MeleeHitboxLimb.None &&
+                meleeHitboxRig != null &&
+                meleeHitboxRig.TryGetHitbox(hitLimb, out _))
+            {
+                meleeDamageDealer.Configure(
+                    meleeHitboxRig,
+                    enemyLayerMask,
+                    triggerInteraction);
+                CloseMeleeHitWindow();
+                meleeHitWindowOpen = meleeDamageDealer.BeginHitWindow(
+                    hitLimb,
+                    attack.damage,
+                    attackSequence);
+                meleeHitWindowEndElapsed = Mathf.Min(
+                    attack.attackDuration,
+                    currentAttackElapsed + attackHitboxActiveDuration);
+                meleeLoggedHitCount = 0;
+
+                int hitCount = meleeHitWindowOpen
+                    ? meleeDamageDealer.EvaluateHitWindow()
+                    : 0;
+                meleeLoggedHitCount = hitCount;
+
+                if (logAttackDebug)
+                {
+                    Debug.Log(
+                        $"[PlayerCombatController] {attack.attackName} opened {hitLimb} hitbox and hit {hitCount} target(s) immediately.",
+                        this);
+                }
+
+                return;
+            }
 
             ResolveAttackPose(out Vector3 origin, out Vector3 direction);
             float radius = Mathf.Max(0.01f, attack.attackRadius);
@@ -259,7 +322,7 @@ namespace DormitoryMystery.Chapter1
             if (logAttackDebug)
             {
                 Debug.Log(
-                    $"[PlayerCombatController] {attack.attackName} hit {damagedTargets.Count} target(s).",
+                    $"[PlayerCombatController] {attack.attackName} used the AttackPoint fallback and hit {damagedTargets.Count} target(s).",
                     this);
             }
         }
@@ -286,6 +349,74 @@ namespace DormitoryMystery.Chapter1
         {
             EnsureDefaultCombo();
             EnsureDefaultKicks();
+        }
+
+        /// <summary>
+        /// Cancels every active player attack, locks movement/input, and plays
+        /// the terminal Stunned state. The caller owns the later game-over flow.
+        /// </summary>
+        public bool EnterForcedStun(float transitionDuration = 0.08f)
+        {
+            if (isForcedStunned)
+            {
+                return true;
+            }
+
+            ResolveReferences();
+
+            // Validate the animation before changing gameplay state. If the
+            // controller reference is ever lost, Nam must not become locked in
+            // place without actually entering the Stunned animation.
+            if (animator == null || animator.runtimeAnimatorController == null)
+            {
+                Debug.LogWarning(
+                    "[PlayerCombatController] Không tìm thấy Animator để phát Stunned.",
+                    this);
+                return false;
+            }
+
+            if (!animator.HasState(0, StunnedStateHash))
+            {
+                Debug.LogWarning(
+                    "[PlayerCombatController] Animator Controller không có state 'Base Layer.Stunned'.",
+                    this);
+                return false;
+            }
+
+            StopAllCombatRoutines();
+            attackSequence++;
+            ClearAttackState();
+            ApplyCombatMovement(false);
+            isForcedStunned = true;
+
+            playerMotor?.SetMovementEnabled(false);
+            inputLock?.Lock(ForcedStunInputLockReason);
+            SetLegacyAnimationSuspended(true);
+
+            animator.keepAnimatorStateOnDisable = true;
+            animator.applyRootMotion = false;
+            animator.enabled = true;
+            animator.CrossFadeInFixedTime(
+                StunnedStateHash,
+                Mathf.Max(0f, transitionDuration),
+                0,
+                0f);
+            animator.Update(0f);
+            return true;
+        }
+
+        public void ReleaseForcedStun()
+        {
+            if (!isForcedStunned)
+            {
+                return;
+            }
+
+            isForcedStunned = false;
+            inputLock?.Unlock(ForcedStunInputLockReason);
+            playerMotor?.SetMovementEnabled(true);
+            SetLegacyAnimationSuspended(false);
+            UpdateAnimatorActivity(false);
         }
 
         private void ResolveReferences()
@@ -327,10 +458,74 @@ namespace DormitoryMystery.Chapter1
                 animator = GetComponentInChildren<Animator>(true);
             }
 
+            if (meleeHitboxRig == null)
+            {
+                meleeHitboxRig = GetComponent<MeleeHitboxRig>();
+            }
+
+            if (meleeDamageDealer == null)
+            {
+                meleeDamageDealer = GetComponent<MeleeDamageDealer>();
+            }
+
+            if (combatHealth == null)
+            {
+                combatHealth = GetComponent<CombatHealth>();
+            }
+
+            if (combatHurtbox == null)
+            {
+                combatHurtbox = GetComponent<CombatHurtbox>();
+            }
+
             if (proceduralAnimationRoot == null)
             {
                 proceduralAnimationRoot = FindChildRecursive(transform, "ModelAnchor")
                     ?? FindChildRecursive(transform, "Visual");
+            }
+        }
+
+        private void EnsureMeleeCombatSetup()
+        {
+            if (enemyLayerMask.value == 0)
+            {
+                int enemyLayer = LayerMask.NameToLayer("Enemy");
+                if (enemyLayer >= 0)
+                {
+                    enemyLayerMask = 1 << enemyLayer;
+                }
+            }
+
+            if (meleeHitboxRig == null)
+            {
+                meleeHitboxRig = gameObject.AddComponent<MeleeHitboxRig>();
+            }
+
+            meleeHitboxRig.ConfigureForNam(animator);
+
+            if (meleeDamageDealer == null)
+            {
+                meleeDamageDealer = gameObject.AddComponent<MeleeDamageDealer>();
+            }
+
+            meleeDamageDealer.Configure(
+                meleeHitboxRig,
+                enemyLayerMask,
+                triggerInteraction);
+
+            if (combatHealth == null)
+            {
+                combatHealth = gameObject.AddComponent<CombatHealth>();
+            }
+
+            if (characterController != null)
+            {
+                if (combatHurtbox == null)
+                {
+                    combatHurtbox = gameObject.AddComponent<CombatHurtbox>();
+                }
+
+                combatHurtbox.Configure(characterController, combatHealth);
             }
         }
 
@@ -437,7 +632,7 @@ namespace DormitoryMystery.Chapter1
 
         private bool CanStartCombat()
         {
-            if (!isActiveAndEnabled)
+            if (!isActiveAndEnabled || isForcedStunned)
             {
                 return false;
             }
@@ -557,6 +752,7 @@ namespace DormitoryMystery.Chapter1
 
             animationEnded = true;
             comboWindowOpen = false;
+            CloseMeleeHitWindow();
 
             if (stopTimeline && attackTimelineRoutine != null)
             {
@@ -612,6 +808,7 @@ namespace DormitoryMystery.Chapter1
             bool shouldStartAnotherAttack = shouldContinueCombo || shouldStartQueuedKick || shouldStartQueuedHandAttack;
 
             recoveryRoutine = null;
+            CloseMeleeHitWindow();
             isAttackActive = false;
             currentAttack = null;
             currentFallbackPoseIndex = 0;
@@ -711,6 +908,7 @@ namespace DormitoryMystery.Chapter1
 
         private void StopAllCombatRoutines()
         {
+            CloseMeleeHitWindow();
             if (attackTimelineRoutine != null)
             {
                 StopCoroutine(attackTimelineRoutine);
@@ -741,6 +939,7 @@ namespace DormitoryMystery.Chapter1
 
         private void ClearAttackState()
         {
+            CloseMeleeHitWindow();
             isAttackActive = false;
             animationEnded = false;
             comboWindowOpen = false;
@@ -757,6 +956,47 @@ namespace DormitoryMystery.Chapter1
             SetAnimatorBoolIfPresent(IsJumpingParameter, "IsJumping", false);
             wasJumpingForAnimator = false;
             UpdateAnimatorActivity(false);
+        }
+
+        private void UpdateMeleeHitWindow()
+        {
+            if (!meleeHitWindowOpen || meleeDamageDealer == null)
+            {
+                return;
+            }
+
+            if (!isAttackActive || currentAttack == null)
+            {
+                CloseMeleeHitWindow();
+                return;
+            }
+
+            if (currentAttackElapsed >= meleeHitWindowEndElapsed)
+            {
+                CloseMeleeHitWindow();
+                return;
+            }
+
+            int hitCount = meleeDamageDealer.EvaluateHitWindow();
+            if (logAttackDebug && hitCount > meleeLoggedHitCount)
+            {
+                Debug.Log(
+                    $"[PlayerCombatController] {currentAttack.attackName} hit {hitCount - meleeLoggedHitCount} new target(s).",
+                    this);
+                meleeLoggedHitCount = hitCount;
+            }
+        }
+
+        private void CloseMeleeHitWindow()
+        {
+            if (meleeDamageDealer != null)
+            {
+                meleeDamageDealer.EndHitWindow();
+            }
+
+            meleeHitWindowOpen = false;
+            meleeHitWindowEndElapsed = 0f;
+            meleeLoggedHitCount = 0;
         }
 
         private void ApplyCombatMovement(bool active)
@@ -1371,10 +1611,10 @@ namespace DormitoryMystery.Chapter1
             }
 
             comboAttacks.Clear();
-            comboAttacks.Add(CreateAttack("Punch Left", "PunchLeft", 10f, 1.1f, 0.3f, 0.29f, 0.58f, 0.203f, 0.4408f, 0.04f));
-            comboAttacks.Add(CreateAttack("Punch Right", "PunchRight", 12f, 1.15f, 0.32f, 0.31f, 0.62f, 0.217f, 0.4712f, 0.0434f));
-            comboAttacks.Add(CreateAttack("Hook", "Hook", 15f, 1.15f, 0.34f, 0.374f, 0.68f, 0.2584f, 0.5576f, 0.068f));
-            comboAttacks.Add(CreateAttack("Right Hook", "RightHook", 18f, 1.2f, 0.36f, 0.4032f, 0.72f, 0.2736f, 0.5904f, 0.072f));
+            comboAttacks.Add(CreateAttack("Punch Left", "PunchLeft", MeleeHitboxLimb.LeftHand, 10f, 1.1f, 0.3f, 0.29f, 0.58f, 0.203f, 0.4408f, 0.04f));
+            comboAttacks.Add(CreateAttack("Punch Right", "PunchRight", MeleeHitboxLimb.RightHand, 10f, 1.15f, 0.32f, 0.31f, 0.62f, 0.217f, 0.4712f, 0.0434f));
+            comboAttacks.Add(CreateAttack("Hook", "Hook", MeleeHitboxLimb.LeftHand, 10f, 1.15f, 0.34f, 0.374f, 0.68f, 0.2584f, 0.5576f, 0.068f));
+            comboAttacks.Add(CreateAttack("Right Hook", "RightHook", MeleeHitboxLimb.RightHand, 10f, 1.2f, 0.36f, 0.4032f, 0.72f, 0.2736f, 0.5904f, 0.072f));
         }
 
         private bool HasAttackTrigger(string trigger)
@@ -1394,17 +1634,17 @@ namespace DormitoryMystery.Chapter1
         {
             if (neutralKickAttack == null || string.IsNullOrWhiteSpace(neutralKickAttack.animationTrigger))
             {
-                neutralKickAttack = CreateAttack("Heavy Kick", "KickHeavy", 28f, 1.6f, 0.42f, 0.58f, 1f, 0.36f, 0.84f, 0.18f);
+                neutralKickAttack = CreateAttack("Heavy Kick", "KickHeavy", MeleeHitboxLimb.RightFoot, 10f, 1.6f, 0.42f, 0.58f, 1f, 0.36f, 0.84f, 0.18f);
             }
 
             if (forwardKickAttack == null || string.IsNullOrWhiteSpace(forwardKickAttack.animationTrigger))
             {
-                forwardKickAttack = CreateAttack("Side Kick", "KickSide", 18f, 1.45f, 0.38f, 0.476f, 0.85f, 0.2975f, 0.697f, 0.085f);
+                forwardKickAttack = CreateAttack("Side Kick", "KickSide", MeleeHitboxLimb.LeftFoot, 10f, 1.45f, 0.38f, 0.476f, 0.85f, 0.2975f, 0.697f, 0.085f);
             }
 
             if (backwardKickAttack == null || string.IsNullOrWhiteSpace(backwardKickAttack.animationTrigger))
             {
-                backwardKickAttack = CreateAttack("Spinning Back Kick", "SpinningBackKick", 30f, 1.55f, 0.42f, 0.609f, 1.05f, 0.399f, 0.882f, 0.189f);
+                backwardKickAttack = CreateAttack("Spinning Back Kick", "SpinningBackKick", MeleeHitboxLimb.RightFoot, 30f, 1.55f, 0.42f, 0.609f, 1.05f, 0.399f, 0.882f, 0.189f);
             }
         }
 
@@ -1430,6 +1670,7 @@ namespace DormitoryMystery.Chapter1
         private static ComboAttack CreateAttack(
             string attackName,
             string animationTrigger,
+            MeleeHitboxLimb hitLimb,
             float damage,
             float attackRange,
             float attackRadius,
@@ -1443,6 +1684,7 @@ namespace DormitoryMystery.Chapter1
             {
                 attackName = attackName,
                 animationTrigger = animationTrigger,
+                hitLimb = hitLimb,
                 damage = damage,
                 attackRange = attackRange,
                 attackRadius = attackRadius,
@@ -1475,6 +1717,16 @@ namespace DormitoryMystery.Chapter1
 
             if (attack == null)
             {
+                return;
+            }
+
+            if (Application.isPlaying &&
+                meleeHitboxRig != null &&
+                meleeHitboxRig.TryGetPose(
+                    attack.ResolveHitLimb(),
+                    out _))
+            {
+                // MeleeHitboxRig draws the actual bone-following box.
                 return;
             }
 

@@ -2,6 +2,13 @@ using UnityEngine;
 
 namespace DormitoryMystery.Chapter1
 {
+    public enum HenryCombatAttack
+    {
+        MmaKick = 0,
+        RoundhouseKick = 1,
+        Punch = 2
+    }
+
     [DisallowMultipleComponent]
     public sealed class HenryRunAnimationPlayer : MonoBehaviour
     {
@@ -9,11 +16,28 @@ namespace DormitoryMystery.Chapter1
         public const string RunClipName = "Henry_Run";
         public const string RunClipResourcePath =
             "Henry/Henry_Run_FastRun";
+        public const string MmaKickClipName = "Henry_Mma_Kick";
+        public const string RoundhouseKickClipName =
+            "Henry_Roundhouse_Kick";
+        public const string MmaKickClipResourcePath =
+            "Henry/Henry_Mma_Kick";
+        public const string RoundhouseKickClipResourcePath =
+            "Henry/Henry_Roundhouse_Kick";
+        public const string PunchClipName = "Henry_Punch";
+        public const string PunchClipResourcePath = "Henry/Punch";
+        public const string DefeatedClipName = "Henry_Defeated";
+        public const string DefeatedClipResourcePath = "Henry/Defeated";
 
         private Animation legacyAnimation;
         private AnimationClip initialClip;
         private AnimationClip runClip;
+        private AnimationClip mmaKickClip;
+        private AnimationClip roundhouseKickClip;
+        private AnimationClip punchClip;
+        private AnimationClip defeatedClip;
         private bool configured;
+        private bool combatClipsConfigured;
+        private bool defeatedClipConfigured;
         private bool missingAnimationLogged;
 
         public bool IsRunPlaying =>
@@ -22,9 +46,18 @@ namespace DormitoryMystery.Chapter1
         public bool IsIdlePlaying =>
             legacyAnimation != null &&
             legacyAnimation.IsPlaying(IdleClipName);
+        public bool IsDefeatedPlaying =>
+            legacyAnimation != null &&
+            legacyAnimation.IsPlaying(DefeatedClipName);
 
         public AnimationClip IdleClip => initialClip;
         public AnimationClip RunClip => runClip;
+        public AnimationClip MmaKickClip => mmaKickClip;
+        public AnimationClip RoundhouseKickClip => roundhouseKickClip;
+        public AnimationClip PunchClip => punchClip;
+        public AnimationClip DefeatedClip => defeatedClip;
+        public float DefeatedDuration =>
+            defeatedClip != null ? defeatedClip.length : 0f;
 
         private void Awake()
         {
@@ -34,7 +67,11 @@ namespace DormitoryMystery.Chapter1
 
         private void Start()
         {
-            if (!IsRunPlaying)
+            if (!IsRunPlaying &&
+                !IsCombatAttackPlaying(HenryCombatAttack.MmaKick) &&
+                !IsCombatAttackPlaying(HenryCombatAttack.RoundhouseKick) &&
+                !IsCombatAttackPlaying(HenryCombatAttack.Punch) &&
+                !IsDefeatedPlaying)
             {
                 PlayIdle();
             }
@@ -168,6 +205,202 @@ namespace DormitoryMystery.Chapter1
             return started;
         }
 
+        public bool ConfigureCombatClips()
+        {
+            if (combatClipsConfigured)
+            {
+                return legacyAnimation != null &&
+                       mmaKickClip != null &&
+                       roundhouseKickClip != null &&
+                       punchClip != null &&
+                       legacyAnimation.GetClip(MmaKickClipName) != null &&
+                       legacyAnimation.GetClip(RoundhouseKickClipName) != null &&
+                       legacyAnimation.GetClip(PunchClipName) != null;
+            }
+
+            if (!Configure())
+            {
+                return false;
+            }
+
+            mmaKickClip = Resources.Load<AnimationClip>(
+                MmaKickClipResourcePath);
+            roundhouseKickClip = Resources.Load<AnimationClip>(
+                RoundhouseKickClipResourcePath);
+            punchClip = Resources.Load<AnimationClip>(
+                PunchClipResourcePath);
+            if (mmaKickClip == null || roundhouseKickClip == null ||
+                punchClip == null)
+            {
+                LogMissingAnimation(
+                    "Không tải được Punch và hai animation đá của Henry " +
+                    "trong Resources/Henry.");
+                return false;
+            }
+
+            bool mmaReady = ConfigureCombatClip(
+                mmaKickClip,
+                MmaKickClipName);
+            bool roundhouseReady = ConfigureCombatClip(
+                roundhouseKickClip,
+                RoundhouseKickClipName);
+            bool punchReady = ConfigureCombatClip(
+                punchClip,
+                PunchClipName);
+            combatClipsConfigured =
+                mmaReady && roundhouseReady && punchReady;
+            return combatClipsConfigured;
+        }
+
+        public bool TryPlayCombatAttack(
+            HenryCombatAttack attack,
+            out AnimationState state)
+        {
+            state = null;
+            if (!ConfigureCombatClips())
+            {
+                return false;
+            }
+
+            string clipName = GetCombatClipName(attack);
+            state = legacyAnimation[clipName];
+            if (state == null)
+            {
+                return false;
+            }
+
+            legacyAnimation.Stop();
+            SampleInitialPose();
+            state.time = 0f;
+            state.speed = 1f;
+            bool started = legacyAnimation.Play(
+                clipName,
+                PlayMode.StopAll);
+            if (!started)
+            {
+                Debug.LogError(
+                    $"[Henry] Không thể phát animation '{clipName}'.",
+                    this);
+            }
+
+            return started;
+        }
+
+        public bool IsCombatAttackPlaying(HenryCombatAttack attack)
+        {
+            return legacyAnimation != null &&
+                   legacyAnimation.IsPlaying(GetCombatClipName(attack));
+        }
+
+        public bool ConfigureDefeatedClip()
+        {
+            if (defeatedClipConfigured)
+            {
+                return legacyAnimation != null &&
+                       defeatedClip != null &&
+                       legacyAnimation.GetClip(DefeatedClipName) != null;
+            }
+
+            if (!Configure())
+            {
+                return false;
+            }
+
+            defeatedClip = Resources.Load<AnimationClip>(
+                DefeatedClipResourcePath);
+            if (defeatedClip == null)
+            {
+                LogMissingAnimation(
+                    $"Could not load '{DefeatedClipResourcePath}' from Resources.");
+                return false;
+            }
+
+            if (legacyAnimation.GetClip(DefeatedClipName) != null)
+            {
+                legacyAnimation.RemoveClip(DefeatedClipName);
+            }
+
+            legacyAnimation.AddClip(defeatedClip, DefeatedClipName);
+            AnimationState state = legacyAnimation[DefeatedClipName];
+            if (state == null)
+            {
+                LogMissingAnimation(
+                    $"Could not attach clip '{DefeatedClipName}' to Henry.");
+                return false;
+            }
+
+            state.wrapMode = WrapMode.ClampForever;
+            state.speed = 1f;
+            state.layer = 0;
+            state.weight = 1f;
+            state.blendMode = AnimationBlendMode.Blend;
+            defeatedClipConfigured = true;
+            return true;
+        }
+
+        public bool PlayDefeated()
+        {
+            if (!ConfigureDefeatedClip())
+            {
+                return false;
+            }
+
+            legacyAnimation.Stop();
+            SampleInitialPose();
+            AnimationState state = legacyAnimation[DefeatedClipName];
+            state.time = 0f;
+            state.speed = 1f;
+            state.wrapMode = WrapMode.ClampForever;
+            bool started = legacyAnimation.Play(
+                DefeatedClipName,
+                PlayMode.StopAll);
+            if (!started)
+            {
+                Debug.LogError(
+                    $"[Henry] Could not play animation '{DefeatedClipName}'.",
+                    this);
+            }
+
+            return started;
+        }
+
+        public void HoldDefeatedFinalPose()
+        {
+            if (!ConfigureDefeatedClip())
+            {
+                return;
+            }
+
+            AnimationState state = legacyAnimation[DefeatedClipName];
+            if (!legacyAnimation.IsPlaying(DefeatedClipName))
+            {
+                legacyAnimation.Stop();
+                legacyAnimation.Play(
+                    DefeatedClipName,
+                    PlayMode.StopAll);
+            }
+
+            state.wrapMode = WrapMode.ClampForever;
+            state.time = defeatedClip.length;
+            state.speed = 0f;
+            state.enabled = true;
+            state.weight = 1f;
+            legacyAnimation.Sample();
+        }
+
+        public float GetCombatAttackNormalizedTime(
+            HenryCombatAttack attack)
+        {
+            if (legacyAnimation == null)
+            {
+                return 0f;
+            }
+
+            AnimationState state =
+                legacyAnimation[GetCombatClipName(attack)];
+            return state != null ? state.normalizedTime : 0f;
+        }
+
         public void StopAtInitialPose()
         {
             if (!Configure() || legacyAnimation == null)
@@ -191,6 +424,46 @@ namespace DormitoryMystery.Chapter1
                 initialClip.SampleAnimation(
                     legacyAnimation.gameObject,
                     0f);
+            }
+        }
+
+        private bool ConfigureCombatClip(
+            AnimationClip clip,
+            string clipName)
+        {
+            if (legacyAnimation.GetClip(clipName) != null)
+            {
+                legacyAnimation.RemoveClip(clipName);
+            }
+
+            legacyAnimation.AddClip(clip, clipName);
+            AnimationState state = legacyAnimation[clipName];
+            if (state == null)
+            {
+                LogMissingAnimation(
+                    $"Không gắn được clip '{clipName}' cho Henry.");
+                return false;
+            }
+
+            state.wrapMode = WrapMode.Once;
+            state.speed = 1f;
+            state.layer = 0;
+            state.weight = 1f;
+            state.blendMode = AnimationBlendMode.Blend;
+            return true;
+        }
+
+        private static string GetCombatClipName(
+            HenryCombatAttack attack)
+        {
+            switch (attack)
+            {
+                case HenryCombatAttack.Punch:
+                    return PunchClipName;
+                case HenryCombatAttack.RoundhouseKick:
+                    return RoundhouseKickClipName;
+                default:
+                    return MmaKickClipName;
             }
         }
 

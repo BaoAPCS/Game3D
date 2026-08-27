@@ -8,6 +8,7 @@ namespace DormitoryMystery.Chapter1
     {
         public string attackName = "Attack";
         public string animationTrigger = "PunchLeft";
+        public MeleeHitboxLimb hitLimb = MeleeHitboxLimb.None;
         [Min(0f)] public float damage = 10f;
         [Min(0f)] public float attackRange = 1.2f;
         [Min(0.01f)] public float attackRadius = 0.35f;
@@ -16,6 +17,60 @@ namespace DormitoryMystery.Chapter1
         [Min(0f)] public float comboInputStartTime = 0.25f;
         [Min(0f)] public float comboInputEndTime = 0.58f;
         [Min(0f)] public float recoveryTime = 0.08f;
+
+        public MeleeHitboxLimb ResolveHitLimb()
+        {
+            if (hitLimb != MeleeHitboxLimb.None)
+            {
+                return hitLimb;
+            }
+
+            if (string.Equals(
+                    animationTrigger,
+                    "PunchLeft",
+                    StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(
+                    animationTrigger,
+                    "Hook",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return MeleeHitboxLimb.LeftHand;
+            }
+
+            if (string.Equals(
+                    animationTrigger,
+                    "PunchRight",
+                    StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(
+                    animationTrigger,
+                    "RightHook",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return MeleeHitboxLimb.RightHand;
+            }
+
+            if (string.Equals(
+                    animationTrigger,
+                    "KickSide",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return MeleeHitboxLimb.LeftFoot;
+            }
+
+            if (string.Equals(
+                    animationTrigger,
+                    "KickHeavy",
+                    StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(
+                    animationTrigger,
+                    "SpinningBackKick",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return MeleeHitboxLimb.RightFoot;
+            }
+
+            return MeleeHitboxLimb.None;
+        }
 
         public void Sanitize()
         {

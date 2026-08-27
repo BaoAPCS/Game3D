@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace DormitoryMystery.Chapter1
 {
@@ -116,7 +117,13 @@ namespace DormitoryMystery.Chapter1
                 return;
             }
 
-            Ray ray = dragCamera.ScreenPointToRay(Input.mousePosition);
+            Mouse mouse = Mouse.current;
+            if (mouse == null)
+            {
+                return;
+            }
+
+            Ray ray = dragCamera.ScreenPointToRay(mouse.position.ReadValue());
             if (!dragPlane.Raycast(ray, out float distance))
             {
                 return;

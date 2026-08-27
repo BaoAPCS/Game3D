@@ -16,10 +16,13 @@ namespace DormitoryMystery.Chapter1
         private Canvas runtimeCanvas;
         private GameObject gameOverPanel;
         private GameObject escapeMessagePanel;
+        private TextMeshProUGUI gameOverReasonText;
         private PlayerInputLock lockedPlayerInput;
         private Coroutine escapeMessageRoutine;
         private bool isGameOver;
         private bool isReloading;
+        private GameOverRestartPolicy restartPolicy =
+            GameOverRestartPolicy.ReloadScene;
 
         public static HenryGameOverPresenter Instance { get; private set; }
 
@@ -29,6 +32,13 @@ namespace DormitoryMystery.Chapter1
         {
             SceneManager.sceneLoaded -= HandleSceneLoaded;
             SceneManager.sceneLoaded += HandleSceneLoaded;
+        }
+
+        [RuntimeInitializeOnLoadMethod(
+            RuntimeInitializeLoadType.AfterSceneLoad)]
+        private static void InstallForInitiallyLoadedScene()
+        {
+            InstallForLoadedScene(SceneManager.GetActiveScene());
         }
 
         private static void HandleSceneLoaded(
@@ -58,7 +68,15 @@ namespace DormitoryMystery.Chapter1
                         .GetComponentInChildren<HenryGameOverPresenter>(true);
                 if (existing != null)
                 {
-                    Instance = existing;
+                    // Let the presenter's own Awake establish the singleton
+                    // and subscribe to GameOverRequested. Assigning Instance
+                    // here before Awake can make the component destroy itself
+                    // as a false duplicate when it is currently inactive.
+                    if (existing.gameObject.activeInHierarchy &&
+                        existing.enabled)
+                    {
+                        Instance = existing;
+                    }
                     return;
                 }
 
@@ -99,7 +117,7 @@ namespace DormitoryMystery.Chapter1
             }
 
             Instance = this;
-            Chapter1EventBus.PlayerCaught += HandlePlayerCaught;
+            Chapter1EventBus.GameOverRequested += HandleGameOverRequested;
         }
 
         private void Update()
@@ -111,11 +129,19 @@ namespace DormitoryMystery.Chapter1
 
             if (Keyboard.current.rKey.wasPressedThisFrame)
             {
-                RestartCurrentScene();
+                if (restartPolicy ==
+                    GameOverRestartPolicy.ResetChapterThenReload)
+                {
+                    ResetChapterThenReload();
+                }
+                else
+                {
+                    ReloadCurrentScene();
+                }
             }
         }
 
-        private void RestartCurrentScene()
+        public void ResetChapterThenReload()
         {
             if (!isGameOver || isReloading)
             {
@@ -129,6 +155,29 @@ namespace DormitoryMystery.Chapter1
             }
 
             isReloading = true;
+            Chapter1Manager.Instance?.ResetChapter();
+            ReloadScene(activeScene);
+        }
+
+        private void ReloadCurrentScene()
+        {
+            if (!isGameOver || isReloading)
+            {
+                return;
+            }
+
+            Scene activeScene = SceneManager.GetActiveScene();
+            if (!activeScene.IsValid())
+            {
+                return;
+            }
+
+            isReloading = true;
+            ReloadScene(activeScene);
+        }
+
+        private static void ReloadScene(Scene activeScene)
+        {
             if (activeScene.buildIndex >= 0)
             {
                 SceneManager.LoadScene(activeScene.buildIndex);
@@ -140,7 +189,7 @@ namespace DormitoryMystery.Chapter1
 
         private void OnDestroy()
         {
-            Chapter1EventBus.PlayerCaught -= HandlePlayerCaught;
+            Chapter1EventBus.GameOverRequested -= HandleGameOverRequested;
 
             if (lockedPlayerInput != null)
             {
@@ -171,7 +220,16 @@ namespace DormitoryMystery.Chapter1
             escapeMessageRoutine = StartCoroutine(ShowEscapeMessageTemporarily());
         }
 
-        private void HandlePlayerCaught()
+        public void ShowGameOver(
+            string reason,
+            GameOverRestartPolicy requestedRestartPolicy =
+                GameOverRestartPolicy.ReloadScene)
+        {
+            HandleGameOverRequested(
+                new GameOverRequest(reason, requestedRestartPolicy));
+        }
+
+        private void HandleGameOverRequested(GameOverRequest request)
         {
             if (isGameOver)
             {
@@ -179,6 +237,7 @@ namespace DormitoryMystery.Chapter1
             }
 
             isGameOver = true;
+            restartPolicy = request.RestartPolicy;
             LockPlayerInput();
             EnsureRuntimeCanvas();
 
@@ -189,6 +248,11 @@ namespace DormitoryMystery.Chapter1
             }
 
             escapeMessagePanel.SetActive(false);
+            if (gameOverReasonText != null)
+            {
+                gameOverReasonText.text = request.Reason;
+            }
+
             gameOverPanel.SetActive(true);
         }
 
@@ -237,13 +301,17 @@ namespace DormitoryMystery.Chapter1
             scaler.referenceResolution = new Vector2(1920f, 1080f);
             scaler.matchWidthOrHeight = 0.5f;
 
-            gameOverPanel = CreateGameOverPanel(canvasObject.transform);
+            gameOverPanel = CreateGameOverPanel(
+                canvasObject.transform,
+                out gameOverReasonText);
             escapeMessagePanel = CreateEscapeMessagePanel(canvasObject.transform);
             gameOverPanel.SetActive(false);
             escapeMessagePanel.SetActive(false);
         }
 
-        private static GameObject CreateGameOverPanel(Transform parent)
+        private static GameObject CreateGameOverPanel(
+            Transform parent,
+            out TextMeshProUGUI reasonText)
         {
             GameObject panel = CreatePanel(
                 "GameOverPanel",
@@ -260,7 +328,7 @@ namespace DormitoryMystery.Chapter1
                 FontStyles.Bold,
                 new Vector2(900f, 90f),
                 new Vector2(0f, 100f));
-            CreateText(
+            reasonText = CreateText(
                 "CaughtMessage",
                 panel.transform,
                 "Henry đã bắt được bạn",

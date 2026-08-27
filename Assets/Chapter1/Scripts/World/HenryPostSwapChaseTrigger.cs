@@ -116,7 +116,8 @@ namespace DormitoryMystery.Chapter1
         {
             if (consumed ||
                 other == null ||
-                !Mission2HeistProgress.HasHenryBattery)
+                !Mission2HeistProgress.HasHenryBattery ||
+                Mission2HeistProgress.HasDeliveredEquipment)
             {
                 return;
             }

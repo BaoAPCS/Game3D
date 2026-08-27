@@ -409,6 +409,26 @@ namespace DormitoryMystery.Chapter1
                 return;
             }
 
+            // Once the story has moved into Mission 2/3, the Chapter manager
+            // owns the objective. Do not let this legacy Mission 1 publisher
+            // overwrite the persisted James/challenge objective during Awake.
+            ResolveManager();
+            if (chapterManager != null &&
+                (chapterManager.CurrentData.Mission02Started ||
+                 chapterManager.CurrentData.Mission02EquipmentDelivered ||
+                 chapterManager.CurrentData.Mission03JamesIntroPlayed ||
+                 chapterManager.CurrentData.Mission03ChallengePassed ||
+                 chapterManager.CurrentData.Mission03GangHostile ||
+                 chapterManager.CurrentData.Mission03PoliceKeyReceived ||
+                 chapterManager.CurrentData.Mission03HenryConfrontationCompleted ||
+                 chapterManager.CurrentData.Mission03HenryDefeated ||
+                 chapterManager.CurrentData.Mission03PoliceArrestCompleted))
+            {
+                Chapter1EventBus.RaiseObjectiveChanged(
+                    chapterManager.GetCurrentObjective());
+                return;
+            }
+
             string objective = CurrentObjective;
             if (!string.IsNullOrWhiteSpace(objective))
             {

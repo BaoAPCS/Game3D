@@ -126,16 +126,28 @@ namespace DormitoryMystery.Chapter1
 
             if (theftBattery == null)
             {
-                Debug.LogError(
-                    $"[Henry] Không tìm thấy pin '{TheftBatteryObjectName}'.",
-                    henry);
+                if (!Mission2HeistProgress.HasHenryBattery)
+                {
+                    Debug.LogError(
+                        $"[Henry] Không tìm thấy pin '{TheftBatteryObjectName}'.",
+                        henry);
+                }
             }
             else
             {
-                InstallOnTheftBattery(
-                    theftBattery.gameObject,
-                    interactableLayer,
-                    chase);
+                if (Mission2HeistProgress.HasHenryBattery)
+                {
+                    Mission2HeistProgress.PlaceBrokenBatteryAt(
+                        theftBattery);
+                    theftBattery.gameObject.SetActive(false);
+                }
+                else
+                {
+                    InstallOnTheftBattery(
+                        theftBattery.gameObject,
+                        interactableLayer,
+                        chase);
+                }
             }
 
             if (foodcart == null)
@@ -664,7 +676,8 @@ namespace DormitoryMystery.Chapter1
 
         public override bool CanInteract(InteractionContext context)
         {
-            if (!base.CanInteract(context) ||
+            if (Mission2HeistProgress.HasDeliveredEquipment ||
+                !base.CanInteract(context) ||
                 context.PlayerTransform == null)
             {
                 return false;
@@ -691,7 +704,8 @@ namespace DormitoryMystery.Chapter1
             InteractionContext context)
         {
             ResolveReferences();
-            if (chaseController == null ||
+            if (Mission2HeistProgress.HasDeliveredEquipment ||
+                chaseController == null ||
                 !chaseController.BeginFoodcartDistraction(transform))
             {
                 return InteractionResult.Failed(
