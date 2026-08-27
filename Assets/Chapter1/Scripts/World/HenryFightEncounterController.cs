@@ -25,6 +25,7 @@ namespace DormitoryMystery.Chapter1
             PlayerDefeated,
             HenryDefeated,
             PoliceArriving,
+            PolicePursuing,
             PoliceArrested
         }
 
@@ -35,14 +36,12 @@ namespace DormitoryMystery.Chapter1
         private const float DestinationRefreshInterval = 0.1f;
         private const float HenryStoppingDistance = 1.02f;
         private const float AttackPathLengthTolerance = 0.25f;
-        private const float StunnedBeforeGameOverDelay = 1.25f;
+        private const float MinimumStunnedDuration = 1.25f;
         private const float RotationSpeed = 720f;
-        private const string GameOverReason =
-            "Henry \u0111\u00e3 \u0111\u00e1nh g\u1ee5c b\u1ea1n.";
         private const string HenryDefeatedNotification =
             "B\u1ea1n \u0111\u00e3 \u0111\u00e1nh b\u1ea1i Henry.";
         private const string PoliceArrestedNotification =
-            "C\u1ea3nh s\u00e1t \u0111\u00e3 b\u1eaft gi\u1eef b\u1ea1n.";
+            "Ch\u01b0\u01a1ng 1 ho\u00e0n th\u00e0nh.";
 
         [SerializeField] private Chapter1PlayerMotor playerMotor;
         [SerializeField] private Transform henryRoot;
@@ -60,6 +59,7 @@ namespace DormitoryMystery.Chapter1
         private CombatHealth henryHealth;
         private FightCombatHUD fightHud;
         private PoliceArrestSequenceController policeArrest;
+        private PoliceOfficerArrestController policeOfficer;
 
         private FightState state;
         private HenryCombatAttack nextAttack = HenryCombatAttack.Punch;
@@ -74,6 +74,9 @@ namespace DormitoryMystery.Chapter1
         private bool interactionWasEnabled;
         private bool policeArrivalResolved;
         private bool policeArrivalSucceeded;
+        private bool policeCarArrived;
+        private bool outcomeStateEstablished;
+        private bool policeOfficerPursuitStarted;
         private bool policeRecoveryActive;
         private Coroutine outcomeRoutine;
 
@@ -168,6 +171,12 @@ namespace DormitoryMystery.Chapter1
         {
             // Restore the held final pose before the first rendered frame.
             // Waiting here would let Henry flash Idle for one frame on reload.
+            if (initialized && Mission3Progress.PoliceArrestCompleted)
+            {
+                ApplyPersistentArrestState();
+                yield break;
+            }
+
             if (initialized && Mission3Progress.HenryDefeated)
             {
                 ApplyPersistentDefeatState();
@@ -327,10 +336,15 @@ namespace DormitoryMystery.Chapter1
         private void RequestFightStart()
         {
             if (!initialized || Mission3Progress.HenryDefeated ||
+                Mission3Progress.PoliceArrestCompleted ||
                 encounterActive || state == FightState.Starting ||
                 outcomePending)
             {
-                if (Mission3Progress.HenryDefeated)
+                if (Mission3Progress.PoliceArrestCompleted)
+                {
+                    ApplyPersistentArrestState();
+                }
+                else if (Mission3Progress.HenryDefeated)
                 {
                     ApplyPersistentDefeatState();
                 }
@@ -651,11 +665,13 @@ namespace DormitoryMystery.Chapter1
                 outcomePending = true;
                 encounterActive = false;
                 StopHenryForOutcome();
-                // Both possible outcomes lead into the same police arrival.
-                // Quiesce Nam and start the car before yielding one frame to
-                // coalesce simultaneous death callbacks.
+                // Both outcomes lead into the same police arrival. Start the
+                // car before yielding one frame to coalesce simultaneous
+                // death callbacks, but do not lock Nam here: after winning he
+                // must remain free until the officer physically catches him.
                 playerCombat?.EndAttack();
-                EnterPoliceArrestInputMode(false);
+                Chapter1EventBus.RaiseObjectiveChanged(
+                    "Xe c\u1ea3nh s\u00e1t \u0111ang ch\u1ea1y t\u1edbi.");
                 BeginPoliceArrest();
             }
 
@@ -712,8 +728,10 @@ namespace DormitoryMystery.Chapter1
                     PlayerCombatController.ForcedStunInputLockReason);
             }
 
+            MarkOutcomeStateEstablished();
+
             float elapsed = 0f;
-            while (elapsed < StunnedBeforeGameOverDelay)
+            while (elapsed < MinimumStunnedDuration)
             {
                 elapsed += Time.unscaledDeltaTime;
                 yield return null;
@@ -726,10 +744,7 @@ namespace DormitoryMystery.Chapter1
             }
 
             UnsubscribeHealthEvents();
-            outcomePending = false;
-            Chapter1EventBus.RaiseGameOver(
-                GameOverReason,
-                GameOverRestartPolicy.ReloadScene);
+            CompletePoliceArrest();
         }
 
         private IEnumerator FinishHenryDefeat()
@@ -739,6 +754,8 @@ namespace DormitoryMystery.Chapter1
             // Release the chase controller without asking it to play Idle.
             // The defeated clip owns Henry's pose from this point onward.
             henryChase?.EndFightControl(false);
+            RestorePlayerAfterVictory();
+            HideFightPresentation();
 
             if (!Mission3Progress.TryMarkHenryDefeated())
             {
@@ -749,6 +766,7 @@ namespace DormitoryMystery.Chapter1
             }
 
             state = FightState.PoliceArriving;
+            MarkOutcomeStateEstablished();
 
             bool defeatedAnimationStarted =
                 henryAnimation != null && henryAnimation.PlayDefeated();
@@ -772,7 +790,6 @@ namespace DormitoryMystery.Chapter1
                     this);
             }
 
-            HideFightPresentation();
             UnsubscribeHealthEvents();
             Chapter1EventBus.RaiseNotification(
                 HenryDefeatedNotification);
@@ -782,7 +799,7 @@ namespace DormitoryMystery.Chapter1
                 yield return null;
             }
 
-            CompletePoliceArrestAfterVictory();
+            CompletePoliceArrest();
             Debug.Log("[HenryFight] Henry was defeated.", this);
         }
 
@@ -790,13 +807,18 @@ namespace DormitoryMystery.Chapter1
         {
             policeArrivalResolved = false;
             policeArrivalSucceeded = false;
+            policeCarArrived = false;
+            outcomeStateEstablished = false;
+            policeOfficerPursuitStarted = false;
+            policeOfficer = PoliceOfficerArrestController.GetOrInstall(
+                gameObject.scene);
             policeArrest = PoliceArrestSequenceController.GetOrInstall(
                 gameObject.scene);
-            if (policeArrest == null)
+            if (policeArrest == null || policeOfficer == null)
             {
                 Debug.LogError(
-                    "[HenryFight] Police arrest controller could not be " +
-                    "installed. Resolving the outcome without the car.",
+                    "[HenryFight] Police car/officer controller could not " +
+                    "be installed. The arrest remains pending.",
                     this);
                 policeArrivalResolved = true;
                 return;
@@ -804,45 +826,91 @@ namespace DormitoryMystery.Chapter1
 
             bool accepted = policeArrest.BeginArrest(
                 playerMotor != null ? playerMotor.transform : null,
-                HandlePoliceArrestCompleted);
+                HandlePoliceCarArrived);
             if (!accepted && !policeArrivalResolved)
             {
                 policeArrivalResolved = true;
             }
         }
 
-        private void HandlePoliceArrestCompleted(bool arrived)
+        private void HandlePoliceCarArrived(bool arrived)
         {
-            policeArrivalSucceeded = arrived;
+            if (!arrived || policeArrest == null || policeOfficer == null)
+            {
+                HandlePoliceOfficerCompleted(false);
+                return;
+            }
+
+            policeCarArrived = true;
+            TryStartPoliceOfficerPursuit();
+        }
+
+        private void MarkOutcomeStateEstablished()
+        {
+            outcomeStateEstablished = true;
+            TryStartPoliceOfficerPursuit();
+        }
+
+        private void TryStartPoliceOfficerPursuit()
+        {
+            if (!policeCarArrived || !outcomeStateEstablished ||
+                policeOfficerPursuitStarted || policeArrivalResolved ||
+                policeArrest == null || policeOfficer == null)
+            {
+                return;
+            }
+
+            policeOfficerPursuitStarted = true;
+            state = FightState.PolicePursuing;
+            Chapter1EventBus.RaiseObjectiveChanged(
+                "C\u1ea3nh s\u00e1t \u0111ang truy \u0111u\u1ed5i b\u1ea1n.");
+            bool accepted = policeOfficer.BeginPursuit(
+                playerMotor != null ? playerMotor.transform : null,
+                policeArrest.PoliceCar,
+                HandlePoliceOfficerCompleted);
+            if (!accepted && !policeArrivalResolved)
+            {
+                HandlePoliceOfficerCompleted(false);
+            }
+        }
+
+        private void HandlePoliceOfficerCompleted(bool completed)
+        {
+            policeArrivalSucceeded = completed;
             policeArrivalResolved = true;
         }
 
-        private void CompletePoliceArrestAfterVictory()
+        private void CompletePoliceArrest()
         {
             outcomePending = false;
             if (!policeArrivalSucceeded)
             {
-                // Missing/destroyed police_car is a recoverable content
-                // failure: keep Nam locked and leave the save pending so a
-                // later reload can retry, but never claim he was arrested.
+                // Missing car/officer/camera is a recoverable content failure.
+                // Leave the save pending so reload can retry, but never claim
+                // that Nam was arrested or that Chapter 1 was completed.
                 state = FightState.PoliceArriving;
                 Debug.LogError(
-                    "[HenryFight] Police arrest ended without police_car " +
-                    "reaching Nam. The pending save state will retry after " +
-                    "reload.",
+                    "[HenryFight] Police sequence ended before the officer " +
+                    "caught Nam and completed the dialogue. The pending " +
+                    "state will retry after reload.",
+                    this);
+                return;
+            }
+
+            if (!Mission3Progress.TryMarkPoliceArrestCompleted())
+            {
+                state = FightState.PoliceArriving;
+                policeArrivalSucceeded = false;
+                Debug.LogError(
+                    "[HenryFight] Police completed the arrest dialogue, " +
+                    "but Chapter 1 progress could not be stored. The " +
+                    "sequence remains pending instead of reporting a " +
+                    "false completion.",
                     this);
                 return;
             }
 
             state = FightState.PoliceArrested;
-            if (!Mission3Progress.TryMarkPoliceArrestCompleted())
-            {
-                Debug.LogError(
-                    "[HenryFight] Police arrived, but the arrest result " +
-                    "could not be stored in Mission 3 progress.",
-                    this);
-            }
-
             Chapter1EventBus.RaiseNotification(
                 PoliceArrestedNotification);
         }
@@ -941,6 +1009,14 @@ namespace DormitoryMystery.Chapter1
             }
         }
 
+        private void RestorePlayerAfterVictory()
+        {
+            playerCombat?.EndAttack();
+            playerCombat?.ReleaseForcedStun();
+            playerMotor?.SetMovementEnabled(true);
+            ExitCombatInputMode();
+        }
+
         private void HideFightPresentation()
         {
             fightHud?.Hide();
@@ -951,20 +1027,7 @@ namespace DormitoryMystery.Chapter1
         {
             encounterActive = false;
             state = FightState.HenryDefeated;
-
-            FightCombatHUD[] huds =
-                FindObjectsByType<FightCombatHUD>(
-                    FindObjectsInactive.Include);
-            for (int i = 0; i < huds.Length; i++)
-            {
-                if (huds[i] != null &&
-                    huds[i].gameObject.scene == gameObject.scene)
-                {
-                    huds[i].Hide();
-                    huds[i].Unbind();
-                }
-            }
-
+            HideAllFightHudsInScene();
             ResolveReferences();
             henryCombat?.ExitCombatMode(false);
             if (henryChase != null && henryChase.IsUnderFightControl)
@@ -975,32 +1038,12 @@ namespace DormitoryMystery.Chapter1
             // A completed fight restores Henry directly in the last frame of
             // the defeated clip instead of returning him to Idle on reload.
             henryAnimation?.HoldDefeatedFinalPose();
-            EnterPoliceArrestInputMode(true);
-
-            policeArrest = PoliceArrestSequenceController.GetOrInstall(
-                gameObject.scene);
-            if (Mission3Progress.PoliceArrestCompleted)
-            {
-                state = FightState.PoliceArrested;
-                outcomePending = false;
-                if (policeArrest == null ||
-                    !policeArrest.RestoreTerminalArrestState(
-                        playerMotor != null
-                            ? playerMotor.transform
-                            : null))
-                {
-                    Debug.LogError(
-                        "[HenryFight] The completed police arrest state " +
-                        "could not restore police_car.",
-                        this);
-                }
-
-                return;
-            }
+            RestorePlayerAfterVictory();
 
             state = FightState.PoliceArriving;
             outcomePending = true;
             BeginPoliceArrest();
+            MarkOutcomeStateEstablished();
             if (!policeRecoveryActive)
             {
                 policeRecoveryActive = true;
@@ -1015,8 +1058,69 @@ namespace DormitoryMystery.Chapter1
                 yield return null;
             }
 
-            CompletePoliceArrestAfterVictory();
+            CompletePoliceArrest();
             policeRecoveryActive = false;
+        }
+
+        private void ApplyPersistentArrestState()
+        {
+            encounterActive = false;
+            outcomePending = false;
+            state = FightState.PoliceArrested;
+            HideAllFightHudsInScene();
+            ResolveReferences();
+            StopHenryForOutcome();
+
+            if (Mission3Progress.HenryDefeated)
+            {
+                henryAnimation?.HoldDefeatedFinalPose();
+            }
+            else
+            {
+                henryChase?.EndFightControl(true);
+                henryAnimation?.PlayIdle();
+            }
+
+            EnterPoliceArrestInputMode(true);
+            policeArrest = PoliceArrestSequenceController.GetOrInstall(
+                gameObject.scene);
+            policeOfficer = PoliceOfficerArrestController.GetOrInstall(
+                gameObject.scene);
+
+            Transform target = playerMotor != null
+                ? playerMotor.transform
+                : null;
+            bool carRestored = policeArrest != null &&
+                               policeArrest.RestoreTerminalArrestState(
+                                   target);
+            bool officerRestored = carRestored &&
+                                   policeOfficer != null &&
+                                   policeOfficer.RestoreTerminalState(
+                                       target,
+                                       policeArrest.PoliceCar);
+            if (!officerRestored)
+            {
+                Debug.LogError(
+                    "[HenryFight] The completed Chapter 1 arrest tableau " +
+                    "could not be restored.",
+                    this);
+            }
+        }
+
+        private void HideAllFightHudsInScene()
+        {
+            FightCombatHUD[] huds =
+                FindObjectsByType<FightCombatHUD>(
+                    FindObjectsInactive.Include);
+            for (int i = 0; i < huds.Length; i++)
+            {
+                if (huds[i] != null &&
+                    huds[i].gameObject.scene == gameObject.scene)
+                {
+                    huds[i].Hide();
+                    huds[i].Unbind();
+                }
+            }
         }
 
         private void AbortFightStart(string reason)

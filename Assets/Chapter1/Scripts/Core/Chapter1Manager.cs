@@ -93,6 +93,22 @@ namespace DormitoryMystery.Chapter1
 
             if (nextStep == previousStep)
             {
+                // Repair a partially-written terminal save in-place. Older
+                // code could persist ChapterCompleted as the current step
+                // before persisting the matching boolean. Treating that as a
+                // no-op would make callers believe Chapter 1 was completed
+                // while the runtime data still said otherwise.
+                if (nextStep == Chapter1Step.ChapterCompleted &&
+                    !CurrentData.ChapterCompleted)
+                {
+                    CurrentData.ChapterCompleted = true;
+                    CurrentData.EnsureValidDefaults();
+                    Chapter1EventBus.RaiseObjectiveChanged(
+                        GetCurrentObjective());
+                    Chapter1EventBus.RaiseChapterCompleted();
+                    SaveIfAutoSaveEnabled();
+                }
+
                 return true;
             }
 
@@ -302,7 +318,7 @@ namespace DormitoryMystery.Chapter1
 
             if (data.Mission03PoliceArrestCompleted)
             {
-                return "Cảnh sát đã bắt giữ bạn.";
+                return "Chương 1 hoàn thành.";
             }
 
             if (data.Mission03GangHostile)

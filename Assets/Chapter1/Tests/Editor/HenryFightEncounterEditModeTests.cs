@@ -84,7 +84,7 @@ namespace DormitoryMystery.Chapter1.Tests
         }
 
         [Test]
-        public void PoliceArrestSaveRepairsHenryDefeatAndAllPrerequisites()
+        public void PoliceArrestSaveCompletesChapterWithoutInventingVictory()
         {
             Chapter1SaveData data = new Chapter1SaveData
             {
@@ -105,7 +105,7 @@ namespace DormitoryMystery.Chapter1.Tests
             data.EnsureValidDefaults();
 
             Assert.IsTrue(data.Mission03PoliceArrestCompleted);
-            Assert.IsTrue(data.Mission03HenryDefeated);
+            Assert.IsFalse(data.Mission03HenryDefeated);
             Assert.IsTrue(data.Mission03HenryConfrontationCompleted);
             Assert.IsTrue(data.Mission03PoliceKeyReceived);
             Assert.IsTrue(data.Mission03ChallengePassed);
@@ -116,6 +116,63 @@ namespace DormitoryMystery.Chapter1.Tests
             Assert.IsTrue(data.Mission02HasPsu);
             Assert.IsTrue(data.Mission02HasUps);
             Assert.IsTrue(data.Mission02HasHenryBattery);
+            Assert.IsTrue(data.ChapterCompleted);
+            Assert.AreEqual(
+                Chapter1Step.ChapterCompleted,
+                data.CurrentStep);
+        }
+
+        [Test]
+        public void VersionFiveCarArrivalMigratesToNewOfficerPursuit()
+        {
+            Chapter1SaveData data = new Chapter1SaveData
+            {
+                SaveVersion = 5,
+                Mission03HenryDefeated = false,
+                Mission03PoliceArrestCompleted = true,
+                ChapterCompleted = false
+            };
+
+            data.EnsureValidDefaults();
+
+            Assert.AreEqual(6, data.SaveVersion);
+            Assert.IsTrue(data.Mission03HenryDefeated);
+            Assert.IsFalse(data.Mission03PoliceArrestCompleted);
+            Assert.IsFalse(data.ChapterCompleted);
+            Assert.IsTrue(data.Mission03HenryConfrontationCompleted);
+        }
+
+        [Test]
+        public void ChapterManagerRepairsPartiallyWrittenTerminalStep()
+        {
+            GameObject managerObject =
+                new GameObject("ChapterManagerTerminalRepairTest");
+            managerObject.SetActive(false);
+            try
+            {
+                Chapter1Manager manager =
+                    managerObject.AddComponent<Chapter1Manager>();
+                SerializedObject serializedManager =
+                    new SerializedObject(manager);
+                serializedManager.FindProperty("autoLoadOnAwake")
+                    .boolValue = false;
+                serializedManager.FindProperty("autoSaveOnMilestones")
+                    .boolValue = false;
+                serializedManager.ApplyModifiedPropertiesWithoutUndo();
+                managerObject.SetActive(true);
+
+                manager.CurrentData.CurrentStep =
+                    Chapter1Step.ChapterCompleted;
+                manager.CurrentData.ChapterCompleted = false;
+
+                Assert.IsTrue(manager.AdvanceTo(
+                    Chapter1Step.ChapterCompleted));
+                Assert.IsTrue(manager.CurrentData.ChapterCompleted);
+            }
+            finally
+            {
+                Object.DestroyImmediate(managerObject);
+            }
         }
 
         [Test]
@@ -181,10 +238,19 @@ namespace DormitoryMystery.Chapter1.Tests
             Assert.AreEqual(
                 15f,
                 PoliceArrestSequenceController.PoliceCarTimeout);
+            Assert.Greater(
+                PoliceOfficerArrestController.PoliceRunSpeed,
+                6f);
+            Assert.AreEqual(
+                1.2f,
+                PoliceOfficerArrestController.CaptureDistance);
 
             Assert.IsTrue(Enum.IsDefined(
                 typeof(HenryFightEncounterController.FightState),
                 "PoliceArriving"));
+            Assert.IsTrue(Enum.IsDefined(
+                typeof(HenryFightEncounterController.FightState),
+                "PolicePursuing"));
             Assert.IsTrue(Enum.IsDefined(
                 typeof(HenryFightEncounterController.FightState),
                 "PoliceArrested"));
@@ -203,6 +269,14 @@ namespace DormitoryMystery.Chapter1.Tests
                     "BeginArrest",
                     BindingFlags.Public | BindingFlags.Instance);
             Assert.NotNull(beginArrestMethod);
+            Assert.NotNull(
+                typeof(PoliceOfficerArrestController).GetMethod(
+                    "BeginPursuit",
+                    BindingFlags.Public | BindingFlags.Instance));
+            Assert.NotNull(
+                typeof(PoliceOfficerArrestController).GetMethod(
+                    "RestoreTerminalState",
+                    BindingFlags.Public | BindingFlags.Instance));
 
             Type missionProgressType = typeof(UPSInteractable).Assembly
                 .GetType("DormitoryMystery.Chapter1.Mission3Progress");
@@ -216,7 +290,7 @@ namespace DormitoryMystery.Chapter1.Tests
         }
 
         [Test]
-        public void FightOutcomeLocksNamAndStartsPoliceBeforeResolutionYield()
+        public void FightOutcomeStartsPoliceWithoutLockingWinnerOrGameOver()
         {
             string sourcePath = Path.Combine(
                 Application.dataPath,
@@ -237,9 +311,6 @@ namespace DormitoryMystery.Chapter1.Tests
             int outcomePending = scheduleOutcome.IndexOf(
                 "outcomePending = true;",
                 StringComparison.Ordinal);
-            int lockNam = scheduleOutcome.IndexOf(
-                "EnterPoliceArrestInputMode(false);",
-                StringComparison.Ordinal);
             int beginPolice = scheduleOutcome.IndexOf(
                 "BeginPoliceArrest();",
                 StringComparison.Ordinal);
@@ -247,32 +318,39 @@ namespace DormitoryMystery.Chapter1.Tests
                 "StartCoroutine(ResolveOutcomeNextFrame())",
                 StringComparison.Ordinal);
             Assert.GreaterOrEqual(outcomePending, 0);
-            Assert.Greater(lockNam, outcomePending);
-            Assert.Greater(beginPolice, lockNam);
+            Assert.Greater(beginPolice, outcomePending);
             Assert.Greater(
                 startResolver,
                 beginPolice,
-                "Nam must be locked and police must start before the " +
-                "one-frame simultaneous-KO resolution yield.");
+                "Police must start before the simultaneous-KO yield.");
+            StringAssert.DoesNotContain(
+                "EnterPoliceArrestInputMode(false);",
+                scheduleOutcome);
 
             int playerWait = playerDefeat.IndexOf(
                 "while (!policeArrivalResolved)",
                 StringComparison.Ordinal);
-            int gameOver = playerDefeat.IndexOf(
-                "Chapter1EventBus.RaiseGameOver(",
+            int playerArrestComplete = playerDefeat.IndexOf(
+                "CompletePoliceArrest();",
                 StringComparison.Ordinal);
             Assert.GreaterOrEqual(playerWait, 0);
             Assert.Greater(
-                gameOver,
-                playerWait,
-                "Player Game Over must wait until police arrival resolves.");
+                playerArrestComplete,
+                playerWait);
+            StringAssert.DoesNotContain(
+                "Chapter1EventBus.RaiseGameOver(",
+                playerDefeat);
 
             int henryWait = henryDefeat.IndexOf(
                 "while (!policeArrivalResolved)",
                 StringComparison.Ordinal);
             int arrestComplete = henryDefeat.IndexOf(
-                "CompletePoliceArrestAfterVictory();",
+                "CompletePoliceArrest();",
                 StringComparison.Ordinal);
+            int unlockWinner = henryDefeat.IndexOf(
+                "RestorePlayerAfterVictory();",
+                StringComparison.Ordinal);
+            Assert.GreaterOrEqual(unlockWinner, 0);
             Assert.GreaterOrEqual(henryWait, 0);
             Assert.Greater(arrestComplete, henryWait);
             StringAssert.DoesNotContain(
@@ -290,7 +368,7 @@ namespace DormitoryMystery.Chapter1.Tests
 
             string methodBody = ExtractMethodBody(
                 File.ReadAllText(sourcePath),
-                "private void CompletePoliceArrestAfterVictory()");
+                "private void CompletePoliceArrest()");
             int failedGuard = methodBody.IndexOf(
                 "if (!policeArrivalSucceeded)",
                 StringComparison.Ordinal);
@@ -309,6 +387,36 @@ namespace DormitoryMystery.Chapter1.Tests
             Assert.Greater(failedReturn, failedGuard);
             Assert.Greater(arrestedState, failedReturn);
             Assert.Greater(arrestedNotification, arrestedState);
+        }
+
+        [Test]
+        public void ChapterCompletionIsReportedOnlyAfterProgressCommit()
+        {
+            string sourcePath = Path.Combine(
+                Application.dataPath,
+                FightControllerRelativePath);
+            string methodBody = ExtractMethodBody(
+                File.ReadAllText(sourcePath),
+                "private void CompletePoliceArrest()");
+
+            int progressCommit = methodBody.IndexOf(
+                "Mission3Progress.TryMarkPoliceArrestCompleted()",
+                StringComparison.Ordinal);
+            int failedReturn = methodBody.IndexOf(
+                "return;",
+                progressCommit,
+                StringComparison.Ordinal);
+            int arrestedState = methodBody.IndexOf(
+                "state = FightState.PoliceArrested;",
+                StringComparison.Ordinal);
+            int notification = methodBody.IndexOf(
+                "PoliceArrestedNotification",
+                StringComparison.Ordinal);
+
+            Assert.GreaterOrEqual(progressCommit, 0);
+            Assert.Greater(failedReturn, progressCommit);
+            Assert.Greater(arrestedState, failedReturn);
+            Assert.Greater(notification, arrestedState);
         }
 
         [Test]

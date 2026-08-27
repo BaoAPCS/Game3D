@@ -57,6 +57,7 @@ namespace DormitoryMystery.Chapter1
         public float CurrentSpeed { get; private set; }
         public float VerticalVelocity => verticalVelocity;
         public Vector3 Velocity { get; private set; }
+        public bool MovementEnabled => movementEnabled;
 
         private void Awake()
         {

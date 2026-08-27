@@ -6,7 +6,7 @@ namespace DormitoryMystery.Chapter1
     [Serializable]
     public class Chapter1SaveData
     {
-        private const int CurrentSaveVersion = 5;
+        private const int CurrentSaveVersion = 6;
 
         public int SaveVersion;
         public Chapter1Step CurrentStep;
@@ -100,6 +100,19 @@ namespace DormitoryMystery.Chapter1
 
         public void EnsureValidDefaults()
         {
+            // In version 5 this flag meant only that police_car had reached
+            // Nam after Henry was defeated. Version 6 moves the flag to the
+            // end of the Police dialogue and shares it between both combat
+            // outcomes. Preserve the old victory, but replay the new pursuit
+            // and dialogue for a legacy save.
+            bool migrateLegacyPoliceArrival =
+                SaveVersion < 6 && Mission03PoliceArrestCompleted;
+            if (migrateLegacyPoliceArrival)
+            {
+                Mission03HenryDefeated = true;
+                Mission03PoliceArrestCompleted = false;
+            }
+
             if (SaveVersion < CurrentSaveVersion)
             {
                 SaveVersion = CurrentSaveVersion;
@@ -176,14 +189,19 @@ namespace DormitoryMystery.Chapter1
 
             // Repair partially-written/newer saves from the most advanced
             // Mission 3 flag backwards so every prerequisite remains one-way.
-            if (Mission03PoliceArrestCompleted)
-            {
-                Mission03HenryDefeated = true;
-            }
-
             if (Mission03HenryDefeated)
             {
                 Mission03HenryConfrontationCompleted = true;
+            }
+
+            // The final arrest dialogue does not reveal who won the fight.
+            // It does close Chapter 1 and repair the shared prerequisite
+            // chain for either outcome.
+            if (Mission03PoliceArrestCompleted)
+            {
+                Mission03HenryConfrontationCompleted = true;
+                ChapterCompleted = true;
+                CurrentStep = Chapter1Step.ChapterCompleted;
             }
 
             if (Mission03JamesIntroPlayed ||

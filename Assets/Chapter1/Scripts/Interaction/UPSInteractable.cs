@@ -279,7 +279,9 @@ namespace DormitoryMystery.Chapter1
         public static bool PoliceArrestCompleted =>
             Data.Mission03PoliceArrestCompleted;
         public static bool CombatPending =>
-            HenryConfrontationCompleted && !HenryDefeated;
+            HenryConfrontationCompleted &&
+            !HenryDefeated &&
+            !PoliceArrestCompleted;
 
         private static Chapter1SaveData Data =>
             Chapter1Manager.Instance != null
@@ -386,23 +388,59 @@ namespace DormitoryMystery.Chapter1
 
         public static bool TryMarkPoliceArrestCompleted()
         {
-            if (!Data.Mission03HenryDefeated ||
+            if (!Data.Mission03HenryConfrontationCompleted ||
                 Data.Mission03GangHostile)
             {
                 return false;
             }
 
-            // Idempotent so duplicate arrival callbacks and reload recovery
-            // cannot create divergent terminal Mission 3 state.
-            if (Data.Mission03PoliceArrestCompleted)
+            // The terminal arrest follows either result of the Henry fight
+            // and is committed only after Police's final dialogue ends.
+            bool arrestWasAlreadyCompleted =
+                Data.Mission03PoliceArrestCompleted;
+            Data.Mission03PoliceArrestCompleted = true;
+
+            Chapter1Manager manager = Chapter1Manager.Instance;
+            if (manager != null)
             {
+                bool chapterAlreadyCompleted =
+                    manager.CurrentData.ChapterCompleted &&
+                    manager.CurrentData.CurrentStep ==
+                    Chapter1Step.ChapterCompleted;
+                if (!chapterAlreadyCompleted &&
+                    !manager.AdvanceTo(Chapter1Step.ChapterCompleted))
+                {
+                    if (!arrestWasAlreadyCompleted)
+                    {
+                        Data.Mission03PoliceArrestCompleted = false;
+                    }
+
+                    return false;
+                }
+
+                // AdvanceTo publishes the step, objective and completion
+                // events. This explicit save also covers managers whose
+                // automatic milestone saving is disabled.
+                SaveProgress();
                 return true;
             }
 
-            Data.Mission03PoliceArrestCompleted = true;
-            SaveProgress();
-            Chapter1EventBus.RaiseObjectiveChanged(
-                "Cảnh sát đã bắt giữ bạn.");
+            // Keep the fallback store deterministic for isolated runtime and
+            // edit-mode use without publishing duplicate terminal events.
+            bool fallbackChapterAlreadyCompleted =
+                Data.ChapterCompleted &&
+                Data.CurrentStep == Chapter1Step.ChapterCompleted;
+            Data.CurrentStep = Chapter1Step.ChapterCompleted;
+            Data.ChapterCompleted = true;
+            if (!fallbackChapterAlreadyCompleted)
+            {
+                Chapter1EventBus.RaiseStepChanged(
+                    Chapter1Step.ChapterCompleted);
+                Chapter1EventBus.RaiseObjectiveChanged(
+                    "Chương 1 hoàn thành.");
+                Chapter1EventBus.RaiseChapterCompleted();
+            }
+
             return true;
         }
 
