@@ -7,15 +7,28 @@ namespace DormitoryMystery.Chapter1
     public sealed class JsonChapter1SaveService : IChapter1SaveService
     {
         private const string SaveFileName = "chapter1_save.json";
+        private readonly string savePathOverride;
 
-        public string SavePath => Path.Combine(Application.persistentDataPath, SaveFileName);
+        public JsonChapter1SaveService()
+        {
+        }
+
+        public JsonChapter1SaveService(string savePathOverride)
+        {
+            this.savePathOverride = savePathOverride;
+        }
+
+        public string SavePath =>
+            string.IsNullOrWhiteSpace(savePathOverride)
+                ? Path.Combine(Application.persistentDataPath, SaveFileName)
+                : savePathOverride;
 
         public void Save(Chapter1SaveData data)
         {
             try
             {
-                Chapter1SaveData safeData = data ?? Chapter1SaveData.CreateDefault();
-                safeData.EnsureValidDefaults();
+                Chapter1SaveData safeData =
+                    Chapter1CheckpointPolicy.CreateSnapshot(data);
 
                 string directory = Path.GetDirectoryName(SavePath);
                 if (!string.IsNullOrEmpty(directory))
@@ -42,21 +55,41 @@ namespace DormitoryMystery.Chapter1
                 }
 
                 string json = File.ReadAllText(SavePath);
-                Chapter1SaveData data = JsonUtility.FromJson<Chapter1SaveData>(json);
-                if (data == null)
+                SaveHeader header = JsonUtility.FromJson<SaveHeader>(json);
+                if (header == null ||
+                    header.SaveVersion !=
+                    Chapter1SaveData.CurrentSaveVersion)
                 {
-                    Debug.LogError($"[JsonChapter1SaveService] File save Chương 1 không hợp lệ tại '{SavePath}'. Sử dụng dữ liệu mặc định.");
-                    return Chapter1SaveData.CreateDefault();
+                    return DeleteInvalidSaveAndCreateDefault(
+                        "File save Chương 1 dùng schema cũ hoặc không hợp lệ");
                 }
 
-                data.EnsureValidDefaults();
-                return data;
+                Chapter1SaveData data = JsonUtility.FromJson<Chapter1SaveData>(json);
+                if (data == null ||
+                    !Chapter1CheckpointPolicy.IsValidCheckpoint(
+                        data.CurrentCheckpointId))
+                {
+                    return DeleteInvalidSaveAndCreateDefault(
+                        "File save Chương 1 có checkpoint không hợp lệ");
+                }
+
+                return Chapter1CheckpointPolicy.CreateSnapshot(data);
             }
             catch (Exception exception)
             {
                 Debug.LogError($"[JsonChapter1SaveService] Không thể đọc file save Chương 1 tại '{SavePath}'. Sử dụng dữ liệu mặc định. Lỗi: {exception.Message}");
+                DeleteSave();
                 return Chapter1SaveData.CreateDefault();
             }
+        }
+
+        private Chapter1SaveData DeleteInvalidSaveAndCreateDefault(
+            string reason)
+        {
+            Debug.LogWarning(
+                $"[JsonChapter1SaveService] {reason} tại '{SavePath}'. File sẽ bị xóa và Task 1 được khởi tạo lại.");
+            DeleteSave();
+            return Chapter1SaveData.CreateDefault();
         }
 
         public bool HasSave()
@@ -85,6 +118,12 @@ namespace DormitoryMystery.Chapter1
             {
                 Debug.LogError($"[JsonChapter1SaveService] Không thể xóa file save Chương 1 tại '{SavePath}'. Lỗi: {exception.Message}");
             }
+        }
+
+        [Serializable]
+        private sealed class SaveHeader
+        {
+            public int SaveVersion = 0;
         }
     }
 }

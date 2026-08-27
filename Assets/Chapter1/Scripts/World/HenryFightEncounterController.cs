@@ -662,6 +662,7 @@ namespace DormitoryMystery.Chapter1
 
             if (!outcomePending)
             {
+                Chapter1Manager.Instance?.DeleteTestSaveForNextSession();
                 outcomePending = true;
                 encounterActive = false;
                 StopHenryForOutcome();

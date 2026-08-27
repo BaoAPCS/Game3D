@@ -135,7 +135,7 @@ namespace DormitoryMystery.Chapter1.Tests
 
             data.EnsureValidDefaults();
 
-            Assert.AreEqual(6, data.SaveVersion);
+            Assert.AreEqual(7, data.SaveVersion);
             Assert.IsTrue(data.Mission03HenryDefeated);
             Assert.IsFalse(data.Mission03PoliceArrestCompleted);
             Assert.IsFalse(data.ChapterCompleted);
@@ -298,6 +298,12 @@ namespace DormitoryMystery.Chapter1.Tests
             Assert.IsTrue(File.Exists(sourcePath), sourcePath);
 
             string source = File.ReadAllText(sourcePath);
+            string playerDied = ExtractMethodBody(
+                source,
+                "private void HandlePlayerDied()");
+            string henryDied = ExtractMethodBody(
+                source,
+                "private void HandleHenryDied()");
             string scheduleOutcome = ExtractMethodBody(
                 source,
                 "private void ScheduleOutcomeResolution()");
@@ -308,8 +314,17 @@ namespace DormitoryMystery.Chapter1.Tests
                 source,
                 "private IEnumerator FinishHenryDefeat()");
 
+            StringAssert.Contains(
+                "ScheduleOutcomeResolution();",
+                playerDied);
+            StringAssert.Contains(
+                "ScheduleOutcomeResolution();",
+                henryDied);
             int outcomePending = scheduleOutcome.IndexOf(
                 "outcomePending = true;",
+                StringComparison.Ordinal);
+            int deleteTestSave = scheduleOutcome.IndexOf(
+                "Chapter1Manager.Instance?.DeleteTestSaveForNextSession();",
                 StringComparison.Ordinal);
             int beginPolice = scheduleOutcome.IndexOf(
                 "BeginPoliceArrest();",
@@ -317,6 +332,12 @@ namespace DormitoryMystery.Chapter1.Tests
             int startResolver = scheduleOutcome.IndexOf(
                 "StartCoroutine(ResolveOutcomeNextFrame())",
                 StringComparison.Ordinal);
+            Assert.GreaterOrEqual(deleteTestSave, 0);
+            Assert.Greater(
+                outcomePending,
+                deleteTestSave,
+                "The test save must be deleted before terminal state changes " +
+                "can trigger persistence.");
             Assert.GreaterOrEqual(outcomePending, 0);
             Assert.Greater(beginPolice, outcomePending);
             Assert.Greater(
@@ -356,6 +377,14 @@ namespace DormitoryMystery.Chapter1.Tests
             StringAssert.DoesNotContain(
                 "Chapter1EventBus.RaiseGameOver(",
                 henryDefeat);
+            StringAssert.DoesNotContain(
+                "Chapter1EventBus.RaiseGameOver(",
+                source,
+                "A combat result must continue directly into the police " +
+                "sequence instead of exposing the R-to-retry presenter.");
+            StringAssert.DoesNotContain(
+                "Chapter1Manager.Instance?.ResetChapter()",
+                source);
         }
 
         [Test]

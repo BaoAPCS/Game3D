@@ -6,7 +6,7 @@ namespace DormitoryMystery.Chapter1
     [Serializable]
     public class Chapter1SaveData
     {
-        private const int CurrentSaveVersion = 6;
+        public const int CurrentSaveVersion = 7;
 
         public int SaveVersion;
         public Chapter1Step CurrentStep;
@@ -25,7 +25,7 @@ namespace DormitoryMystery.Chapter1
         public bool RaincoatEnemyActivated;
         public bool AudioPuzzleSolved;
         public bool ChapterCompleted;
-        public string CurrentCheckpointId;
+        public Chapter1MissionCheckpoint CurrentCheckpointId;
         public List<string> CollectedUniqueItemIds;
         public List<string> SeenTutorialIds;
         public int FirstMissionStateValue;
@@ -84,7 +84,7 @@ namespace DormitoryMystery.Chapter1
             RaincoatEnemyActivated = false;
             AudioPuzzleSolved = false;
             ChapterCompleted = false;
-            CurrentCheckpointId = "ChapterStart";
+            CurrentCheckpointId = Chapter1MissionCheckpoint.Mission1Start;
             CollectedUniqueItemIds = new List<string>();
             SeenTutorialIds = new List<string>();
             SavedPhoneRecordingIds = new List<string>();
@@ -120,11 +120,6 @@ namespace DormitoryMystery.Chapter1
 
             NamTrust = NamTrustCalculator.ClampTrust(NamTrust);
             ThrowableCanCount = Math.Max(0, ThrowableCanCount);
-
-            if (string.IsNullOrWhiteSpace(CurrentCheckpointId))
-            {
-                CurrentCheckpointId = "ChapterStart";
-            }
 
             CollectedUniqueItemIds ??= new List<string>();
             SeenTutorialIds ??= new List<string>();
@@ -336,6 +331,26 @@ namespace DormitoryMystery.Chapter1
             SavedPhoneRecordingIds ??= new List<string>();
             SavedLanAudioStemIds ??= new List<string>();
             AudioSeparatorFaderValues ??= CreateDefaultFaderValues();
+        }
+
+        /// <summary>
+        /// Creates a detached copy suitable for persistence transforms. No
+        /// collection in the returned instance is shared with runtime data.
+        /// </summary>
+        public Chapter1SaveData DeepCopy()
+        {
+            Chapter1SaveData copy = (Chapter1SaveData)MemberwiseClone();
+            copy.CollectedUniqueItemIds = CopyList(CollectedUniqueItemIds);
+            copy.SeenTutorialIds = CopyList(SeenTutorialIds);
+            copy.SavedPhoneRecordingIds = CopyList(SavedPhoneRecordingIds);
+            copy.SavedLanAudioStemIds = CopyList(SavedLanAudioStemIds);
+            copy.AudioSeparatorFaderValues = CopyList(AudioSeparatorFaderValues);
+            return copy;
+        }
+
+        private static List<T> CopyList<T>(List<T> source)
+        {
+            return source != null ? new List<T>(source) : new List<T>();
         }
 
         private static List<float> CreateDefaultFaderValues()

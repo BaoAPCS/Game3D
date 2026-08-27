@@ -286,7 +286,7 @@ namespace DormitoryMystery.Chapter1
 
             Chapter1EventBus.RaiseGameOver(
                 GangGameOverReason,
-                GameOverRestartPolicy.ResetChapterThenReload);
+                GameOverRestartPolicy.ReloadScene);
         }
 
         private static Transform FindSceneTransform(Scene scene, string objectName)
