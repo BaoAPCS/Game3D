@@ -662,7 +662,6 @@ namespace DormitoryMystery.Chapter1
 
             if (!outcomePending)
             {
-                Chapter1Manager.Instance?.DeleteTestSaveForNextSession();
                 outcomePending = true;
                 encounterActive = false;
                 StopHenryForOutcome();
@@ -914,6 +913,7 @@ namespace DormitoryMystery.Chapter1
             state = FightState.PoliceArrested;
             Chapter1EventBus.RaiseNotification(
                 PoliceArrestedNotification);
+            ChapterSceneTransitionController.BeginChapter2Transition();
         }
 
         private void EnterCombatInputMode()

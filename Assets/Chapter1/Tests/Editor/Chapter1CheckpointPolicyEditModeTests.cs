@@ -3,6 +3,7 @@ using System.IO;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using NUnit.Framework;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.TestTools;
 
@@ -10,6 +11,43 @@ namespace DormitoryMystery.Chapter1.Tests
 {
     public sealed class Chapter1CheckpointPolicyEditModeTests
     {
+        [Test]
+        public void BuildSettings_StartAtChapter1_AndIncludeChapter2()
+        {
+            EditorBuildSettingsScene[] scenes =
+                EditorBuildSettings.scenes;
+            Assert.GreaterOrEqual(scenes.Length, 2);
+            Assert.IsTrue(scenes[0].enabled);
+            Assert.AreEqual(
+                "Assets/Chapter1/Scenes/Chapter1_Dormitory.unity",
+                scenes[0].path);
+            Assert.IsTrue(scenes[1].enabled);
+            Assert.AreEqual(
+                "Assets/Chapter2/Scenes/Police_Station.unity",
+                scenes[1].path);
+        }
+
+        [Test]
+        public void PoliceStationKey_IsCarryOverStoryItem_NotUsable()
+        {
+            ItemDefinition key = AssetDatabase.LoadAssetAtPath<
+                ItemDefinition>(
+                "Assets/Chapter1/Resources/Inventory/" +
+                "PoliceStationKeyItem.asset");
+
+            Assert.IsNotNull(key);
+            Assert.AreEqual(
+                Chapter1SaveData.PoliceKeyCarryOverItemId,
+                key.ItemId);
+            Assert.IsFalse(key.IsUsable);
+            StringAssert.Contains(
+                "cất giấu thật kĩ",
+                key.Description);
+            StringAssert.DoesNotContain(
+                "phòng giam",
+                key.Description);
+        }
+
         [Test]
         public void Mission1Snapshot_ResetsAllRuntimeProgressWithoutMutation()
         {
@@ -20,7 +58,9 @@ namespace DormitoryMystery.Chapter1.Tests
             Chapter1SaveData snapshot =
                 Chapter1CheckpointPolicy.CreateSnapshot(runtime);
 
-            Assert.AreEqual(7, snapshot.SaveVersion);
+            Assert.AreEqual(
+                Chapter1SaveData.CurrentSaveVersion,
+                snapshot.SaveVersion);
             Assert.AreEqual(
                 Chapter1MissionCheckpoint.Mission1Start,
                 snapshot.CurrentCheckpointId);
@@ -110,6 +150,35 @@ namespace DormitoryMystery.Chapter1.Tests
             Assert.AreNotSame(
                 first.AudioSeparatorFaderValues,
                 second.AudioSeparatorFaderValues);
+        }
+
+        [Test]
+        public void CompletedSnapshot_RetainsCarryOverAndChapter2State()
+        {
+            Chapter1SaveData runtime = CreateDirtyRuntimeData();
+            runtime.CurrentCheckpointId =
+                Chapter1MissionCheckpoint.Mission3Start;
+            runtime.ChapterCompleted = true;
+            runtime.Mission03PoliceArrestCompleted = true;
+
+            Chapter1SaveData snapshot =
+                Chapter1CheckpointPolicy.CreateSnapshot(runtime);
+            Chapter1SaveData second =
+                Chapter1CheckpointPolicy.CreateSnapshot(snapshot);
+
+            Assert.IsTrue(snapshot.ChapterCompleted);
+            Assert.IsTrue(snapshot.Mission03PoliceArrestCompleted);
+            Assert.IsTrue(snapshot.Mission03PoliceKeyReceived);
+            Assert.IsTrue(snapshot.HasChapterCarryOverItem(
+                Chapter1SaveData.PhoneCarryOverItemId));
+            Assert.IsTrue(snapshot.HasChapterCarryOverItem(
+                Chapter1SaveData.PoliceKeyCarryOverItemId));
+            Assert.AreEqual(
+                JsonUtility.ToJson(snapshot),
+                JsonUtility.ToJson(second));
+            Assert.AreNotSame(
+                snapshot.ChapterCarryOverItemIds,
+                second.ChapterCarryOverItemIds);
         }
 
         [Test]
@@ -299,6 +368,84 @@ namespace DormitoryMystery.Chapter1.Tests
                     loaded.CurrentCheckpointId);
                 Assert.IsFalse(loaded.Mission03PoliceKeyReceived);
                 Assert.IsFalse(File.Exists(savePath));
+            }
+            finally
+            {
+                if (Directory.Exists(directory))
+                {
+                    Directory.Delete(directory, true);
+                }
+            }
+        }
+
+        [Test]
+        public void JsonService_VersionSevenCheckpoint_MigratesWithoutDeletion()
+        {
+            string directory = Path.Combine(
+                Path.GetTempPath(),
+                "Chapter1V7MigrationTests_" +
+                System.Guid.NewGuid().ToString("N"));
+            string savePath = Path.Combine(directory, "chapter1_save.json");
+            Directory.CreateDirectory(directory);
+
+            Chapter1SaveData legacy = Chapter1SaveData.CreateDefault();
+            legacy.SaveVersion = 7;
+            legacy.CurrentCheckpointId =
+                Chapter1MissionCheckpoint.Mission2Start;
+            File.WriteAllText(savePath, JsonUtility.ToJson(legacy));
+
+            try
+            {
+                JsonChapter1SaveService service =
+                    new JsonChapter1SaveService(savePath);
+                Chapter1SaveData loaded = service.Load();
+
+                Assert.AreEqual(
+                    Chapter1SaveData.CurrentSaveVersion,
+                    loaded.SaveVersion);
+                Assert.AreEqual(
+                    Chapter1MissionCheckpoint.Mission2Start,
+                    loaded.CurrentCheckpointId);
+                Assert.IsTrue(File.Exists(savePath));
+            }
+            finally
+            {
+                if (Directory.Exists(directory))
+                {
+                    Directory.Delete(directory, true);
+                }
+            }
+        }
+
+        [Test]
+        public void JsonService_CompletedChapter_RoundTripsIntoChapter2()
+        {
+            string directory = Path.Combine(
+                Path.GetTempPath(),
+                "Chapter1CompletedRoundTripTests_" +
+                System.Guid.NewGuid().ToString("N"));
+            string savePath = Path.Combine(directory, "chapter1_save.json");
+
+            try
+            {
+                Chapter1SaveData completed = CreateDirtyRuntimeData();
+                completed.CurrentCheckpointId =
+                    Chapter1MissionCheckpoint.Mission3Start;
+                completed.ChapterCompleted = true;
+                completed.Mission03PoliceArrestCompleted = true;
+
+                JsonChapter1SaveService service =
+                    new JsonChapter1SaveService(savePath);
+                service.Save(completed);
+                Chapter1SaveData loaded = service.Load();
+
+                Assert.IsTrue(loaded.ChapterCompleted);
+                Assert.IsTrue(loaded.Mission03PoliceArrestCompleted);
+                Assert.IsTrue(loaded.Mission03PoliceKeyReceived);
+                Assert.IsTrue(loaded.HasChapterCarryOverItem(
+                    Chapter1SaveData.PhoneCarryOverItemId));
+                Assert.IsTrue(loaded.HasChapterCarryOverItem(
+                    Chapter1SaveData.PoliceKeyCarryOverItemId));
             }
             finally
             {

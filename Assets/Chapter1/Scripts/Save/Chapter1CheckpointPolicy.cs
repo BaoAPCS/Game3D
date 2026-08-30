@@ -22,6 +22,16 @@ namespace DormitoryMystery.Chapter1
         {
             Chapter1SaveData source =
                 runtimeData?.DeepCopy() ?? Chapter1SaveData.CreateDefault();
+
+            // Chapter completion is the only state allowed to survive past
+            // the Mission 3 rollback checkpoint. Both combat outcomes reach
+            // this state only after Police finishes the arrest dialogue.
+            if (source.ChapterCompleted &&
+                source.Mission03PoliceArrestCompleted)
+            {
+                return CreateChapter2Start(source);
+            }
+
             Chapter1MissionCheckpoint checkpoint =
                 IsValidCheckpoint(source.CurrentCheckpointId)
                     ? source.CurrentCheckpointId
@@ -134,6 +144,25 @@ namespace DormitoryMystery.Chapter1
 
             // Mission 3/4 progress, combat results and the police key all
             // remain at their default values in this fresh snapshot.
+            snapshot.EnsureValidDefaults();
+            return snapshot;
+        }
+
+        private static Chapter1SaveData CreateChapter2Start(
+            Chapter1SaveData source)
+        {
+            Chapter1SaveData snapshot = source.DeepCopy();
+            snapshot.SaveVersion = Chapter1SaveData.CurrentSaveVersion;
+            snapshot.CurrentCheckpointId =
+                Chapter1MissionCheckpoint.Mission3Start;
+            snapshot.CurrentStep = Chapter1Step.ChapterCompleted;
+            snapshot.ChapterCompleted = true;
+            snapshot.Mission03PoliceArrestCompleted = true;
+            snapshot.Mission03PoliceKeyReceived = true;
+            snapshot.AddChapterCarryOverItem(
+                Chapter1SaveData.PhoneCarryOverItemId);
+            snapshot.AddChapterCarryOverItem(
+                Chapter1SaveData.PoliceKeyCarryOverItemId);
             snapshot.EnsureValidDefaults();
             return snapshot;
         }

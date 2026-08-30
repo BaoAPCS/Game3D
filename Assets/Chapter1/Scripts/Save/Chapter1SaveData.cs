@@ -6,7 +6,10 @@ namespace DormitoryMystery.Chapter1
     [Serializable]
     public class Chapter1SaveData
     {
-        public const int CurrentSaveVersion = 7;
+        public const int CurrentSaveVersion = 8;
+        public const string PhoneCarryOverItemId = "phone";
+        public const string PoliceKeyCarryOverItemId =
+            "police_station_key";
 
         public int SaveVersion;
         public Chapter1Step CurrentStep;
@@ -64,6 +67,7 @@ namespace DormitoryMystery.Chapter1
         public bool Mission03HenryConfrontationCompleted;
         public bool Mission03HenryDefeated;
         public bool Mission03PoliceArrestCompleted;
+        public List<string> ChapterCarryOverItemIds;
 
         public Chapter1SaveData()
         {
@@ -90,6 +94,7 @@ namespace DormitoryMystery.Chapter1
             SavedPhoneRecordingIds = new List<string>();
             SavedLanAudioStemIds = new List<string>();
             AudioSeparatorFaderValues = CreateDefaultFaderValues();
+            ChapterCarryOverItemIds = new List<string>();
             FirstMissionStateValue = (int)FirstMissionState.None;
         }
 
@@ -126,6 +131,7 @@ namespace DormitoryMystery.Chapter1
             SavedPhoneRecordingIds ??= new List<string>();
             SavedLanAudioStemIds ??= new List<string>();
             AudioSeparatorFaderValues ??= CreateDefaultFaderValues();
+            ChapterCarryOverItemIds ??= new List<string>();
             while (AudioSeparatorFaderValues.Count < LanAudioRecordingCatalog.StemCount)
             {
                 AudioSeparatorFaderValues.Add(1f);
@@ -197,6 +203,8 @@ namespace DormitoryMystery.Chapter1
                 Mission03HenryConfrontationCompleted = true;
                 ChapterCompleted = true;
                 CurrentStep = Chapter1Step.ChapterCompleted;
+                AddChapterCarryOverItem(PhoneCarryOverItemId);
+                AddChapterCarryOverItem(PoliceKeyCarryOverItemId);
             }
 
             if (Mission03JamesIntroPlayed ||
@@ -345,7 +353,29 @@ namespace DormitoryMystery.Chapter1
             copy.SavedPhoneRecordingIds = CopyList(SavedPhoneRecordingIds);
             copy.SavedLanAudioStemIds = CopyList(SavedLanAudioStemIds);
             copy.AudioSeparatorFaderValues = CopyList(AudioSeparatorFaderValues);
+            copy.ChapterCarryOverItemIds = CopyList(
+                ChapterCarryOverItemIds);
             return copy;
+        }
+
+        public bool HasChapterCarryOverItem(string itemId)
+        {
+            ChapterCarryOverItemIds ??= new List<string>();
+            return !string.IsNullOrWhiteSpace(itemId) &&
+                   ChapterCarryOverItemIds.Contains(itemId);
+        }
+
+        public bool AddChapterCarryOverItem(string itemId)
+        {
+            ChapterCarryOverItemIds ??= new List<string>();
+            if (string.IsNullOrWhiteSpace(itemId) ||
+                ChapterCarryOverItemIds.Contains(itemId))
+            {
+                return false;
+            }
+
+            ChapterCarryOverItemIds.Add(itemId);
+            return true;
         }
 
         private static List<T> CopyList<T>(List<T> source)

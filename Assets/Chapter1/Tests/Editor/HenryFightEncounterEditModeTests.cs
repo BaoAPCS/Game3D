@@ -135,7 +135,9 @@ namespace DormitoryMystery.Chapter1.Tests
 
             data.EnsureValidDefaults();
 
-            Assert.AreEqual(7, data.SaveVersion);
+            Assert.AreEqual(
+                Chapter1SaveData.CurrentSaveVersion,
+                data.SaveVersion);
             Assert.IsTrue(data.Mission03HenryDefeated);
             Assert.IsFalse(data.Mission03PoliceArrestCompleted);
             Assert.IsFalse(data.ChapterCompleted);
@@ -323,21 +325,17 @@ namespace DormitoryMystery.Chapter1.Tests
             int outcomePending = scheduleOutcome.IndexOf(
                 "outcomePending = true;",
                 StringComparison.Ordinal);
-            int deleteTestSave = scheduleOutcome.IndexOf(
-                "Chapter1Manager.Instance?.DeleteTestSaveForNextSession();",
-                StringComparison.Ordinal);
             int beginPolice = scheduleOutcome.IndexOf(
                 "BeginPoliceArrest();",
                 StringComparison.Ordinal);
             int startResolver = scheduleOutcome.IndexOf(
                 "StartCoroutine(ResolveOutcomeNextFrame())",
                 StringComparison.Ordinal);
-            Assert.GreaterOrEqual(deleteTestSave, 0);
-            Assert.Greater(
-                outcomePending,
-                deleteTestSave,
-                "The test save must be deleted before terminal state changes " +
-                "can trigger persistence.");
+            StringAssert.DoesNotContain(
+                "DeleteTestSaveForNextSession",
+                scheduleOutcome,
+                "Chapter 1 completion must now remain persisted for " +
+                "Chapter 2 routing.");
             Assert.GreaterOrEqual(outcomePending, 0);
             Assert.Greater(beginPolice, outcomePending);
             Assert.Greater(
@@ -441,11 +439,19 @@ namespace DormitoryMystery.Chapter1.Tests
             int notification = methodBody.IndexOf(
                 "PoliceArrestedNotification",
                 StringComparison.Ordinal);
+            int chapter2Transition = methodBody.IndexOf(
+                "ChapterSceneTransitionController.BeginChapter2Transition()",
+                StringComparison.Ordinal);
 
             Assert.GreaterOrEqual(progressCommit, 0);
             Assert.Greater(failedReturn, progressCommit);
             Assert.Greater(arrestedState, failedReturn);
             Assert.Greater(notification, arrestedState);
+            Assert.Greater(
+                chapter2Transition,
+                notification,
+                "Chapter 2 must load only after the terminal progress " +
+                "commit and completion notification.");
         }
 
         [Test]

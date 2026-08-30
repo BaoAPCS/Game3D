@@ -7,6 +7,7 @@ namespace DormitoryMystery.Chapter1
     public sealed class JsonChapter1SaveService : IChapter1SaveService
     {
         private const string SaveFileName = "chapter1_save.json";
+        private const int MinimumCompatibleSaveVersion = 7;
         private readonly string savePathOverride;
 
         public JsonChapter1SaveService()
@@ -57,7 +58,8 @@ namespace DormitoryMystery.Chapter1
                 string json = File.ReadAllText(SavePath);
                 SaveHeader header = JsonUtility.FromJson<SaveHeader>(json);
                 if (header == null ||
-                    header.SaveVersion !=
+                    header.SaveVersion < MinimumCompatibleSaveVersion ||
+                    header.SaveVersion >
                     Chapter1SaveData.CurrentSaveVersion)
                 {
                     return DeleteInvalidSaveAndCreateDefault(
@@ -73,6 +75,7 @@ namespace DormitoryMystery.Chapter1
                         "File save Chương 1 có checkpoint không hợp lệ");
                 }
 
+                data.EnsureValidDefaults();
                 return Chapter1CheckpointPolicy.CreateSnapshot(data);
             }
             catch (Exception exception)
