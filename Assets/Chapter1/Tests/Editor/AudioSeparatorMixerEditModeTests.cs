@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Reflection;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
@@ -152,6 +153,10 @@ namespace DormitoryMystery.Chapter1.Tests
 
                 SetBool(ChapterManager, "autoLoadOnAwake", false);
                 SetBool(ChapterManager, "autoSaveOnMilestones", false);
+                SetPrivateField(
+                    ChapterManager,
+                    "saveService",
+                    new NoOpChapter1SaveService());
                 SetBool(Mission, "autoSaveOnChange", false);
                 Mission.SetChapterManager(ChapterManager);
 
@@ -227,6 +232,18 @@ namespace DormitoryMystery.Chapter1.Tests
                 }
             }
 
+            private static void SetPrivateField(
+                object target,
+                string fieldName,
+                object value)
+            {
+                FieldInfo field = target.GetType().GetField(
+                    fieldName,
+                    BindingFlags.Instance | BindingFlags.NonPublic);
+                Assert.IsNotNull(field, $"Missing private field {fieldName}.");
+                field.SetValue(target, value);
+            }
+
             private static void SetObject(SerializedObject serialized, string propertyName, Object value)
             {
                 SerializedProperty property = serialized.FindProperty(propertyName);
@@ -258,6 +275,29 @@ namespace DormitoryMystery.Chapter1.Tests
                 {
                     property.GetArrayElementAtIndex(i).objectReferenceValue = values[i];
                 }
+            }
+        }
+
+        private sealed class NoOpChapter1SaveService : IChapter1SaveService
+        {
+            public string SavePath => string.Empty;
+
+            public void Save(Chapter1SaveData data)
+            {
+            }
+
+            public Chapter1SaveData Load()
+            {
+                return Chapter1SaveData.CreateDefault();
+            }
+
+            public bool HasSave()
+            {
+                return false;
+            }
+
+            public void DeleteSave()
+            {
             }
         }
     }

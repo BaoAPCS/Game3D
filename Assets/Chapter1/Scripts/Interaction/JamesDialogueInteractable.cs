@@ -342,9 +342,6 @@ namespace DormitoryMystery.Chapter1
             yield return StreamLine(
                 "James",
                 "Khá đấy. Mày đã vượt qua thử thách của tụi tao.");
-            yield return StreamLine(
-                "James",
-                "Cầm lấy, đây là chìa khóa để vào đồn cảnh sát.");
             if (advanceHintText != null)
             {
                 advanceHintText.text = "[E] Nhận chìa khóa";
@@ -352,7 +349,7 @@ namespace DormitoryMystery.Chapter1
 
             yield return StreamLine(
                 "James",
-                "Cất nó thật kỹ, đừng để ai phát hiện.",
+                "Cầm lấy chìa khóa này cất giấu thật kĩ, nó sẽ giúp ích cho mày.",
                 true);
 
             bool keyAddedThisAttempt;

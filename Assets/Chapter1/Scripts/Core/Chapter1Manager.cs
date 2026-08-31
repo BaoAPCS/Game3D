@@ -12,11 +12,14 @@ namespace DormitoryMystery.Chapter1
 
         private IChapter1SaveService saveService;
         private Chapter1SaveData currentData;
+        private bool persistenceSuppressedForSession;
 
         public Chapter1Step CurrentStep => CurrentData.CurrentStep;
         public int NamTrust => CurrentData.NamTrust;
         public Chapter1SaveData CurrentData => currentData ??= Chapter1SaveData.CreateDefault();
         public bool IsChapterCompleted => CurrentData.ChapterCompleted;
+        public bool PersistenceSuppressedForSession =>
+            persistenceSuppressedForSession;
 
         private void Awake()
         {
@@ -50,6 +53,7 @@ namespace DormitoryMystery.Chapter1
 
         public void InitializeNewChapter()
         {
+            persistenceSuppressedForSession = false;
             currentData = Chapter1SaveData.CreateDefault();
             PublishCurrentState();
             SaveIfAutoSaveEnabled();
@@ -65,13 +69,95 @@ namespace DormitoryMystery.Chapter1
 
         public void SaveChapter()
         {
+            if (persistenceSuppressedForSession)
+            {
+                return;
+            }
+
             EnsureSaveService();
-            saveService.Save(CurrentData);
+            Chapter1SaveData checkpointSnapshot =
+                Chapter1CheckpointPolicy.CreateSnapshot(CurrentData);
+            saveService.Save(checkpointSnapshot);
+        }
+
+        public bool CommitMissionCheckpoint(
+            Chapter1MissionCheckpoint checkpoint)
+        {
+            if (persistenceSuppressedForSession)
+            {
+                return false;
+            }
+
+            if (!Chapter1CheckpointPolicy.IsValidCheckpoint(checkpoint))
+            {
+                Debug.LogWarning(
+                    $"[Chapter1Manager] Checkpoint nhiệm vụ không hợp lệ trên GameObject '{gameObject.name}'.",
+                    this);
+                return false;
+            }
+
+            Chapter1MissionCheckpoint current =
+                CurrentData.CurrentCheckpointId;
+            if (!Chapter1CheckpointPolicy.IsValidCheckpoint(current))
+            {
+                current = Chapter1MissionCheckpoint.Mission1Start;
+                CurrentData.CurrentCheckpointId = current;
+            }
+
+            if (checkpoint < current)
+            {
+                Debug.LogWarning(
+                    $"[Chapter1Manager] Không thể lùi checkpoint từ '{current}' về '{checkpoint}' trên GameObject '{gameObject.name}'.",
+                    this);
+                return false;
+            }
+
+            if (!HasCheckpointPrerequisites(checkpoint, current))
+            {
+                Debug.LogWarning(
+                    $"[Chapter1Manager] Chưa đủ điều kiện commit checkpoint '{checkpoint}' trên GameObject '{gameObject.name}'.",
+                    this);
+                return false;
+            }
+
+            bool changed = checkpoint != current;
+            CurrentData.CurrentCheckpointId = checkpoint;
+            if (changed)
+            {
+                Chapter1EventBus.RaiseCheckpointChanged(
+                    checkpoint.ToString());
+            }
+
+            // A checkpoint commit is the durability boundary itself, not a
+            // routine partial-state autosave. Persist it even if optional
+            // milestone autosaves were disabled in the Inspector.
+            SaveChapter();
+            return true;
+        }
+
+        public void DeleteTestSaveForNextSession()
+        {
+            EnsureSaveService();
+            persistenceSuppressedForSession = true;
+            saveService.DeleteSave();
+
+            // DeleteSave intentionally handles its own IO exceptions. If a
+            // locked file survives, replace it with a clean Task-1 snapshot
+            // so the next Play still follows the terminal-reset contract.
+            if (saveService.HasSave())
+            {
+                Debug.LogWarning(
+                    "[Chapter1Manager] Không thể xóa hẳn Chapter 1 test save; " +
+                    "đang ghi đè checkpoint Mission1Start.",
+                    this);
+                saveService.Save(Chapter1SaveData.CreateDefault());
+            }
         }
 
         public void ResetChapter()
         {
             EnsureSaveService();
+            persistenceSuppressedForSession = false;
             saveService.DeleteSave();
             InitializeNewChapter();
         }
@@ -131,24 +217,6 @@ namespace DormitoryMystery.Chapter1
 
             SaveIfAutoSaveEnabled();
             return true;
-        }
-
-        public void SetCheckpoint(string checkpointId)
-        {
-            if (string.IsNullOrWhiteSpace(checkpointId))
-            {
-                Debug.LogWarning($"[Chapter1Manager] Checkpoint không hợp lệ trên GameObject '{gameObject.name}'.", this);
-                return;
-            }
-
-            if (CurrentData.CurrentCheckpointId == checkpointId)
-            {
-                return;
-            }
-
-            CurrentData.CurrentCheckpointId = checkpointId;
-            Chapter1EventBus.RaiseCheckpointChanged(CurrentData.CurrentCheckpointId);
-            SaveIfAutoSaveEnabled();
         }
 
         public void SetPowerRestored(bool powerRestored)
@@ -375,6 +443,16 @@ namespace DormitoryMystery.Chapter1
                 return "Tìm và nhặt PSU.";
             }
 
+            FirstMissionState firstMissionState =
+                (FirstMissionState)data.FirstMissionStateValue;
+            string firstMissionObjective =
+                Mission01AudioSeparatorManager.GetObjective(
+                    firstMissionState);
+            if (!string.IsNullOrWhiteSpace(firstMissionObjective))
+            {
+                return firstMissionObjective;
+            }
+
             return GetObjective(data.CurrentStep);
         }
 
@@ -386,6 +464,33 @@ namespace DormitoryMystery.Chapter1
                 || CurrentData.ForcedNamToCooperate;
         }
 
+        private bool HasCheckpointPrerequisites(
+            Chapter1MissionCheckpoint checkpoint,
+            Chapter1MissionCheckpoint current)
+        {
+            Chapter1SaveData data = CurrentData;
+            switch (checkpoint)
+            {
+                case Chapter1MissionCheckpoint.Mission1Start:
+                    return true;
+                case Chapter1MissionCheckpoint.Mission2Start:
+                    return data.Mission01LanRecordingSeparated &&
+                           data.Mission01AudioSeparatorMixerCompleted &&
+                           data.AreAllLanAudioStemsSaved() &&
+                           data.FirstMissionStateValue >=
+                           (int)FirstMissionState.ReturnToMinh;
+                case Chapter1MissionCheckpoint.Mission3Start:
+                    return current >=
+                           Chapter1MissionCheckpoint.Mission2Start &&
+                           data.Mission02Started &&
+                           data.Mission02HasPsu &&
+                           data.Mission02HasUps &&
+                           data.Mission02HasHenryBattery;
+                default:
+                    return false;
+            }
+        }
+
         private void PublishCurrentState()
         {
             CurrentData.EnsureValidDefaults();
@@ -394,7 +499,8 @@ namespace DormitoryMystery.Chapter1
             Chapter1EventBus.RaiseInventoryChanged();
             Chapter1EventBus.RaiseNamTrustChanged(CurrentData.NamTrust);
             Chapter1EventBus.RaisePowerStateChanged(CurrentData.PowerRestored);
-            Chapter1EventBus.RaiseCheckpointChanged(CurrentData.CurrentCheckpointId);
+            Chapter1EventBus.RaiseCheckpointChanged(
+                CurrentData.CurrentCheckpointId.ToString());
         }
 
         private void SaveIfAutoSaveEnabled()

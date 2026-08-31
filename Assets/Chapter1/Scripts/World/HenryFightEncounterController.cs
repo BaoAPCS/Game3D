@@ -913,6 +913,7 @@ namespace DormitoryMystery.Chapter1
             state = FightState.PoliceArrested;
             Chapter1EventBus.RaiseNotification(
                 PoliceArrestedNotification);
+            ChapterSceneTransitionController.BeginChapter2Transition();
         }
 
         private void EnterCombatInputMode()

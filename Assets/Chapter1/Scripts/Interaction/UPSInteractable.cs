@@ -80,7 +80,7 @@ namespace DormitoryMystery.Chapter1
             }
 
             data.Mission02HasPsu = true;
-            SaveProgress();
+            SaveEquipmentPickupProgress(data);
             PublishCurrentObjective();
             return true;
         }
@@ -96,7 +96,7 @@ namespace DormitoryMystery.Chapter1
             }
 
             data.Mission02HasUps = true;
-            SaveProgress();
+            SaveEquipmentPickupProgress(data);
             PublishCurrentObjective();
             return true;
         }
@@ -240,6 +240,25 @@ namespace DormitoryMystery.Chapter1
         private static void SaveProgress()
         {
             Chapter1Manager.Instance?.SaveChapter();
+        }
+
+        private static void SaveEquipmentPickupProgress(
+            Chapter1SaveData data)
+        {
+            Chapter1Manager manager = Chapter1Manager.Instance;
+            if (manager == null)
+            {
+                return;
+            }
+
+            if (data.Mission02HasPsu && data.Mission02HasUps)
+            {
+                manager.CommitMissionCheckpoint(
+                    Chapter1MissionCheckpoint.Mission3Start);
+                return;
+            }
+
+            manager.SaveChapter();
         }
 
         private static void PublishCurrentObjective()

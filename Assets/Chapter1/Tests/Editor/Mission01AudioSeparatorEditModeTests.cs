@@ -605,6 +605,10 @@ namespace DormitoryMystery.Chapter1.Tests
 
                 SetBool(ChapterManager, "autoLoadOnAwake", false);
                 SetBool(ChapterManager, "autoSaveOnMilestones", false);
+                SetPrivateField(
+                    ChapterManager,
+                    "saveService",
+                    new NoOpChapter1SaveService());
                 SetBool(Mission, "autoSaveOnChange", false);
                 SetBool(Inventory, "autoSaveOnChange", false);
 
@@ -631,6 +635,29 @@ namespace DormitoryMystery.Chapter1.Tests
                     property.boolValue = value;
                     serialized.ApplyModifiedPropertiesWithoutUndo();
                 }
+            }
+        }
+
+        private sealed class NoOpChapter1SaveService : IChapter1SaveService
+        {
+            public string SavePath => string.Empty;
+
+            public void Save(Chapter1SaveData data)
+            {
+            }
+
+            public Chapter1SaveData Load()
+            {
+                return Chapter1SaveData.CreateDefault();
+            }
+
+            public bool HasSave()
+            {
+                return false;
+            }
+
+            public void DeleteSave()
+            {
             }
         }
     }

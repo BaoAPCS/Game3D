@@ -257,6 +257,10 @@ namespace DormitoryMystery.Chapter1
                 SaveIfEnabled();
             }
 
+            ResolveManager();
+            chapterManager?.CommitMissionCheckpoint(
+                Chapter1MissionCheckpoint.Mission2Start);
+
             if (firstCompletion)
             {
                 Chapter1EventBus.RaiseAllLanAudioStemsSaved();
