@@ -94,6 +94,26 @@ namespace DormitoryMystery.Chapter2.Tests
         }
 
         [Test]
+        public void Mission02SceneObjectsStartSolidAndObstacleActive()
+        {
+            string sceneYaml = File.ReadAllText(ScenePath);
+            string electricCollider = ExtractComponentBlock(
+                sceneYaml,
+                "--- !u!65 &1347780889");
+            string jailObstacle = ExtractComponentBlock(
+                sceneYaml,
+                "--- !u!1 &873468386");
+            string jailCollider = ExtractComponentBlock(
+                sceneYaml,
+                "--- !u!65 &873468388");
+
+            StringAssert.Contains("m_IsTrigger: 0", electricCollider);
+            StringAssert.Contains("m_Name: JailObstacle", jailObstacle);
+            StringAssert.Contains("m_IsActive: 1", jailObstacle);
+            StringAssert.Contains("m_IsTrigger: 0", jailCollider);
+        }
+
+        [Test]
         public void EmptyMissionPromptDeactivatesItsBlackPanel()
         {
             GameObject owner = new GameObject("Chapter2UiTest");
@@ -114,6 +134,56 @@ namespace DormitoryMystery.Chapter2.Tests
 
                 ui.SetPrompt(string.Empty);
                 Assert.IsFalse(promptPanel.activeSelf);
+            }
+            finally
+            {
+                Object.DestroyImmediate(owner);
+            }
+        }
+
+        [Test]
+        public void CircuitUiStartsHiddenAndBuildsFiveByFiveGrid()
+        {
+            GameObject owner = new GameObject("Chapter2CircuitUiTest");
+            try
+            {
+                Chapter2CircuitPuzzleUI ui =
+                    Chapter2CircuitPuzzleUI.Create(owner.transform);
+                Assert.IsFalse(ui.IsVisible);
+
+                int tileCount = 0;
+                Transform[] children =
+                    owner.GetComponentsInChildren<Transform>(true);
+                for (int i = 0; i < children.Length; i++)
+                {
+                    if (children[i] != null &&
+                        children[i].name.StartsWith(
+                            "CircuitTile_",
+                            System.StringComparison.Ordinal))
+                    {
+                        tileCount++;
+                    }
+                }
+
+                Assert.AreEqual(25, tileCount);
+            }
+            finally
+            {
+                Object.DestroyImmediate(owner);
+            }
+        }
+
+        [Test]
+        public void ElectricBoxPromptUsesRequestedActivationText()
+        {
+            GameObject owner = new GameObject("ElectricBoxPromptTest");
+            try
+            {
+                Chapter2CircuitBoxInteractable interactable =
+                    owner.AddComponent<Chapter2CircuitBoxInteractable>();
+                Assert.AreEqual(
+                    "[F] Kích hoạt",
+                    interactable.GetInteractionPrompt(default));
             }
             finally
             {
@@ -145,13 +215,14 @@ namespace DormitoryMystery.Chapter2.Tests
                     new JsonChapter2SaveService(chapter2Path);
                 Chapter2SaveData data =
                     Chapter2SaveData.CreateDefault();
-                data.Mission01ServiceCardCollected = true;
+                data.Mission02JailObstacleDisabled = true;
                 service.Save(data);
 
                 Chapter2SaveData loaded = service.Load();
                 Assert.IsTrue(loaded.Mission01CrowbarCollected);
                 Assert.IsTrue(loaded.Mission01ToiletPried);
                 Assert.IsTrue(loaded.Mission01ServiceCardCollected);
+                Assert.IsTrue(loaded.Mission02JailObstacleDisabled);
                 Assert.AreEqual(
                     chapter1Sentinel,
                     File.ReadAllText(chapter1Path));

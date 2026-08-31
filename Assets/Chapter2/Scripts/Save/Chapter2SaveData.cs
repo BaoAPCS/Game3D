@@ -13,6 +13,7 @@ namespace DormitoryMystery.Chapter2
         public bool Mission01CrowbarCollected;
         public bool Mission01ToiletPried;
         public bool Mission01ServiceCardCollected;
+        public bool Mission02JailObstacleDisabled;
 
         public static Chapter2SaveData CreateDefault()
         {
@@ -24,6 +25,11 @@ namespace DormitoryMystery.Chapter2
         public void EnsureValidDefaults()
         {
             SaveVersion = CurrentSaveVersion;
+
+            if (Mission02JailObstacleDisabled)
+            {
+                Mission01ServiceCardCollected = true;
+            }
 
             if (Mission01ServiceCardCollected)
             {
@@ -47,7 +53,9 @@ namespace DormitoryMystery.Chapter2
                     Mission01CrowbarCollected,
                 Mission01ToiletPried = Mission01ToiletPried,
                 Mission01ServiceCardCollected =
-                    Mission01ServiceCardCollected
+                    Mission01ServiceCardCollected,
+                Mission02JailObstacleDisabled =
+                    Mission02JailObstacleDisabled
             };
             copy.EnsureValidDefaults();
             return copy;

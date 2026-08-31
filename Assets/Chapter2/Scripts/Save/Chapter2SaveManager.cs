@@ -102,7 +102,23 @@ namespace DormitoryMystery.Chapter2
 
         public void ResetMission01()
         {
-            SaveMission01Progress(false, false, false);
+            CurrentData.Mission01CrowbarCollected = false;
+            CurrentData.Mission01ToiletPried = false;
+            CurrentData.Mission01ServiceCardCollected = false;
+            CurrentData.Mission02JailObstacleDisabled = false;
+            SaveChapter2();
+        }
+
+        public void ResetMission02()
+        {
+            CurrentData.Mission02JailObstacleDisabled = false;
+            SaveChapter2();
+        }
+
+        public void SaveMission02Completed()
+        {
+            CurrentData.Mission02JailObstacleDisabled = true;
+            SaveChapter2();
         }
 
         private void EnsureSaveService()
