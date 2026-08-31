@@ -1,16 +1,17 @@
+using DormitoryMystery.Chapter1;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-namespace DormitoryMystery.Chapter1
+namespace DormitoryMystery.Chapter2
 {
     /// <summary>
-    /// Restores the Chapter 1 carry-over inventory when Police_Station is
-    /// loaded. The police-station key remains a story item in Chapter 2 and
-    /// deliberately has no interaction with the jail geometry.
+    /// Restores Chapter 2's starting inventory from the independent Chapter 2
+    /// save. No Chapter 1 save data is read or modified in Police_Station.
     /// </summary>
     public static class Chapter2CarryOverBootstrap
     {
         private const string PoliceStationSceneName = "Police_Station";
+        private const string PhoneItemId = "phone";
 
         [RuntimeInitializeOnLoadMethod(
             RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -49,7 +50,8 @@ namespace DormitoryMystery.Chapter1
                 return;
             }
 
-            Chapter1Manager manager = EnsureChapterManager(scene);
+            Chapter2SaveManager manager =
+                Chapter2SaveManager.EnsureForScene(scene);
             InventoryController inventory =
                 FindSceneComponent<InventoryController>(scene);
             if (inventory == null)
@@ -60,42 +62,27 @@ namespace DormitoryMystery.Chapter1
                 return;
             }
 
-            Chapter1SaveData data = manager.CurrentData;
+            Chapter2SaveData data = manager.CurrentData;
             data.EnsureValidDefaults();
             inventory.EnsureStartingItems();
 
-            if (!data.ChapterCompleted ||
-                !data.Mission03PoliceArrestCompleted)
+            Mission3PoliceKeyInventorySync chapter1KeySync =
+                inventory.GetComponent<
+                    Mission3PoliceKeyInventorySync>();
+            if (chapter1KeySync != null)
             {
-                Debug.LogWarning(
-                    "[Chapter2CarryOver] Save Chapter 1 chưa hoàn thành; " +
-                    "không khôi phục vật phẩm chuyển chương.");
-                return;
+                chapter1KeySync.enabled = false;
             }
 
             RestorePoliceKey(data, inventory);
             VerifyPhone(data, inventory);
         }
 
-        private static Chapter1Manager EnsureChapterManager(Scene scene)
-        {
-            if (Chapter1Manager.Instance != null)
-            {
-                return Chapter1Manager.Instance;
-            }
-
-            GameObject managerObject = new GameObject(
-                "ChapterProgressManager");
-            SceneManager.MoveGameObjectToScene(managerObject, scene);
-            return managerObject.AddComponent<Chapter1Manager>();
-        }
-
         private static void RestorePoliceKey(
-            Chapter1SaveData data,
+            Chapter2SaveData data,
             InventoryController inventory)
         {
-            if (!data.HasChapterCarryOverItem(
-                    Chapter1SaveData.PoliceKeyCarryOverItemId))
+            if (!data.HasPoliceStationKey)
             {
                 return;
             }
@@ -110,17 +97,15 @@ namespace DormitoryMystery.Chapter1
         }
 
         private static void VerifyPhone(
-            Chapter1SaveData data,
+            Chapter2SaveData data,
             InventoryController inventory)
         {
-            if (!data.HasChapterCarryOverItem(
-                    Chapter1SaveData.PhoneCarryOverItemId))
+            if (!data.HasPhone)
             {
                 return;
             }
 
-            if (!inventory.HasItem(
-                    Chapter1SaveData.PhoneCarryOverItemId))
+            if (!inventory.HasItem(PhoneItemId))
             {
                 Debug.LogError(
                     "[Chapter2CarryOver] Player prefab không khôi phục " +

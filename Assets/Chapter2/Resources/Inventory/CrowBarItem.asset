@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ed56c7309c09c6445ae89628bc785f01, type: 3}
+  m_Name: CrowBarItem
+  m_EditorClassIdentifier: Assembly-CSharp::DormitoryMystery.Chapter1.ItemDefinition
+  itemId: crow_bar
+  displayName: "X\xE0 beng"
+  icon: {fileID: 0}
+  description: "D\u1EE5ng c\u1EE5 kim lo\u1EA1i ch\u1EAFc ch\u1EAFn, c\xF3 th\u1EC3 d\xF9ng \u0111\u1EC3 c\u1EA1y nh\u1EEFng v\u1EADt b\u1ECB k\u1EB9t."
+  category: 3
+  isStackable: 0
+  maxStack: 1
+  isDroppable: 0
+  isUsable: 0
