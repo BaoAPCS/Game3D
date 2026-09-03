@@ -21,7 +21,9 @@ namespace DormitoryMystery.Chapter2
         public override string GetInteractionPrompt(
             InteractionContext context)
         {
-            return "[F] Kiểm tra";
+            return mission != null && mission.ClosetUnlocked
+                ? "[F] Mở tủ"
+                : "Tủ bị khóa";
         }
 
         public override bool CanInteract(InteractionContext context)
@@ -30,7 +32,7 @@ namespace DormitoryMystery.Chapter2
                    mission != null &&
                    triggerZone != null &&
                    triggerZone.ContainsPlayer &&
-                   mission.CanInspect;
+                   mission.CanShowPrompt;
         }
 
         protected override InteractionResult PerformInteraction(

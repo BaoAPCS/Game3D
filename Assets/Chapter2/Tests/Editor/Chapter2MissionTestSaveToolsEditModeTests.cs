@@ -68,13 +68,14 @@ namespace DormitoryMystery.Chapter2.Tests
             Assert.IsFalse(prepared.Mission01ServiceCardCollected);
             Assert.IsFalse(prepared.Mission02JailObstacleDisabled);
             Assert.IsFalse(prepared.Mission03PhoneRecovered);
-            Assert.IsFalse(prepared.Mission03PoliceKeyRecovered);
+            Assert.IsTrue(prepared.Mission03PoliceKeyRecovered);
+            Assert.IsFalse(prepared.Mission03ClosetUnlocked);
             Assert.IsFalse(prepared.Mission04ComputerUnlocked);
             Assert.IsFalse(prepared.Mission05RouterInspected);
         }
 
         [Test]
-        public void ResetMission3ConfiscatesItemsButPreservesPhonePayload()
+        public void ResetMission3KeepsKeyAndConfiscatesPhone()
         {
             Chapter2SaveData current = CreateCompletedSave();
 
@@ -83,9 +84,10 @@ namespace DormitoryMystery.Chapter2.Tests
                     .PrepareMissionResetData(current, 3);
 
             Assert.IsFalse(prepared.HasPhone);
-            Assert.IsFalse(prepared.HasPoliceStationKey);
+            Assert.IsTrue(prepared.HasPoliceStationKey);
             Assert.IsFalse(prepared.Mission03PhoneRecovered);
-            Assert.IsFalse(prepared.Mission03PoliceKeyRecovered);
+            Assert.IsTrue(prepared.Mission03PoliceKeyRecovered);
+            Assert.IsFalse(prepared.Mission03ClosetUnlocked);
             Assert.IsTrue(prepared.PhoneData.HasLanRecording);
             Assert.IsTrue(prepared.Chapter1PhoneDataImported);
         }
@@ -107,7 +109,7 @@ namespace DormitoryMystery.Chapter2.Tests
             Assert.IsTrue(prepared.Chapter1PhoneDataImported);
             Assert.IsTrue(prepared.PhoneData.HasLanRecording);
             Assert.IsFalse(prepared.HasPhone);
-            Assert.IsFalse(prepared.HasPoliceStationKey);
+            Assert.IsTrue(prepared.HasPoliceStationKey);
         }
 
         [Test]
@@ -130,6 +132,7 @@ namespace DormitoryMystery.Chapter2.Tests
             data.Mission02JailObstacleDisabled = true;
             data.Mission03PhoneRecovered = true;
             data.Mission03PoliceKeyRecovered = true;
+            data.Mission03ClosetUnlocked = true;
             data.Mission04ComputerUnlocked = true;
             data.Mission04WifiPasswordDiscovered = true;
             data.Mission04PoliceWifiConnected = true;
@@ -167,13 +170,12 @@ namespace DormitoryMystery.Chapter2.Tests
             Assert.AreEqual(
                 mission03Completed,
                 data.Mission03PhoneRecovered);
+            Assert.IsTrue(data.Mission03PoliceKeyRecovered);
             Assert.AreEqual(
                 mission03Completed,
-                data.Mission03PoliceKeyRecovered);
+                data.Mission03ClosetUnlocked);
             Assert.AreEqual(mission03Completed, data.HasPhone);
-            Assert.AreEqual(
-                mission03Completed,
-                data.HasPoliceStationKey);
+            Assert.IsTrue(data.HasPoliceStationKey);
             Assert.AreEqual(
                 mission04Completed,
                 data.Mission04ComputerUnlocked);

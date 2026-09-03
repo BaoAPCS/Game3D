@@ -16,6 +16,7 @@ namespace DormitoryMystery.Chapter2
         public bool Mission02JailObstacleDisabled;
         public bool Mission03PhoneRecovered;
         public bool Mission03PoliceKeyRecovered;
+        public bool Mission03ClosetUnlocked;
         public bool Mission04ComputerUnlocked;
         public bool Mission04WifiPasswordDiscovered;
         public bool Mission04PoliceWifiConnected;
@@ -24,11 +25,13 @@ namespace DormitoryMystery.Chapter2
         public bool Mission05SecretDocumentCollected;
         public bool Mission05BrokenDoorUnlocked;
         public bool Chapter1PhoneDataImported;
+        public bool Chapter1CarryOverInventoryApplied;
         public Chapter2PhoneData PhoneData;
 
         public bool Mission03Completed =>
             Mission03PhoneRecovered &&
-            Mission03PoliceKeyRecovered;
+            Mission03PoliceKeyRecovered &&
+            Mission03ClosetUnlocked;
 
         public bool Mission04Completed =>
             Mission04MinhMessagesRead;
@@ -48,6 +51,15 @@ namespace DormitoryMystery.Chapter2
             SaveVersion = CurrentSaveVersion;
             PhoneData ??= Chapter2PhoneData.CreateDefault();
             PhoneData.EnsureValidDefaults();
+
+            // Chapter 2 starts after James gave Nam this key. Older Chapter 2
+            // saves did not preserve that carry-over item, so migrate them
+            // once without treating key ownership as Mission 2 progress.
+            if (!Chapter1CarryOverInventoryApplied)
+            {
+                Mission03PoliceKeyRecovered = true;
+                Chapter1CarryOverInventoryApplied = true;
+            }
 
             if (Mission05SecretDocumentCollected)
             {
@@ -83,6 +95,13 @@ namespace DormitoryMystery.Chapter2
             {
                 Mission03PhoneRecovered = true;
                 Mission03PoliceKeyRecovered = true;
+                Mission03ClosetUnlocked = true;
+            }
+
+            if (Mission03PhoneRecovered)
+            {
+                Mission03PoliceKeyRecovered = true;
+                Mission03ClosetUnlocked = true;
             }
 
             // Legacy version-1 saves incorrectly marked these confiscated
@@ -92,7 +111,7 @@ namespace DormitoryMystery.Chapter2
             HasPoliceStationKey = Mission03PoliceKeyRecovered;
 
             if (Mission03PhoneRecovered ||
-                Mission03PoliceKeyRecovered)
+                Mission03ClosetUnlocked)
             {
                 Mission02JailObstacleDisabled = true;
             }
@@ -131,6 +150,8 @@ namespace DormitoryMystery.Chapter2
                     Mission03PhoneRecovered,
                 Mission03PoliceKeyRecovered =
                     Mission03PoliceKeyRecovered,
+                Mission03ClosetUnlocked =
+                    Mission03ClosetUnlocked,
                 Mission04ComputerUnlocked =
                     Mission04ComputerUnlocked,
                 Mission04WifiPasswordDiscovered =
@@ -147,6 +168,8 @@ namespace DormitoryMystery.Chapter2
                     Mission05BrokenDoorUnlocked,
                 Chapter1PhoneDataImported =
                     Chapter1PhoneDataImported,
+                Chapter1CarryOverInventoryApplied =
+                    Chapter1CarryOverInventoryApplied,
                 PhoneData = PhoneData?.DeepCopy() ??
                     Chapter2PhoneData.CreateDefault()
             };

@@ -152,8 +152,21 @@ namespace DormitoryMystery.Chapter2
             CurrentData.Mission03PhoneRecovered = phoneRecovered;
             CurrentData.Mission03PoliceKeyRecovered =
                 policeKeyRecovered;
+            if (phoneRecovered)
+            {
+                CurrentData.Mission03ClosetUnlocked = true;
+            }
+
             CurrentData.HasPhone = phoneRecovered;
             CurrentData.HasPoliceStationKey = policeKeyRecovered;
+            SaveChapter2();
+        }
+
+        public void SaveMission03ClosetUnlocked()
+        {
+            CurrentData.Mission03ClosetUnlocked = true;
+            CurrentData.Mission03PoliceKeyRecovered = true;
+            CurrentData.HasPoliceStationKey = true;
             SaveChapter2();
         }
 
@@ -220,9 +233,11 @@ namespace DormitoryMystery.Chapter2
         private void ResetMission03State()
         {
             CurrentData.Mission03PhoneRecovered = false;
-            CurrentData.Mission03PoliceKeyRecovered = false;
+            CurrentData.Mission03PoliceKeyRecovered = true;
+            CurrentData.Mission03ClosetUnlocked = false;
             CurrentData.HasPhone = false;
-            CurrentData.HasPoliceStationKey = false;
+            CurrentData.HasPoliceStationKey = true;
+            CurrentData.Chapter1CarryOverInventoryApplied = true;
             ResetMission04State();
         }
 

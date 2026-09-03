@@ -10,7 +10,9 @@ using UnityEngine.SceneManagement;
 namespace DormitoryMystery.Chapter2
 {
     [DisallowMultipleComponent]
-    public sealed class Chapter2ConfiscatedItemsMission : MonoBehaviour
+    public sealed class Chapter2ConfiscatedItemsMission :
+        MonoBehaviour,
+        IInventoryItemUseHandler
     {
         public const string PhoneItemId = "phone";
         public const string PoliceKeyItemId = "police_station_key";
@@ -28,6 +30,7 @@ namespace DormitoryMystery.Chapter2
         private BackpackPhoneInputController backpackInput;
         private PlayerCombatController playerCombat;
         private InventoryController inventory;
+        private InventoryUIController inventoryUI;
         private ItemDefinition phoneDefinition;
         private ItemDefinition policeKeyDefinition;
         private Chapter2ConfiscatedItemsUI missionUI;
@@ -44,7 +47,8 @@ namespace DormitoryMystery.Chapter2
         private CursorLockMode cursorLockBeforeSession;
         private bool cursorVisibleBeforeSession;
         private bool savedStateApplied;
-        private bool lastAppliedUnlocked;
+        private bool lastAppliedMissionAvailable;
+        private bool lastAppliedClosetUnlocked;
         private bool lastAppliedCompleted;
         private bool lastAppliedPhoneRecovered;
         private bool lastAppliedPoliceKeyRecovered;
@@ -61,9 +65,13 @@ namespace DormitoryMystery.Chapter2
 
         public event Action MissionCompleted;
 
-        public bool IsUnlocked =>
+        public bool MissionAvailable =>
             saveManager != null &&
             saveManager.CurrentData.Mission02JailObstacleDisabled;
+
+        public bool ClosetUnlocked =>
+            saveManager != null &&
+            saveManager.CurrentData.Mission03ClosetUnlocked;
 
         public bool PhoneRecovered =>
             saveManager != null &&
@@ -79,13 +87,17 @@ namespace DormitoryMystery.Chapter2
 
         public bool IsSessionOpen => sessionOpen;
 
-        public bool CanInspect =>
+        public bool CanShowPrompt =>
             configured &&
-            !sessionOpen &&
-            IsUnlocked &&
+            MissionAvailable &&
             !IsCompleted &&
             triggerZone != null &&
-            triggerZone.ContainsPlayer &&
+            triggerZone.ContainsPlayer;
+
+        public bool CanInspect =>
+            CanShowPrompt &&
+            !sessionOpen &&
+            ClosetUnlocked &&
             (inputLock == null || !inputLock.IsLocked);
 
         public void Configure(
@@ -106,6 +118,7 @@ namespace DormitoryMystery.Chapter2
             policeKeyDefinition = confiscatedPoliceKey;
 
             ResolvePlayerReferences(null);
+            RegisterInventoryUseHandler();
             EnsureMissionUI();
             configured = ValidateRequiredReferences();
             ApplySavedState();
@@ -113,10 +126,12 @@ namespace DormitoryMystery.Chapter2
 
         private void Update()
         {
+            RegisterInventoryUseHandler();
             if (configured &&
                 !sessionOpen &&
                 (!savedStateApplied ||
-                 lastAppliedUnlocked != IsUnlocked ||
+                 lastAppliedMissionAvailable != MissionAvailable ||
+                 lastAppliedClosetUnlocked != ClosetUnlocked ||
                  lastAppliedCompleted != IsCompleted ||
                  lastAppliedPhoneRecovered != PhoneRecovered ||
                  lastAppliedPoliceKeyRecovered !=
@@ -146,12 +161,48 @@ namespace DormitoryMystery.Chapter2
 
         private void OnDisable()
         {
+            inventoryUI?.ClearItemUseHandler(this);
             CloseSessionInternal();
         }
 
         private void OnDestroy()
         {
+            inventoryUI?.ClearItemUseHandler(this);
             CloseSessionInternal();
+        }
+
+        public bool CanUseInventoryItem(InventoryItem item)
+        {
+            return item != null &&
+                   item.Definition != null &&
+                   string.Equals(
+                       item.Definition.ItemId,
+                       PoliceKeyItemId,
+                       StringComparison.OrdinalIgnoreCase) &&
+                   configured &&
+                   MissionAvailable &&
+                   !ClosetUnlocked &&
+                   !PhoneRecovered &&
+                   triggerZone != null &&
+                   triggerZone.ContainsPlayer &&
+                   inventory != null &&
+                   inventory.HasItem(PoliceKeyItemId);
+        }
+
+        public bool TryUseInventoryItem(InventoryItem item)
+        {
+            if (!CanUseInventoryItem(item) ||
+                saveManager == null)
+            {
+                return false;
+            }
+
+            saveManager.SaveMission03ClosetUnlocked();
+            savedStateApplied = false;
+            ApplySavedState();
+            Chapter1EventBus.RaiseNotification(
+                "Đã mở khóa tủ.");
+            return true;
         }
 
         public bool TryOpen(InteractionContext context)
@@ -165,7 +216,7 @@ namespace DormitoryMystery.Chapter2
             EnsureRuntimeEventSystem();
             CaptureAndApplyModalState();
             sessionOpen = true;
-            missionUI.Refresh(PhoneRecovered, PoliceKeyRecovered);
+            missionUI.Refresh(PhoneRecovered);
             missionUI.Show();
 
             if (EventSystem.current != null)
@@ -196,7 +247,6 @@ namespace DormitoryMystery.Chapter2
             CloseSessionInternal();
             saveManager?.ResetMission03();
             RemoveInventoryItem(PhoneItemId);
-            RemoveInventoryItem(PoliceKeyItemId);
             savedStateApplied = false;
             ApplySavedState();
         }
@@ -210,9 +260,7 @@ namespace DormitoryMystery.Chapter2
 
             missionUI.Configure(
                 phoneDefinition,
-                policeKeyDefinition,
                 RecoverPhone,
-                RecoverPoliceKey,
                 CloseSession);
             missionUI.Hide();
         }
@@ -233,30 +281,9 @@ namespace DormitoryMystery.Chapter2
                 return;
             }
 
-            CommitRecovery(true, PoliceKeyRecovered);
+            CommitRecovery(true, true);
             Chapter1EventBus.RaiseNotification(
                 "Đã nhận lại điện thoại.");
-        }
-
-        private void RecoverPoliceKey()
-        {
-            if (!sessionOpen || completionRoutine != null ||
-                PoliceKeyRecovered)
-            {
-                return;
-            }
-
-            if (!EnsureInventoryItem(policeKeyDefinition))
-            {
-                Debug.LogError(
-                    "[Chapter2Mission03] Không thể thêm chìa khóa của James vào balo.",
-                    this);
-                return;
-            }
-
-            CommitRecovery(PhoneRecovered, true);
-            Chapter1EventBus.RaiseNotification(
-                "Đã nhận lại chìa khóa của James.");
         }
 
         private void CommitRecovery(
@@ -267,11 +294,12 @@ namespace DormitoryMystery.Chapter2
                 phoneRecovered,
                 policeKeyRecovered);
             savedStateApplied = true;
-            lastAppliedUnlocked = IsUnlocked;
+            lastAppliedMissionAvailable = MissionAvailable;
+            lastAppliedClosetUnlocked = ClosetUnlocked;
             lastAppliedCompleted = IsCompleted;
             lastAppliedPhoneRecovered = PhoneRecovered;
             lastAppliedPoliceKeyRecovered = PoliceKeyRecovered;
-            missionUI.Refresh(PhoneRecovered, PoliceKeyRecovered);
+            missionUI.Refresh(PhoneRecovered);
 
             if (!IsCompleted)
             {
@@ -291,7 +319,7 @@ namespace DormitoryMystery.Chapter2
             completionRoutine = null;
             CloseSessionInternal();
             Chapter1EventBus.RaiseNotification(
-                "Đã lấy lại điện thoại và chìa khóa của James.");
+                "Đã lấy lại điện thoại.");
             MissionCompleted?.Invoke();
         }
 
@@ -314,11 +342,12 @@ namespace DormitoryMystery.Chapter2
                 data.Mission03PoliceKeyRecovered);
 
             savedStateApplied = true;
-            lastAppliedUnlocked = IsUnlocked;
+            lastAppliedMissionAvailable = MissionAvailable;
+            lastAppliedClosetUnlocked = ClosetUnlocked;
             lastAppliedCompleted = IsCompleted;
             lastAppliedPhoneRecovered = PhoneRecovered;
             lastAppliedPoliceKeyRecovered = PoliceKeyRecovered;
-            if (IsUnlocked && !IsCompleted)
+            if (MissionAvailable && !IsCompleted)
             {
                 closetInteractable?.EnableInteraction();
             }
@@ -387,6 +416,34 @@ namespace DormitoryMystery.Chapter2
                 player.GetComponent<BackpackPhoneInputController>();
             playerCombat = player.GetComponent<PlayerCombatController>();
             inventory ??= player.GetComponent<InventoryController>();
+            inventoryUI ??= backpackInput != null
+                ? backpackInput.InventoryUIController
+                : null;
+        }
+
+        private void RegisterInventoryUseHandler()
+        {
+            if (inventoryUI == null)
+            {
+                InventoryUIController[] candidates =
+                    FindObjectsByType<InventoryUIController>(
+                        FindObjectsInactive.Include,
+                        FindObjectsSortMode.None);
+                for (int i = 0; i < candidates.Length; i++)
+                {
+                    InventoryUIController candidate =
+                        candidates[i];
+                    if (candidate != null &&
+                        candidate.gameObject.scene ==
+                        gameObject.scene)
+                    {
+                        inventoryUI = candidate;
+                        break;
+                    }
+                }
+            }
+
+            inventoryUI?.SetItemUseHandler(this);
         }
 
         private bool ValidateRequiredReferences()
@@ -398,6 +455,7 @@ namespace DormitoryMystery.Chapter2
                          inputLock != null &&
                          interactionController != null &&
                          inventory != null &&
+                         inventoryUI != null &&
                          phoneDefinition != null &&
                          policeKeyDefinition != null &&
                          missionUI != null;

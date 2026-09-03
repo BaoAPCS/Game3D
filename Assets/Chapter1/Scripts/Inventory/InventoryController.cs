@@ -124,6 +124,18 @@ namespace DormitoryMystery.Chapter1
             return true;
         }
 
+        public void ClearItems()
+        {
+            EnsureStartingItems();
+            if (items.Count == 0)
+            {
+                return;
+            }
+
+            items.Clear();
+            RaiseInventoryChanged();
+        }
+
         private bool AddItemInternal(ItemDefinition definition, int quantity, bool raiseItemAdded)
         {
             if (definition == null || string.IsNullOrWhiteSpace(definition.ItemId) || quantity <= 0)

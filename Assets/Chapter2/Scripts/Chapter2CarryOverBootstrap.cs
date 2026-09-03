@@ -71,6 +71,10 @@ namespace DormitoryMystery.Chapter2
             inventory.SetStartingItems(
                 System.Array.Empty<ItemDefinition>());
             inventory.EnsureStartingItems();
+            if (IsFreshChapter2Start(data))
+            {
+                inventory.ClearItems();
+            }
 
             Mission3PoliceKeyInventorySync chapter1KeySync =
                 inventory.GetComponent<
@@ -83,6 +87,21 @@ namespace DormitoryMystery.Chapter2
             ReconcilePhone(data, inventory);
             ReconcilePoliceKey(data, inventory);
             ConfigurePhoneContents(scene, data);
+        }
+
+        private static bool IsFreshChapter2Start(
+            Chapter2SaveData data)
+        {
+            return data != null &&
+                   !data.Mission01CrowbarCollected &&
+                   !data.Mission01ToiletPried &&
+                   !data.Mission01ServiceCardCollected &&
+                   !data.Mission02JailObstacleDisabled &&
+                   !data.Mission03ClosetUnlocked &&
+                   !data.Mission03PhoneRecovered &&
+                   !data.Mission04ComputerUnlocked &&
+                   !data.Mission05RouterInspected &&
+                   !data.Mission05SecretDocumentCollected;
         }
 
         private static void ImportChapter1PhoneDataOnce(

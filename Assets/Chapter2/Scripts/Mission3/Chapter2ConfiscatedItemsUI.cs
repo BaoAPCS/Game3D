@@ -30,12 +30,9 @@ namespace DormitoryMystery.Chapter2
         }
 
         private ItemDefinition phoneDefinition;
-        private ItemDefinition keyDefinition;
         private Action receivePhoneRequested;
-        private Action receiveKeyRequested;
         private Action closeRequested;
         private ItemRow phoneRow;
-        private ItemRow keyRow;
         private TextMeshProUGUI summaryText;
 
         public bool IsVisible => gameObject.activeSelf;
@@ -74,46 +71,35 @@ namespace DormitoryMystery.Chapter2
                 canvasObject.AddComponent<
                     Chapter2ConfiscatedItemsUI>();
             ui.Build();
-            ui.Refresh(false, false);
+            ui.Refresh(false);
             return ui;
         }
 
         public void Configure(
             ItemDefinition phone,
-            ItemDefinition key,
             Action receivePhone,
-            Action receiveKey,
             Action close)
         {
             phoneDefinition = phone;
-            keyDefinition = key;
             receivePhoneRequested = receivePhone;
-            receiveKeyRequested = receiveKey;
             closeRequested = close;
 
             ApplyDefinition(phoneRow, phoneDefinition, "Điện thoại");
-            ApplyDefinition(keyRow, keyDefinition, "Chìa khóa của James");
         }
 
-        public void Refresh(
-            bool phoneRecovered,
-            bool keyRecovered)
+        public void Refresh(bool phoneRecovered)
         {
             ApplyRecoveryState(phoneRow, phoneRecovered);
-            ApplyRecoveryState(keyRow, keyRecovered);
 
             if (summaryText == null)
             {
                 return;
             }
 
-            int recoveredCount =
-                (phoneRecovered ? 1 : 0) +
-                (keyRecovered ? 1 : 0);
-            summaryText.text = recoveredCount == 2
-                ? "ĐÃ THU HỒI TOÀN BỘ TÀI SẢN"
-                : $"ĐÃ THU HỒI {recoveredCount}/2 VẬT PHẨM";
-            summaryText.color = recoveredCount == 2
+            summaryText.text = phoneRecovered
+                ? "ĐÃ NHẬN LẠI ĐIỆN THOẠI"
+                : "ĐIỆN THOẠI CỦA NAM";
+            summaryText.color = phoneRecovered
                 ? Green
                 : PaleCyan;
         }
@@ -234,13 +220,8 @@ namespace DormitoryMystery.Chapter2
             phoneRow = CreateItemRow(
                 innerPanel,
                 "PhoneRow",
-                -195f,
+                -265f,
                 () => receivePhoneRequested?.Invoke());
-            keyRow = CreateItemRow(
-                innerPanel,
-                "JamesKeyRow",
-                -405f,
-                () => receiveKeyRequested?.Invoke());
 
             summaryText = CreateText(
                 innerPanel,
@@ -252,7 +233,7 @@ namespace DormitoryMystery.Chapter2
                 summaryText.rectTransform,
                 new Vector2(0.5f, 0f),
                 new Vector2(0.5f, 0f),
-                new Vector2(0f, 83f),
+                new Vector2(0f, 145f),
                 new Vector2(520f, 32f),
                 new Vector2(0.5f, 0f));
             summaryText.fontStyle = FontStyles.Bold;

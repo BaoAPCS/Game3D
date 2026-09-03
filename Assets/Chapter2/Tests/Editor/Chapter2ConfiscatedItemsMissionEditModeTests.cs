@@ -12,15 +12,17 @@ namespace DormitoryMystery.Chapter2.Tests
             "Assets/Chapter2/Scenes/Police_Station.unity";
 
         [Test]
-        public void NewChapter2SaveStartsWithoutConfiscatedItems()
+        public void NewChapter2SaveStartsWithOnlyPoliceKey()
         {
             Chapter2SaveData data = Chapter2SaveData.CreateDefault();
 
             Assert.IsFalse(data.HasPhone);
-            Assert.IsFalse(data.HasPoliceStationKey);
+            Assert.IsTrue(data.HasPoliceStationKey);
             Assert.IsFalse(data.Mission03PhoneRecovered);
-            Assert.IsFalse(data.Mission03PoliceKeyRecovered);
+            Assert.IsTrue(data.Mission03PoliceKeyRecovered);
+            Assert.IsFalse(data.Mission03ClosetUnlocked);
             Assert.IsFalse(data.Mission03Completed);
+            Assert.IsFalse(data.Mission02JailObstacleDisabled);
         }
 
         [Test]
@@ -37,7 +39,9 @@ namespace DormitoryMystery.Chapter2.Tests
             legacy.EnsureValidDefaults();
 
             Assert.IsFalse(legacy.HasPhone);
-            Assert.IsFalse(legacy.HasPoliceStationKey);
+            Assert.IsTrue(legacy.HasPoliceStationKey);
+            Assert.IsTrue(legacy.Mission03PoliceKeyRecovered);
+            Assert.IsFalse(legacy.Mission03ClosetUnlocked);
             Assert.IsTrue(legacy.Mission02JailObstacleDisabled);
             Assert.IsTrue(legacy.Mission01ServiceCardCollected);
         }
@@ -53,17 +57,13 @@ namespace DormitoryMystery.Chapter2.Tests
             Chapter2SaveData copy = partial.DeepCopy();
 
             Assert.IsTrue(copy.Mission03PhoneRecovered);
-            Assert.IsFalse(copy.Mission03PoliceKeyRecovered);
+            Assert.IsTrue(copy.Mission03PoliceKeyRecovered);
+            Assert.IsTrue(copy.Mission03ClosetUnlocked);
             Assert.IsTrue(copy.HasPhone);
-            Assert.IsFalse(copy.HasPoliceStationKey);
+            Assert.IsTrue(copy.HasPoliceStationKey);
             Assert.IsTrue(copy.Mission02JailObstacleDisabled);
             Assert.IsTrue(copy.Mission01ServiceCardCollected);
-            Assert.IsFalse(copy.Mission03Completed);
-
-            copy.Mission03PoliceKeyRecovered = true;
-            copy.EnsureValidDefaults();
             Assert.IsTrue(copy.Mission03Completed);
-            Assert.IsTrue(copy.HasPoliceStationKey);
         }
 
         [Test]
@@ -90,6 +90,9 @@ namespace DormitoryMystery.Chapter2.Tests
                 policeKey.ItemId);
             Assert.NotNull(phone.Icon);
             Assert.NotNull(policeKey.Icon);
+            Assert.IsFalse(
+                policeKey.IsUsable,
+                "Chapter 1 key asset must remain unchanged; Chapter 2 enables contextual use through the inventory handler.");
             Assert.NotNull(crowbar.Icon);
             Assert.AreEqual(
                 "Assets/Chapter2/Sprites/crowbar.png",
@@ -130,7 +133,7 @@ namespace DormitoryMystery.Chapter2.Tests
         }
 
         [Test]
-        public void ClosetPromptUsesRequestedInspectionText()
+        public void LockedClosetPromptDoesNotAdvertiseInteraction()
         {
             GameObject closet = new GameObject("ClosetPromptTest");
             try
@@ -138,7 +141,7 @@ namespace DormitoryMystery.Chapter2.Tests
                 Chapter2ClosetInteractable interactable =
                     closet.AddComponent<Chapter2ClosetInteractable>();
                 Assert.AreEqual(
-                    "[F] Kiểm tra",
+                    "Tủ bị khóa",
                     interactable.GetInteractionPrompt(default));
             }
             finally
@@ -148,7 +151,7 @@ namespace DormitoryMystery.Chapter2.Tests
         }
 
         [Test]
-        public void ConfiscatedItemsUiStartsHiddenAndBuildsTwoRows()
+        public void ConfiscatedItemsUiStartsHiddenAndShowsOnlyPhone()
         {
             GameObject owner = new GameObject("Mission03UiTest");
             try
@@ -159,7 +162,7 @@ namespace DormitoryMystery.Chapter2.Tests
 
                 Assert.IsFalse(ui.IsVisible);
                 Assert.NotNull(FindChild(owner, "PhoneRow"));
-                Assert.NotNull(FindChild(owner, "JamesKeyRow"));
+                Assert.IsNull(FindChild(owner, "JamesKeyRow"));
             }
             finally
             {

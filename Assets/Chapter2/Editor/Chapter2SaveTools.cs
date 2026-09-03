@@ -112,7 +112,9 @@ namespace DormitoryMystery.Chapter2.Editor
             data.Mission01ServiceCardCollected = mission01Completed;
             data.Mission02JailObstacleDisabled = mission02Completed;
             data.Mission03PhoneRecovered = mission03Completed;
-            data.Mission03PoliceKeyRecovered = mission03Completed;
+            data.Mission03PoliceKeyRecovered = true;
+            data.Mission03ClosetUnlocked = mission03Completed;
+            data.Chapter1CarryOverInventoryApplied = true;
             data.Mission04ComputerUnlocked = mission04Completed;
             data.Mission04WifiPasswordDiscovered = mission04Completed;
             data.Mission04PoliceWifiConnected = mission04Completed;
@@ -200,9 +202,11 @@ namespace DormitoryMystery.Chapter2.Editor
             if (missionNumber <= 3)
             {
                 data.Mission03PhoneRecovered = false;
-                data.Mission03PoliceKeyRecovered = false;
+                data.Mission03PoliceKeyRecovered = true;
+                data.Mission03ClosetUnlocked = false;
                 data.HasPhone = false;
-                data.HasPoliceStationKey = false;
+                data.HasPoliceStationKey = true;
+                data.Chapter1CarryOverInventoryApplied = true;
             }
 
             if (missionNumber <= 4)
