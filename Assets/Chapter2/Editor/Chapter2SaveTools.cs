@@ -119,6 +119,7 @@ namespace DormitoryMystery.Chapter2.Editor
             data.Mission04MinhMessagesRead = mission04Completed;
             data.Mission05RouterInspected = false;
             data.Mission05SecretDocumentCollected = false;
+            data.Mission05BrokenDoorUnlocked = false;
             data.EnsureValidDefaults();
             return data;
         }
@@ -214,6 +215,7 @@ namespace DormitoryMystery.Chapter2.Editor
 
             data.Mission05RouterInspected = false;
             data.Mission05SecretDocumentCollected = false;
+            data.Mission05BrokenDoorUnlocked = false;
             data.EnsureValidDefaults();
             return data;
         }

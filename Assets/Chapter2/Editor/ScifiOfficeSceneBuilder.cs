@@ -30,6 +30,8 @@ namespace DormitoryMystery.Chapter2.Editor
         private const string RootName = "ScifiOffice";
         private const string OfficeSourceName = "Office 1";
         private const string CeilingSourceName = "Ceiling";
+        private const string BrokenDoorRelativePath =
+            "Office 1/Door Wall Opaque/Broken Door";
 
         // The demo's 20 m floor is centered here. Offsetting both copied roots
         // by this value gives ScifiOffice a useful pivot in the map's center.
@@ -364,7 +366,43 @@ namespace DormitoryMystery.Chapter2.Editor
                 }
             }
 
+            PrepareBrokenDoorAnimationObjects(root);
+
             return upgradedSlots;
+        }
+
+        private static void PrepareBrokenDoorAnimationObjects(
+            GameObject root)
+        {
+            Transform brokenDoor =
+                root.transform.Find(BrokenDoorRelativePath);
+            if (brokenDoor == null)
+            {
+                return;
+            }
+
+            SetDynamic(brokenDoor);
+            SetDynamic(brokenDoor.Find("Door1"));
+            SetDynamic(brokenDoor.Find("Door1/Top"));
+            SetDynamic(brokenDoor.Find("Door2"));
+            SetDynamic(brokenDoor.Find("Door2/Top 2"));
+        }
+
+        private static void SetDynamic(Transform target)
+        {
+            if (target == null)
+            {
+                return;
+            }
+
+            target.gameObject.isStatic = false;
+            EditorUtility.SetDirty(target.gameObject);
+            if (PrefabUtility.IsPartOfPrefabInstance(
+                    target.gameObject))
+            {
+                PrefabUtility.RecordPrefabInstancePropertyModifications(
+                    target.gameObject);
+            }
         }
 
         private static Material GetOrCreateUrpMaterial(

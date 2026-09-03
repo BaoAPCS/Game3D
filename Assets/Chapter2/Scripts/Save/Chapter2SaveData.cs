@@ -22,6 +22,7 @@ namespace DormitoryMystery.Chapter2
         public bool Mission04MinhMessagesRead;
         public bool Mission05RouterInspected;
         public bool Mission05SecretDocumentCollected;
+        public bool Mission05BrokenDoorUnlocked;
         public bool Chapter1PhoneDataImported;
         public Chapter2PhoneData PhoneData;
 
@@ -30,7 +31,7 @@ namespace DormitoryMystery.Chapter2
             Mission03PoliceKeyRecovered;
 
         public bool Mission04Completed =>
-            Mission04PoliceWifiConnected;
+            Mission04MinhMessagesRead;
 
         public bool Mission05Completed =>
             Mission05SecretDocumentCollected;
@@ -51,6 +52,11 @@ namespace DormitoryMystery.Chapter2
             if (Mission05SecretDocumentCollected)
             {
                 Mission05RouterInspected = true;
+            }
+
+            if (Mission05BrokenDoorUnlocked)
+            {
+                Mission04MinhMessagesRead = true;
             }
 
             if (Mission05RouterInspected)
@@ -137,6 +143,8 @@ namespace DormitoryMystery.Chapter2
                     Mission05RouterInspected,
                 Mission05SecretDocumentCollected =
                     Mission05SecretDocumentCollected,
+                Mission05BrokenDoorUnlocked =
+                    Mission05BrokenDoorUnlocked,
                 Chapter1PhoneDataImported =
                     Chapter1PhoneDataImported,
                 PhoneData = PhoneData?.DeepCopy() ??

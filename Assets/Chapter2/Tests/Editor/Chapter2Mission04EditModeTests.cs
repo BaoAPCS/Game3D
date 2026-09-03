@@ -62,7 +62,7 @@ namespace DormitoryMystery.Chapter2.Tests
 
             Assert.IsTrue(connected.Mission04ComputerUnlocked);
             Assert.IsTrue(connected.Mission04WifiPasswordDiscovered);
-            Assert.IsTrue(connected.Mission04Completed);
+            Assert.IsFalse(connected.Mission04Completed);
             Assert.IsTrue(connected.Mission03Completed);
             Assert.IsTrue(connected.HasPhone);
             Assert.IsTrue(connected.HasPoliceStationKey);
@@ -78,6 +78,7 @@ namespace DormitoryMystery.Chapter2.Tests
             Assert.IsTrue(read.Mission04PoliceWifiConnected);
             Assert.IsTrue(read.Mission04WifiPasswordDiscovered);
             Assert.IsTrue(read.Mission04ComputerUnlocked);
+            Assert.IsTrue(read.Mission04Completed);
             Assert.IsTrue(read.Mission03Completed);
         }
 

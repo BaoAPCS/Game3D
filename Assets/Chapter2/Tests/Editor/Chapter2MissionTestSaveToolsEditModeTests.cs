@@ -136,6 +136,7 @@ namespace DormitoryMystery.Chapter2.Tests
             data.Mission04MinhMessagesRead = true;
             data.Mission05RouterInspected = true;
             data.Mission05SecretDocumentCollected = true;
+            data.Mission05BrokenDoorUnlocked = true;
             data.Chapter1PhoneDataImported = true;
             data.PhoneData.HasLanRecording = true;
             data.EnsureValidDefaults();
@@ -187,6 +188,7 @@ namespace DormitoryMystery.Chapter2.Tests
                 data.Mission04MinhMessagesRead);
             Assert.IsFalse(data.Mission05RouterInspected);
             Assert.IsFalse(data.Mission05SecretDocumentCollected);
+            Assert.IsFalse(data.Mission05BrokenDoorUnlocked);
         }
     }
 }

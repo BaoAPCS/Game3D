@@ -165,6 +165,11 @@ namespace DormitoryMystery.Chapter2
                 return;
             }
 
+            if (phoneUI.IsSignalScannerSuspended)
+            {
+                return;
+            }
+
             if (HasExternalScannerInputLock())
             {
                 phoneUI.StopScanner();

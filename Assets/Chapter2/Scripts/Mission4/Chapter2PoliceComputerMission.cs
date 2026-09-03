@@ -20,7 +20,7 @@ namespace DormitoryMystery.Chapter2
         public const string ObservationHint =
             "[LMB] Mở máy tính    [ESC] Thoát";
         public const string CompletionNotification =
-            "Đã kết nối Wi-Fi đồn cảnh sát. Nhiệm vụ 4 hoàn thành.";
+            "Đã đọc tin nhắn mới của Minh. Nhiệm vụ 4 hoàn thành.";
 
         private Chapter2SaveManager saveManager;
         private Chapter2DeskComputerInteractable deskInteractable;
@@ -251,8 +251,7 @@ namespace DormitoryMystery.Chapter2
             saveManager.SaveMission04WifiConnected();
             ConfigurePhoneFromSave();
             Chapter1EventBus.RaiseNotification(
-                CompletionNotification);
-            MissionCompleted?.Invoke();
+                "Đã kết nối Wi-Fi đồn cảnh sát.");
             return true;
         }
 
@@ -304,6 +303,9 @@ namespace DormitoryMystery.Chapter2
 
             saveManager.SaveMission04MinhMessagesRead();
             SynchronizePhoneIfNeeded(true);
+            Chapter1EventBus.RaiseNotification(
+                CompletionNotification);
+            MissionCompleted?.Invoke();
         }
 
         private void EnsureComputerUI()

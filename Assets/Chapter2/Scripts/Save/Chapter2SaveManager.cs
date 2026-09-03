@@ -205,6 +205,12 @@ namespace DormitoryMystery.Chapter2
             SaveChapter2();
         }
 
+        public void SaveMission05BrokenDoorUnlocked()
+        {
+            CurrentData.Mission05BrokenDoorUnlocked = true;
+            SaveChapter2();
+        }
+
         public void ResetMission05()
         {
             ResetMission05State();
@@ -233,6 +239,7 @@ namespace DormitoryMystery.Chapter2
         {
             CurrentData.Mission05RouterInspected = false;
             CurrentData.Mission05SecretDocumentCollected = false;
+            CurrentData.Mission05BrokenDoorUnlocked = false;
         }
 
         private void EnsureSaveService()

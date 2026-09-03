@@ -21,6 +21,7 @@ namespace DormitoryMystery.Chapter2.Tests
             Assert.AreEqual(1, Chapter2SaveData.CurrentSaveVersion);
             Assert.IsFalse(data.Mission05RouterInspected);
             Assert.IsFalse(data.Mission05SecretDocumentCollected);
+            Assert.IsFalse(data.Mission05BrokenDoorUnlocked);
             Assert.IsFalse(data.Mission05Completed);
         }
 
@@ -51,13 +52,16 @@ namespace DormitoryMystery.Chapter2.Tests
             Chapter2SaveData source = Chapter2SaveData.CreateDefault();
             source.Mission05RouterInspected = true;
             source.Mission05SecretDocumentCollected = true;
+            source.Mission05BrokenDoorUnlocked = true;
 
             Chapter2SaveData copy = source.DeepCopy();
             source.Mission05RouterInspected = false;
             source.Mission05SecretDocumentCollected = false;
+            source.Mission05BrokenDoorUnlocked = false;
 
             Assert.IsTrue(copy.Mission05RouterInspected);
             Assert.IsTrue(copy.Mission05SecretDocumentCollected);
+            Assert.IsTrue(copy.Mission05BrokenDoorUnlocked);
             Assert.IsTrue(copy.Mission05Completed);
         }
 
@@ -74,7 +78,8 @@ namespace DormitoryMystery.Chapter2.Tests
                 {
                     Mission04MinhMessagesRead = true,
                     Mission05RouterInspected = true,
-                    Mission05SecretDocumentCollected = true
+                    Mission05SecretDocumentCollected = true,
+                    Mission05BrokenDoorUnlocked = true
                 };
                 data.EnsureValidDefaults();
                 SetPrivateField(manager, "currentData", data);
@@ -87,13 +92,16 @@ namespace DormitoryMystery.Chapter2.Tests
                 Assert.IsTrue(data.Mission04MinhMessagesRead);
                 Assert.IsFalse(data.Mission05RouterInspected);
                 Assert.IsFalse(data.Mission05SecretDocumentCollected);
+                Assert.IsFalse(data.Mission05BrokenDoorUnlocked);
 
                 data.Mission05RouterInspected = true;
                 data.Mission05SecretDocumentCollected = true;
+                data.Mission05BrokenDoorUnlocked = true;
                 manager.ResetMission04();
                 Assert.IsFalse(data.Mission04MinhMessagesRead);
                 Assert.IsFalse(data.Mission05RouterInspected);
                 Assert.IsFalse(data.Mission05SecretDocumentCollected);
+                Assert.IsFalse(data.Mission05BrokenDoorUnlocked);
             }
             finally
             {
@@ -110,6 +118,7 @@ namespace DormitoryMystery.Chapter2.Tests
             current.PhoneData.EnsureValidDefaults();
             current.Mission05RouterInspected = true;
             current.Mission05SecretDocumentCollected = true;
+            current.Mission05BrokenDoorUnlocked = true;
 
             Chapter2SaveData prepared =
                 DormitoryMystery.Chapter2.Editor.Chapter2SaveTools
@@ -120,6 +129,7 @@ namespace DormitoryMystery.Chapter2.Tests
             Assert.IsTrue(prepared.Mission04MinhMessagesRead);
             Assert.IsTrue(prepared.Mission04Completed);
             Assert.IsFalse(prepared.Mission05RouterInspected);
+            Assert.IsFalse(prepared.Mission05BrokenDoorUnlocked);
             Assert.IsFalse(prepared.Mission05Completed);
             Assert.IsTrue(prepared.Chapter1PhoneDataImported);
             Assert.IsTrue(prepared.PhoneData.HasLanRecording);
