@@ -66,7 +66,9 @@ namespace DormitoryMystery.Chapter2
         public bool InteractionsAvailable =>
             configured &&
             saveManager != null &&
-            saveManager.CurrentData.Mission04Completed;
+            saveManager.CurrentData.Mission04Completed &&
+            phoneUI != null &&
+            phoneUI.IsSignalScannerActive;
         public bool DoorUnlocked =>
             saveManager != null &&
             saveManager.CurrentData.Mission05BrokenDoorUnlocked;
@@ -108,6 +110,7 @@ namespace DormitoryMystery.Chapter2
             inputReader = playerInputReader;
             phoneUI = phoneController;
 
+            ResolvePhoneReference();
             ResolvePlayerReferences();
             CaptureClosedDoorPositions();
             ConfigureCopiedKeypad();
@@ -462,6 +465,7 @@ namespace DormitoryMystery.Chapter2
 
         private void SynchronizeProgress(bool force)
         {
+            ResolvePhoneReference();
             if (saveManager == null)
             {
                 SetInteractionColliders(false, false);
@@ -474,8 +478,7 @@ namespace DormitoryMystery.Chapter2
                 return;
             }
 
-            bool available =
-                saveManager.CurrentData.Mission04Completed;
+            bool available = InteractionsAvailable;
             bool unlocked =
                 saveManager.CurrentData
                     .Mission05BrokenDoorUnlocked;
@@ -510,6 +513,11 @@ namespace DormitoryMystery.Chapter2
             int hash = 17;
             hash = hash * 31 +
                    (data.Mission04Completed ? 1 : 0);
+            hash = hash * 31 +
+                   (phoneUI != null &&
+                    phoneUI.IsSignalScannerActive
+                       ? 1
+                       : 0);
             hash = hash * 31 +
                    (data.Mission05BrokenDoorUnlocked ? 1 : 0);
             return hash;
@@ -625,6 +633,30 @@ namespace DormitoryMystery.Chapter2
 
             StopCoroutine(doorAnimation);
             doorAnimation = null;
+        }
+
+        private void ResolvePhoneReference()
+        {
+            if (phoneUI != null)
+            {
+                return;
+            }
+
+            PhoneUIController[] candidates =
+                FindObjectsByType<PhoneUIController>(
+                    FindObjectsInactive.Include,
+                    FindObjectsSortMode.None);
+            for (int i = 0; i < candidates.Length; i++)
+            {
+                PhoneUIController candidate = candidates[i];
+                if (candidate != null &&
+                    candidate.gameObject.scene ==
+                    gameObject.scene)
+                {
+                    phoneUI = candidate;
+                    return;
+                }
+            }
         }
 
         private void ResolvePlayerReferences()

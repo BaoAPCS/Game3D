@@ -2,6 +2,7 @@ using System.Reflection;
 using DormitoryMystery.Chapter1;
 using NavKeypad;
 using NUnit.Framework;
+using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -12,6 +13,8 @@ namespace DormitoryMystery.Chapter2.Tests
     {
         private const string ScenePath =
             "Assets/Chapter2/Scenes/Police_Station.unity";
+        private const string PhonePrefabPath =
+            "Assets/Chapter1/UI/Phone/Prefabs/PhonePanel.prefab";
 
         [Test]
         public void InteractionsUseTheRequestedPrompt()
@@ -133,6 +136,7 @@ namespace DormitoryMystery.Chapter2.Tests
                 new GameObject("ContractZoneTest");
             GameObject keypadZoneObject =
                 new GameObject("KeypadZoneTest");
+            GameObject phoneObject = CreatePhone();
 
             Camera contractCamera = null;
             Camera keypadCamera = null;
@@ -194,6 +198,17 @@ namespace DormitoryMystery.Chapter2.Tests
                     saveManager,
                     "currentData",
                     data);
+                PhoneUIController phone =
+                    phoneObject.GetComponent<PhoneUIController>();
+                phone.ConfigureWifiNetwork(
+                    "Police_Station_Wifi",
+                    true,
+                    true,
+                    null);
+                phone.ConfigureWifiSignalScanner(
+                    true,
+                    () => 3,
+                    null);
 
                 Chapter2MissionTriggerZone contractZone =
                     contractZoneObject.AddComponent<
@@ -224,7 +239,8 @@ namespace DormitoryMystery.Chapter2.Tests
                     firstPanel,
                     secondPanel,
                     doorwayHeaderCollider,
-                    inputReader);
+                    inputReader,
+                    phone);
 
                 Assert.IsFalse(data.Mission04Completed);
                 Assert.IsFalse(contractCollider.enabled);
@@ -247,10 +263,19 @@ namespace DormitoryMystery.Chapter2.Tests
                     firstPanel,
                     secondPanel,
                     doorwayHeaderCollider,
-                    inputReader);
+                    inputReader,
+                    phone);
+
+                Assert.IsFalse(contractCollider.enabled);
+                Assert.IsFalse(keypadCollider.enabled);
+                Assert.IsFalse(mission.InteractionsAvailable);
+
+                phone.StartWifiSignalScanner();
+                SynchronizeProgress(mission);
 
                 Assert.IsTrue(contractCollider.enabled);
                 Assert.IsTrue(keypadCollider.enabled);
+                Assert.IsTrue(mission.InteractionsAvailable);
                 Assert.IsTrue(
                     doorwayHeaderCollider.enabled);
                 Assert.AreEqual(
@@ -304,6 +329,15 @@ namespace DormitoryMystery.Chapter2.Tests
                 Assert.IsTrue(Cursor.visible);
                 mission.EndInspection();
 
+                phone.StopScanner();
+                SynchronizeProgress(mission);
+                Assert.IsFalse(contractCollider.enabled);
+                Assert.IsFalse(keypadCollider.enabled);
+                Assert.IsFalse(mission.InteractionsAvailable);
+
+                phone.StartWifiSignalScanner();
+                SynchronizeProgress(mission);
+
                 data.Mission05BrokenDoorUnlocked = true;
                 data.EnsureValidDefaults();
                 ConfigureMission(
@@ -319,7 +353,8 @@ namespace DormitoryMystery.Chapter2.Tests
                     firstPanel,
                     secondPanel,
                     doorwayHeaderCollider,
-                    inputReader);
+                    inputReader,
+                    phone);
 
                 Assert.IsTrue(contractCollider.enabled);
                 Assert.IsFalse(keypadCollider.enabled);
@@ -388,6 +423,7 @@ namespace DormitoryMystery.Chapter2.Tests
                 Object.DestroyImmediate(gameplayCameraObject);
                 Object.DestroyImmediate(contractZoneObject);
                 Object.DestroyImmediate(keypadZoneObject);
+                Object.DestroyImmediate(phoneObject);
 
                 if (closeAfterTest)
                 {
@@ -409,7 +445,8 @@ namespace DormitoryMystery.Chapter2.Tests
             Transform firstPanel,
             Transform secondPanel,
             BoxCollider doorwayHeaderCollider,
-            Chapter1InputReader inputReader)
+            Chapter1InputReader inputReader,
+            PhoneUIController phone)
         {
             mission.Configure(
                 saveManager,
@@ -424,7 +461,32 @@ namespace DormitoryMystery.Chapter2.Tests
                 secondPanel,
                 doorwayHeaderCollider,
                 inputReader,
-                null);
+                phone);
+        }
+
+        private static void SynchronizeProgress(
+            Chapter2BrokenDoorMission mission)
+        {
+            MethodInfo method =
+                typeof(Chapter2BrokenDoorMission).GetMethod(
+                    "SynchronizeProgress",
+                    BindingFlags.Instance |
+                    BindingFlags.NonPublic);
+            Assert.NotNull(method);
+            method.Invoke(mission, new object[] { false });
+        }
+
+        private static GameObject CreatePhone()
+        {
+            GameObject prefab =
+                AssetDatabase.LoadAssetAtPath<GameObject>(
+                    PhonePrefabPath);
+            Assert.NotNull(prefab, "Missing PhonePanel prefab.");
+            GameObject instance =
+                PrefabUtility.InstantiatePrefab(prefab)
+                as GameObject;
+            Assert.NotNull(instance);
+            return instance;
         }
 
         private static Scene OpenScene(
