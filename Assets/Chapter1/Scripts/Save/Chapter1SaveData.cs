@@ -6,7 +6,7 @@ namespace DormitoryMystery.Chapter1
     [Serializable]
     public class Chapter1SaveData
     {
-        public const int CurrentSaveVersion = 8;
+        public const int CurrentSaveVersion = 9;
         public const string PhoneCarryOverItemId = "phone";
         public const string PoliceKeyCarryOverItemId =
             "police_station_key";
@@ -41,6 +41,7 @@ namespace DormitoryMystery.Chapter1
         public bool Mission01DungBirthdayQuestionSent;
         public bool Mission01DungBirthdayHintReceived;
         public bool Mission01DungHasUnread;
+        public int PhoneLanRecordingStateValue;
         public bool Mission01DungDoorDiscovered;
         public bool Mission01DungDoorUnlocked;
         public bool Mission01AudioSeparatorCollected;
@@ -96,6 +97,8 @@ namespace DormitoryMystery.Chapter1
             AudioSeparatorFaderValues = CreateDefaultFaderValues();
             ChapterCarryOverItemIds = new List<string>();
             FirstMissionStateValue = (int)FirstMissionState.None;
+            PhoneLanRecordingStateValue =
+                (int)LanRecordingMissionState.NotStarted;
         }
 
         public static Chapter1SaveData CreateDefault()
@@ -105,22 +108,20 @@ namespace DormitoryMystery.Chapter1
 
         public void EnsureValidDefaults()
         {
+            int loadedSaveVersion = SaveVersion;
+
             // In version 5 this flag meant only that police_car had reached
             // Nam after Henry was defeated. Version 6 moves the flag to the
             // end of the Police dialogue and shares it between both combat
             // outcomes. Preserve the old victory, but replay the new pursuit
             // and dialogue for a legacy save.
             bool migrateLegacyPoliceArrival =
-                SaveVersion < 6 && Mission03PoliceArrestCompleted;
+                loadedSaveVersion < 6 &&
+                Mission03PoliceArrestCompleted;
             if (migrateLegacyPoliceArrival)
             {
                 Mission03HenryDefeated = true;
                 Mission03PoliceArrestCompleted = false;
-            }
-
-            if (SaveVersion < CurrentSaveVersion)
-            {
-                SaveVersion = CurrentSaveVersion;
             }
 
             NamTrust = NamTrustCalculator.ClampTrust(NamTrust);
@@ -132,6 +133,25 @@ namespace DormitoryMystery.Chapter1
             SavedLanAudioStemIds ??= new List<string>();
             AudioSeparatorFaderValues ??= CreateDefaultFaderValues();
             ChapterCarryOverItemIds ??= new List<string>();
+
+            // Version 8 and older did not persist Messenger read state. In
+            // every schema, a downloaded mixed recording proves that the
+            // player completed all preceding Mother/Lan conversation steps.
+            if (HasLanRecording ||
+                SavedPhoneRecordingIds.Contains(
+                    LanAudioRecordingCatalog.MixedRecordingId))
+            {
+                PhoneLanRecordingStateValue = Math.Max(
+                    PhoneLanRecordingStateValue,
+                    (int)LanRecordingMissionState.RecordingDownloaded);
+            }
+
+            PhoneLanRecordingStateValue = Math.Max(
+                (int)LanRecordingMissionState.NotStarted,
+                Math.Min(
+                    (int)LanRecordingMissionState.Completed,
+                    PhoneLanRecordingStateValue));
+            SaveVersion = CurrentSaveVersion;
             while (AudioSeparatorFaderValues.Count < LanAudioRecordingCatalog.StemCount)
             {
                 AudioSeparatorFaderValues.Add(1f);
@@ -339,6 +359,34 @@ namespace DormitoryMystery.Chapter1
             SavedPhoneRecordingIds ??= new List<string>();
             SavedLanAudioStemIds ??= new List<string>();
             AudioSeparatorFaderValues ??= CreateDefaultFaderValues();
+        }
+
+        public LanRecordingMissionState GetPhoneLanRecordingState()
+        {
+            PhoneLanRecordingStateValue = Math.Max(
+                (int)LanRecordingMissionState.NotStarted,
+                Math.Min(
+                    (int)LanRecordingMissionState.Completed,
+                    PhoneLanRecordingStateValue));
+            return (LanRecordingMissionState)
+                PhoneLanRecordingStateValue;
+        }
+
+        public bool AdvancePhoneLanRecordingState(
+            LanRecordingMissionState nextState)
+        {
+            int nextValue = Math.Max(
+                (int)LanRecordingMissionState.NotStarted,
+                Math.Min(
+                    (int)LanRecordingMissionState.Completed,
+                    (int)nextState));
+            if (nextValue <= PhoneLanRecordingStateValue)
+            {
+                return false;
+            }
+
+            PhoneLanRecordingStateValue = nextValue;
+            return true;
         }
 
         /// <summary>

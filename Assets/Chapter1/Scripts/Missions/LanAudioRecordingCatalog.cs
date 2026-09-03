@@ -140,14 +140,28 @@ namespace DormitoryMystery.Chapter1
 
         public static AudioClip ResolveClip(string recordingId, LanRecordingMissionController lanRecordingController, AudioSeparatorMixerController mixerController)
         {
+            AudioClip sceneClip;
             if (string.Equals(recordingId, MixedRecordingId, StringComparison.Ordinal))
             {
-                return lanRecordingController != null ? lanRecordingController.LanRecordingClip : null;
+                sceneClip = lanRecordingController != null
+                    ? lanRecordingController.LanRecordingClip
+                    : null;
+            }
+            else
+            {
+                sceneClip = TryGetStemFromRecordingId(recordingId, out LanAudioStemId stem) &&
+                            mixerController != null
+                    ? mixerController.GetStemClip(stem)
+                    : null;
             }
 
-            return TryGetStemFromRecordingId(recordingId, out LanAudioStemId stem) && mixerController != null
-                ? mixerController.GetStemClip(stem)
-                : null;
+            if (sceneClip != null)
+            {
+                return sceneClip;
+            }
+
+            PhoneRecordingAudioLibrary library = PhoneRecordingAudioLibrary.LoadDefault();
+            return library != null ? library.ResolveClip(recordingId) : null;
         }
     }
 }

@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ed56c7309c09c6445ae89628bc785f01, type: 3}
+  m_Name: ClassifiedDocumentItem
+  m_EditorClassIdentifier: Assembly-CSharp::DormitoryMystery.Chapter1.ItemDefinition
+  itemId: classified_document
+  displayName: "T\u00E0i li\u1EC7u m\u1EADt"
+  icon: {fileID: 21300000, guid: 98d0a5e8b42e4c76b7215735122a4f8c, type: 3}
+  description: "T\u00E0i li\u1EC7u m\u1EADt \u0111\u01B0\u1EE3c gi\u1EA5u b\u00EAn d\u01B0\u1EDBi thi\u1EBFt b\u1ECB Wi-Fi c\u1EE7a \u0111\u1ED3n c\u1EA3nh s\u00E1t."
+  category: 1
+  isStackable: 0
+  maxStack: 1
+  isDroppable: 0
+  isUsable: 0

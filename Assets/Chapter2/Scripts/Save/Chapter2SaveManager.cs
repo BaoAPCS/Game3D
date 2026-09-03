@@ -1,3 +1,4 @@
+using DormitoryMystery.Chapter1;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -87,6 +88,27 @@ namespace DormitoryMystery.Chapter2
             saveService.Save(CurrentData);
         }
 
+        /// <summary>
+        /// Copies Chapter 1's phone payload exactly once. After this point the
+        /// Chapter 2 save owns its detached snapshot and no longer depends on
+        /// later changes to the Chapter 1 save.
+        /// </summary>
+        public bool ImportChapter1PhoneData(
+            Chapter1SaveData chapter1Data)
+        {
+            if (chapter1Data == null ||
+                CurrentData.Chapter1PhoneDataImported)
+            {
+                return false;
+            }
+
+            CurrentData.PhoneData =
+                Chapter2PhoneData.FromChapter1(chapter1Data);
+            CurrentData.Chapter1PhoneDataImported = true;
+            SaveChapter2();
+            return true;
+        }
+
         public void SaveMission01Progress(
             bool crowbarCollected,
             bool toiletPried,
@@ -106,12 +128,14 @@ namespace DormitoryMystery.Chapter2
             CurrentData.Mission01ToiletPried = false;
             CurrentData.Mission01ServiceCardCollected = false;
             CurrentData.Mission02JailObstacleDisabled = false;
+            ResetMission03State();
             SaveChapter2();
         }
 
         public void ResetMission02()
         {
             CurrentData.Mission02JailObstacleDisabled = false;
+            ResetMission03State();
             SaveChapter2();
         }
 
@@ -119,6 +143,118 @@ namespace DormitoryMystery.Chapter2
         {
             CurrentData.Mission02JailObstacleDisabled = true;
             SaveChapter2();
+        }
+
+        public void SaveMission03Progress(
+            bool phoneRecovered,
+            bool policeKeyRecovered)
+        {
+            CurrentData.Mission03PhoneRecovered = phoneRecovered;
+            CurrentData.Mission03PoliceKeyRecovered =
+                policeKeyRecovered;
+            if (phoneRecovered)
+            {
+                CurrentData.Mission03ClosetUnlocked = true;
+            }
+
+            CurrentData.HasPhone = phoneRecovered;
+            CurrentData.HasPoliceStationKey = policeKeyRecovered;
+            SaveChapter2();
+        }
+
+        public void SaveMission03ClosetUnlocked()
+        {
+            CurrentData.Mission03ClosetUnlocked = true;
+            CurrentData.Mission03PoliceKeyRecovered = true;
+            CurrentData.HasPoliceStationKey = true;
+            SaveChapter2();
+        }
+
+        public void ResetMission03()
+        {
+            ResetMission03State();
+            SaveChapter2();
+        }
+
+        public void SaveMission04ComputerUnlocked()
+        {
+            CurrentData.Mission04ComputerUnlocked = true;
+            SaveChapter2();
+        }
+
+        public void SaveMission04WifiPasswordDiscovered()
+        {
+            CurrentData.Mission04WifiPasswordDiscovered = true;
+            SaveChapter2();
+        }
+
+        public void SaveMission04WifiConnected()
+        {
+            CurrentData.Mission04PoliceWifiConnected = true;
+            SaveChapter2();
+        }
+
+        public void SaveMission04MinhMessagesRead()
+        {
+            CurrentData.Mission04MinhMessagesRead = true;
+            SaveChapter2();
+        }
+
+        public void ResetMission04()
+        {
+            ResetMission04State();
+            SaveChapter2();
+        }
+
+        public void SaveMission05RouterInspected()
+        {
+            CurrentData.Mission05RouterInspected = true;
+            SaveChapter2();
+        }
+
+        public void SaveMission05DocumentCollected()
+        {
+            CurrentData.Mission05SecretDocumentCollected = true;
+            SaveChapter2();
+        }
+
+        public void SaveMission05BrokenDoorUnlocked()
+        {
+            CurrentData.Mission05BrokenDoorUnlocked = true;
+            SaveChapter2();
+        }
+
+        public void ResetMission05()
+        {
+            ResetMission05State();
+            SaveChapter2();
+        }
+
+        private void ResetMission03State()
+        {
+            CurrentData.Mission03PhoneRecovered = false;
+            CurrentData.Mission03PoliceKeyRecovered = true;
+            CurrentData.Mission03ClosetUnlocked = false;
+            CurrentData.HasPhone = false;
+            CurrentData.HasPoliceStationKey = true;
+            CurrentData.Chapter1CarryOverInventoryApplied = true;
+            ResetMission04State();
+        }
+
+        private void ResetMission04State()
+        {
+            CurrentData.Mission04ComputerUnlocked = false;
+            CurrentData.Mission04WifiPasswordDiscovered = false;
+            CurrentData.Mission04PoliceWifiConnected = false;
+            CurrentData.Mission04MinhMessagesRead = false;
+            ResetMission05State();
+        }
+
+        private void ResetMission05State()
+        {
+            CurrentData.Mission05RouterInspected = false;
+            CurrentData.Mission05SecretDocumentCollected = false;
+            CurrentData.Mission05BrokenDoorUnlocked = false;
         }
 
         private void EnsureSaveService()

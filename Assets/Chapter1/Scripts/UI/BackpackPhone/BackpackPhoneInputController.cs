@@ -71,6 +71,17 @@ namespace DormitoryMystery.Chapter1
         private void HandleInventoryPressed()
         {
             EnsureUi();
+            if (phoneUIController != null &&
+                phoneUIController.IsSignalScannerActive)
+            {
+                if (!phoneUIController.IsSignalScannerSuspended)
+                {
+                    phoneUIController.ToggleSignalScannerView();
+                }
+
+                return;
+            }
+
             if (phoneUIController != null && phoneUIController.IsOpen)
             {
                 return;
@@ -82,6 +93,21 @@ namespace DormitoryMystery.Chapter1
         private void HandlePausePressed()
         {
             EnsureUi();
+            if (phoneUIController != null &&
+                phoneUIController.IsSignalScannerActive)
+            {
+                // A chapter-owned modal handles Escape while suspended.
+                // Otherwise Escape only closes the full phone; the scanner
+                // stays active until its on-screen stop button is pressed.
+                if (!phoneUIController.IsSignalScannerSuspended &&
+                    phoneUIController.IsOpen)
+                {
+                    phoneUIController.ClosePhone();
+                }
+
+                return;
+            }
+
             if (phoneUIController != null && phoneUIController.IsOpen)
             {
                 phoneUIController.ClosePhone();

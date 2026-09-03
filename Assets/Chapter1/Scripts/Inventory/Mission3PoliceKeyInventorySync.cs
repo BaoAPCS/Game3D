@@ -13,6 +13,8 @@ namespace DormitoryMystery.Chapter1
     {
         public const string PoliceKeyItemId = "police_station_key";
 
+        private const string Chapter2PoliceStationSceneName =
+            "Police_Station";
         private const string PoliceKeyResourcePath =
             "Inventory/PoliceStationKeyItem";
 
@@ -51,7 +53,9 @@ namespace DormitoryMystery.Chapter1
 
         private static void InstallForScene(Scene scene)
         {
-            if (!scene.IsValid() || !scene.isLoaded)
+            if (!scene.IsValid() ||
+                !scene.isLoaded ||
+                scene.name == Chapter2PoliceStationSceneName)
             {
                 return;
             }
@@ -153,7 +157,9 @@ namespace DormitoryMystery.Chapter1
         private void SynchronizeWithSave()
         {
             inventory ??= GetComponent<InventoryController>();
-            if (inventory == null)
+            if (inventory == null ||
+                gameObject.scene.name ==
+                Chapter2PoliceStationSceneName)
             {
                 return;
             }

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DormitoryMystery.Chapter1.ItemDefinition
   itemId: crow_bar
   displayName: "X\xE0 beng"
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 52f5a34dd955f3b439f5cda454eb34f2, type: 3}
   description: "D\u1EE5ng c\u1EE5 kim lo\u1EA1i ch\u1EAFc ch\u1EAFn, c\xF3 th\u1EC3 d\xF9ng \u0111\u1EC3 c\u1EA1y nh\u1EEFng v\u1EADt b\u1ECB k\u1EB9t."
   category: 3
   isStackable: 0

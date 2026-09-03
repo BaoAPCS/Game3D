@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d2a9e6f3b84c4e57a13f90ccfcda3471, type: 3}
+  m_Name: PhoneRecordingAudioLibrary
+  m_EditorClassIdentifier: Assembly-CSharp::DormitoryMystery.Chapter1.PhoneRecordingAudioLibrary
+  mixedRecording: {fileID: 8300000, guid: fb424cb07245f7e4fb753c31ce220985, type: 3}
+  voice: {fileID: 8300000, guid: 4579e008844c272468c828322c9e9a60, type: 3}
+  policeSiren: {fileID: 8300000, guid: 11fa4cf857a6f9249a47b073f21dcd28, type: 3}
+  rain: {fileID: 8300000, guid: e6b28eaed7c0fe441bbc41057200b5a8, type: 3}
+  trafficHorn: {fileID: 8300000, guid: 3f05faadad1fc194d93f1f7b2534424d, type: 3}
+  wind: {fileID: 8300000, guid: 68d1b6528ef5a004d859e2db3730a9db, type: 3}
+  thunder: {fileID: 8300000, guid: d29d19a0d9eb28640b7e0738fa68897a, type: 3}

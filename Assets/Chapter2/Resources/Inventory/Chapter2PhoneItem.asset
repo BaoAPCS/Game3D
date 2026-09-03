@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ed56c7309c09c6445ae89628bc785f01, type: 3}
+  m_Name: Chapter2PhoneItem
+  m_EditorClassIdentifier: Assembly-CSharp::DormitoryMystery.Chapter1.ItemDefinition
+  itemId: phone
+  displayName: "\u0110i\u1EC7n tho\u1EA1i"
+  icon: {fileID: 21300000, guid: ad7dc77b54ebd944088ac0ff5509e763, type: 3}
+  description: "\u0110i\u1EC7n tho\u1EA1i c\u1EE7a Nam, \u0111\xE3 b\u1ECB c\xF4ng an t\u1ECBch thu khi \u0111\u01B0a v\xE0o ph\xF2ng giam."
+  category: 0
+  isStackable: 0
+  maxStack: 1
+  isDroppable: 0
+  isUsable: 1

@@ -27,6 +27,7 @@ namespace DormitoryMystery.Chapter1
         [SerializeField] private AudioClip useClip;
 
         private InventoryItem selectedItem;
+        private IInventoryItemUseHandler itemUseHandler;
         private bool listenersBound;
         private bool isOpen;
 
@@ -78,6 +79,25 @@ namespace DormitoryMystery.Chapter1
             closeClip = close;
             selectClip = select;
             useClip = use;
+        }
+
+        public void SetItemUseHandler(
+            IInventoryItemUseHandler handler)
+        {
+            itemUseHandler = handler;
+            UpdateDetailPanel();
+        }
+
+        public void ClearItemUseHandler(
+            IInventoryItemUseHandler handler)
+        {
+            if (!ReferenceEquals(itemUseHandler, handler))
+            {
+                return;
+            }
+
+            itemUseHandler = null;
+            UpdateDetailPanel();
         }
 
         public void OpenInventory()
@@ -150,20 +170,38 @@ namespace DormitoryMystery.Chapter1
 
         public void UseSelectedItem()
         {
-            if (selectedItem == null || selectedItem.Definition == null || !selectedItem.Definition.IsUsable)
+            if (selectedItem == null ||
+                selectedItem.Definition == null)
             {
                 return;
             }
 
-            PlayClip(useClip);
-            if (selectedItem.Definition.Category == ItemCategory.Phone)
+            ItemDefinition definition = selectedItem.Definition;
+            if (definition.IsUsable &&
+                definition.Category == ItemCategory.Phone)
             {
+                PlayClip(useClip);
                 if (phoneUIController != null)
                 {
                     phoneUIController.OpenPhone();
                 }
 
                 CloseInventory(true);
+                return;
+            }
+
+            if (itemUseHandler != null &&
+                itemUseHandler.CanUseInventoryItem(selectedItem) &&
+                itemUseHandler.TryUseInventoryItem(selectedItem))
+            {
+                PlayClip(useClip);
+                CloseInventory(true);
+                return;
+            }
+
+            if (definition.IsUsable)
+            {
+                PlayClip(useClip);
             }
         }
 
@@ -219,7 +257,11 @@ namespace DormitoryMystery.Chapter1
 
             if (useButton != null)
             {
-                useButton.interactable = hasSelection && definition.IsUsable;
+                bool handledUse = hasSelection &&
+                    itemUseHandler != null &&
+                    itemUseHandler.CanUseInventoryItem(selectedItem);
+                useButton.interactable = hasSelection &&
+                    (definition.IsUsable || handledUse);
             }
         }
 

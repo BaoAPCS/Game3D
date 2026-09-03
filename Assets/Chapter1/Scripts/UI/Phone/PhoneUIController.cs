@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
@@ -18,6 +19,7 @@ namespace DormitoryMystery.Chapter1
         [SerializeField] private Button recorderButton;
         [SerializeField] private Button cameraButton;
         [SerializeField] private Button googleButton;
+        [SerializeField] private Button wifiButton;
         [SerializeField] private Button homeButton;
         [SerializeField] private TextMeshProUGUI appTitleText;
         [SerializeField] private TextMeshProUGUI appBodyText;
@@ -42,6 +44,38 @@ namespace DormitoryMystery.Chapter1
         [SerializeField] private Mission01AudioSeparatorManager firstMissionManager;
         [SerializeField] private AudioSeparatorMixerController mixerController;
 
+        private Chapter1SaveData carriedPhoneData;
+        private bool messengerOnline = true;
+        private string wifiNetworkName = DefaultWifiNetworkName;
+        private bool wifiConnected = true;
+        private bool wifiCredentialsKnown = true;
+        private Func<string, bool> wifiConnectCallback;
+        private bool minhMissionMessagesAvailable;
+        private bool minhMissionMessagesRead;
+        private Action minhMissionMessagesReadCallback;
+        private bool wifiSignalScannerAvailable;
+        private bool wifiSignalScannerActive;
+        private bool scannerWalkMode;
+        private bool scannerSuspended;
+        private bool phoneInputLockHeld;
+        private Func<int> wifiSignalBarsProvider;
+        private Action<bool> wifiSignalScannerActiveChanged;
+        private GameObject phoneFrame;
+        private Image panelBackgroundImage;
+        private GameObject compactScannerRoot;
+        private GameObject ownedScannerHudCanvas;
+        private TextMeshProUGUI compactScannerSignalText;
+        private TextMeshProUGUI compactScannerNetworkText;
+        private readonly Image[] compactScannerBars = new Image[5];
+        private TextMeshProUGUI expandedScannerSignalText;
+        private TextMeshProUGUI expandedScannerNetworkText;
+        private readonly Image[] expandedScannerBars = new Image[5];
+        private int currentWifiSignalBars;
+        private string currentWifiSignalDisplay =
+            "ĐANG DÒ TÍN HIỆU...";
+        private float nextScannerSampleTime;
+        private float scannerPulseTime;
+        private bool scannerProviderFaultLogged;
         private bool isOpen;
         private bool motherChatRead;
         private bool lanMessageReceived;
@@ -60,12 +94,49 @@ namespace DormitoryMystery.Chapter1
         private const float ConversationBackButtonHeight = 38f;
         private const float ConversationScrollHeight = 342f;
         private const float AudioMessageRowHeight = 154f;
+        private const float ScannerSampleInterval = 0.2f;
+        private const string CompactScannerRootName =
+            "WifiSignalScannerCompact";
+        private const string ScannerHudCanvasName =
+            "WifiSignalScannerHudCanvas";
+        public const string DefaultWifiNetworkName = "KTX";
+        public const string OfflineMessengerMessage =
+            "Không có kết nối mạng.";
+        public const string MinhMissionMessageOne =
+            "Tài liệu mật được giấu bên dưới thiết bị wifi";
+        public const string MinhMissionMessageTwo =
+            "Bạn phải xác định được vị trí đặt wifi";
 
         public bool IsOpen => isOpen;
+        public bool MessengerOnline => messengerOnline;
+        public string WifiNetworkName => wifiNetworkName;
+        public bool WifiConnected => wifiConnected;
+        public bool WifiCredentialsKnown => wifiCredentialsKnown;
+        public bool MinhMissionMessagesAvailable =>
+            minhMissionMessagesAvailable;
+        public bool MinhMissionMessagesRead =>
+            minhMissionMessagesRead;
+        public bool WifiSignalScannerAvailable =>
+            wifiSignalScannerAvailable;
+        public bool IsSignalScannerActive =>
+            wifiSignalScannerActive;
+        public bool IsScannerWalkMode =>
+            wifiSignalScannerActive && scannerWalkMode &&
+            !scannerSuspended;
+        public bool IsSignalScannerSuspended =>
+            wifiSignalScannerActive && scannerSuspended;
+        public GameObject WifiSignalScannerHudRoot =>
+            compactScannerRoot;
+        public int CurrentWifiSignalBars => currentWifiSignalBars;
+        public string CurrentWifiSignalLabel =>
+            GetWifiSignalLabel(currentWifiSignalBars);
+        public Chapter1SaveData CurrentPhoneData =>
+            GetCurrentSaveData();
 
         private void Update()
         {
             UpdateVoiceProgress();
+            UpdateWifiSignalScanner();
         }
 
         private void Awake()
@@ -73,6 +144,7 @@ namespace DormitoryMystery.Chapter1
             ResolveReferences();
             EnsurePhoneScreenStructure();
             BindButtonListeners();
+            EnsureWifiSignalScannerStructure();
             if (!isOpen)
             {
                 SetOpenState(false, false);
@@ -84,11 +156,117 @@ namespace DormitoryMystery.Chapter1
             ResolveReferences();
             EnsurePhoneScreenStructure();
             BindButtonListeners();
+            EnsureWifiSignalScannerStructure();
+        }
+
+        private void OnDestroy()
+        {
+            DestroyOwnedScannerHud();
         }
 
         public void Configure(PlayerInputLock lockReference)
         {
+            if (ReferenceEquals(inputLock, lockReference))
+            {
+                return;
+            }
+
+            if (phoneInputLockHeld && inputLock != null)
+            {
+                inputLock.ReleaseInputLock(PlayerInputLock.PhoneReason);
+                phoneInputLockHeld = false;
+            }
+
             inputLock = lockReference;
+            bool requiresPhoneLock = isOpen &&
+                (!wifiSignalScannerActive ||
+                 (!scannerWalkMode && !scannerSuspended));
+            if (requiresPhoneLock)
+            {
+                AcquirePhoneInputLock();
+            }
+        }
+
+        /// <summary>
+        /// Supplies a detached phone snapshot for a later chapter. This does
+        /// not grant the physical phone item; inventory remains responsible
+        /// for deciding when the UI can be opened.
+        /// </summary>
+        public void ConfigureCarriedPhoneData(
+            Chapter1SaveData phoneData,
+            bool isMessengerOnline)
+        {
+            carriedPhoneData =
+                phoneData?.DeepCopy() ?? Chapter1SaveData.CreateDefault();
+            carriedPhoneData.EnsureValidDefaults();
+            SetWifiConnected(isMessengerOnline);
+            ApplyPersistedMessengerState(carriedPhoneData, true);
+        }
+
+        /// <summary>
+        /// Configures the network visible in the phone's Wi-Fi app. The
+        /// callback owns validation and persistence; returning true tells the
+        /// phone that the submitted password was accepted.
+        /// </summary>
+        public void ConfigureWifiNetwork(
+            string ssid,
+            bool connected,
+            bool credentialsKnown,
+            Func<string, bool> connectCallback)
+        {
+            wifiNetworkName = string.IsNullOrWhiteSpace(ssid)
+                ? DefaultWifiNetworkName
+                : ssid.Trim();
+            wifiCredentialsKnown = credentialsKnown;
+            wifiConnectCallback = connectCallback;
+            SetWifiConnected(connected);
+        }
+
+        /// <summary>
+        /// Enables the two Chapter 2 messages from Minh without coupling the
+        /// reusable phone UI to a chapter-specific save implementation.
+        /// </summary>
+        public void ConfigureMinhMissionMessages(
+            bool available,
+            bool alreadyRead,
+            Action readCallback)
+        {
+            minhMissionMessagesAvailable = available;
+            minhMissionMessagesRead = available && alreadyRead;
+            minhMissionMessagesReadCallback = readCallback;
+        }
+
+        /// <summary>
+        /// Adds an optional, chapter-agnostic Wi-Fi scanner to the phone. A
+        /// chapter controller owns signal calculation and returns a value
+        /// from one to five. Chapter 1 leaves this unavailable by default.
+        /// </summary>
+        public void ConfigureWifiSignalScanner(
+            bool available,
+            Func<int> barsProvider,
+            Action<bool> activeChanged)
+        {
+            wifiSignalBarsProvider = barsProvider;
+            wifiSignalScannerActiveChanged = activeChanged;
+            wifiSignalScannerAvailable = available && barsProvider != null;
+            scannerProviderFaultLogged = false;
+
+            if (!wifiSignalScannerAvailable && wifiSignalScannerActive)
+            {
+                StopScanner();
+                return;
+            }
+
+            if (isOpen && !wifiSignalScannerActive &&
+                appTitleText != null && appTitleText.text == "Wi-Fi")
+            {
+                ShowWifiSettings();
+            }
+        }
+
+        public void SetWifiCredentialsKnown(bool known)
+        {
+            wifiCredentialsKnown = known;
         }
 
         public void SetAudio(AudioSource source, AudioClip open, AudioClip close, AudioClip tab)
@@ -103,15 +281,28 @@ namespace DormitoryMystery.Chapter1
         {
             ResolveReferences();
             EnsurePhoneScreenStructure();
+            EnsureWifiSignalScannerStructure();
             BindButtonListeners();
+
+            if (wifiSignalScannerActive)
+            {
+                if (!scannerSuspended)
+                {
+                    ExpandScanner();
+                }
+
+                return;
+            }
+
             if (isOpen)
             {
                 return;
             }
 
-            inputLock?.AcquireInputLock(PlayerInputLock.PhoneReason);
+            AcquirePhoneInputLock();
             Chapter1UICursorLock.ApplyForOpenUi();
             SetOpenState(true, true);
+            SetFullPhonePresentation(true);
             AdvanceMissionState(LanRecordingMissionState.OpenPhone);
             ShowHomeScreen(false);
             PlayClip(openClip);
@@ -119,6 +310,12 @@ namespace DormitoryMystery.Chapter1
 
         public void ClosePhone()
         {
+            if (wifiSignalScannerActive)
+            {
+                EnterScannerWalkMode();
+                return;
+            }
+
             if (!isOpen)
             {
                 return;
@@ -126,9 +323,145 @@ namespace DormitoryMystery.Chapter1
 
             SetOpenState(false, false);
             StopVoicePlayback();
-            inputLock?.ReleaseInputLock(PlayerInputLock.PhoneReason);
+            ReleasePhoneInputLock();
             Chapter1UICursorLock.ApplyAfterClose(inputLock);
             PlayClip(closeClip);
+        }
+
+        public void StartWifiSignalScanner()
+        {
+            if (!wifiSignalScannerAvailable || !wifiConnected ||
+                wifiSignalBarsProvider == null)
+            {
+                return;
+            }
+
+            EnsurePhoneScreenStructure();
+            EnsureWifiSignalScannerStructure();
+            if (!wifiSignalScannerActive)
+            {
+                wifiSignalScannerActive = true;
+                scannerProviderFaultLogged = false;
+                SampleWifiSignal(true);
+                NotifyWifiSignalScannerActiveChanged(true);
+            }
+
+            scannerSuspended = false;
+            EnterScannerWalkMode();
+        }
+
+        /// <summary>
+        /// Closes the phone while keeping the scanner's independent,
+        /// non-interactive HUD visible.
+        /// </summary>
+        public void EnterScannerWalkMode()
+        {
+            if (!wifiSignalScannerActive || scannerSuspended)
+            {
+                return;
+            }
+
+            EnsurePhoneScreenStructure();
+            EnsureWifiSignalScannerStructure();
+            scannerWalkMode = true;
+            SetFullPhonePresentation(false);
+            SetOpenState(false, false);
+            if (compactScannerRoot != null)
+            {
+                compactScannerRoot.SetActive(true);
+                compactScannerRoot.transform.SetAsLastSibling();
+            }
+
+            ReleasePhoneInputLock();
+            Chapter1UICursorLock.ApplyAfterClose(inputLock);
+            RefreshWifiSignalScannerVisuals();
+        }
+
+        public void ExpandScanner()
+        {
+            if (!wifiSignalScannerActive || scannerSuspended)
+            {
+                return;
+            }
+
+            EnsurePhoneScreenStructure();
+            EnsureWifiSignalScannerStructure();
+            scannerWalkMode = false;
+            AcquirePhoneInputLock();
+            Chapter1UICursorLock.ApplyForOpenUi();
+            SetOpenState(true, true);
+            SetFullPhonePresentation(true);
+            SetActive(compactScannerRoot, false);
+            ShowSignalScannerExpanded();
+        }
+
+        public void ToggleSignalScannerView()
+        {
+            if (!wifiSignalScannerActive || scannerSuspended)
+            {
+                return;
+            }
+
+            if (scannerWalkMode)
+            {
+                ExpandScanner();
+            }
+            else
+            {
+                EnterScannerWalkMode();
+            }
+        }
+
+        /// <summary>
+        /// Temporarily hides scanner UI for a chapter-owned camera/modal. It
+        /// deliberately keeps the active scanner session alive.
+        /// </summary>
+        public void SuspendScannerForModal()
+        {
+            if (!wifiSignalScannerActive || scannerSuspended)
+            {
+                return;
+            }
+
+            scannerSuspended = true;
+            scannerWalkMode = false;
+            SetActive(compactScannerRoot, false);
+            SetOpenState(false, false);
+            ReleasePhoneInputLock();
+            Chapter1UICursorLock.ApplyAfterClose(inputLock);
+        }
+
+        public void ResumeScannerWalkMode()
+        {
+            if (!wifiSignalScannerActive)
+            {
+                return;
+            }
+
+            scannerSuspended = false;
+            EnterScannerWalkMode();
+        }
+
+        public void StopScanner()
+        {
+            if (!wifiSignalScannerActive)
+            {
+                return;
+            }
+
+            wifiSignalScannerActive = false;
+            scannerWalkMode = false;
+            scannerSuspended = false;
+            currentWifiSignalBars = 0;
+            currentWifiSignalDisplay = "ĐANG DÒ TÍN HIỆU...";
+            scannerPulseTime = 0f;
+            SetActive(compactScannerRoot, false);
+            SetOpenState(false, false);
+            StopVoicePlayback();
+            ReleasePhoneInputLock();
+            Chapter1UICursorLock.ApplyAfterClose(inputLock);
+            PlayClip(closeClip);
+            NotifyWifiSignalScannerActiveChanged(false);
         }
 
         public void OpenMessages()
@@ -153,6 +486,13 @@ namespace DormitoryMystery.Chapter1
 
         public void OpenMessenger()
         {
+            if (!messengerOnline)
+            {
+                activeMessengerContact = string.Empty;
+                ShowApp("Messenger", OfflineMessengerMessage);
+                return;
+            }
+
             SyncMessengerStateFromMission();
             SyncFirstMissionReferences();
             ReceiveLanMessageIfReady();
@@ -177,6 +517,13 @@ namespace DormitoryMystery.Chapter1
         public void OpenGoogle()
         {
             ShowApp("Google", "Không có kết nối mạng.");
+        }
+
+        public void OpenWifiSettings()
+        {
+            activeMessengerContact = string.Empty;
+            ShowApp("Wi-Fi", string.Empty);
+            ShowWifiSettings();
         }
 
         private void ShowHomeScreen(bool playSound)
@@ -216,9 +563,11 @@ namespace DormitoryMystery.Chapter1
         {
             isOpen = open;
             GameObject root = panelRoot != null ? panelRoot : gameObject;
-            if (root.activeSelf != open)
+            bool keepControllerActive = wifiSignalScannerActive;
+            bool rootShouldBeActive = open || keepControllerActive;
+            if (root.activeSelf != rootShouldBeActive)
             {
-                root.SetActive(open);
+                root.SetActive(rootShouldBeActive);
             }
 
             if (canvasGroup != null)
@@ -235,6 +584,7 @@ namespace DormitoryMystery.Chapter1
             Bind(recorderButton, OpenRecorder);
             Bind(cameraButton, OpenCamera);
             Bind(googleButton, OpenGoogle);
+            Bind(wifiButton, OpenWifiSettings);
             Bind(homeButton, ShowHomeScreen);
             Bind(messagesButton, OpenMessages);
             Bind(recordingsButton, OpenRecordings);
@@ -265,6 +615,18 @@ namespace DormitoryMystery.Chapter1
                 canvasGroup = GetComponent<CanvasGroup>();
             }
 
+            if (panelBackgroundImage == null && panelRoot != null)
+            {
+                panelBackgroundImage = panelRoot.GetComponent<Image>();
+            }
+
+            phoneFrame ??= FindChild("PhoneFrame");
+
+            if (compactScannerRoot == null)
+            {
+                compactScannerRoot = FindChild(CompactScannerRootName);
+            }
+
             if (inputLock == null)
             {
                 inputLock = FindAnyObjectByType<PlayerInputLock>();
@@ -291,6 +653,11 @@ namespace DormitoryMystery.Chapter1
             if (googleButton == null)
             {
                 googleButton = FindChildComponent<Button>("GoogleButton");
+            }
+
+            if (wifiButton == null)
+            {
+                wifiButton = FindChildComponent<Button>("WifiButton");
             }
 
             if (homeButton == null)
@@ -363,6 +730,8 @@ namespace DormitoryMystery.Chapter1
                 homeScreen = CreateHomeScreen(frame).gameObject;
             }
 
+            EnsureWifiAppButton();
+
             if (appContent == null)
             {
                 appContent = CreateAppContent(frame).gameObject;
@@ -393,23 +762,942 @@ namespace DormitoryMystery.Chapter1
                 grid,
                 new Vector2(0.5f, 0.5f),
                 new Vector2(0.5f, 0.5f),
-                new Vector2(0f, -18f),
-                new Vector2(332f, 346f),
+                new Vector2(0f, -28f),
+                new Vector2(332f, 444f),
                 new Vector2(0.5f, 0.5f));
 
             GridLayoutGroup layout = grid.gameObject.AddComponent<GridLayoutGroup>();
-            layout.cellSize = new Vector2(146f, 146f);
-            layout.spacing = new Vector2(34f, 34f);
-            layout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
-            layout.constraintCount = 2;
-            layout.childAlignment = TextAnchor.MiddleCenter;
+            ConfigurePhoneAppGrid(layout, grid);
 
             CreateAppButton(grid, "MessengerButton", "Messenger", "M", new Color(0.05f, 0.48f, 0.95f, 1f));
             CreateAppButton(grid, "RecorderButton", "Ghi âm", "REC", new Color(0.82f, 0.12f, 0.17f, 1f));
             CreateAppButton(grid, "CameraButton", "Camera", "CAM", new Color(0.13f, 0.62f, 0.37f, 1f));
             CreateAppButton(grid, "GoogleButton", "Google", "G", new Color(0.96f, 0.72f, 0.12f, 1f));
+            CreateAppButton(grid, "WifiButton", "Wi-Fi", "WIFI", new Color(0.08f, 0.68f, 0.94f, 1f));
 
             return screen;
+        }
+
+        private void EnsureWifiAppButton()
+        {
+            if (homeScreen == null)
+            {
+                return;
+            }
+
+            Transform grid = FindDescendant(
+                homeScreen.transform,
+                "AppGrid");
+            if (grid == null)
+            {
+                return;
+            }
+
+            RectTransform gridRect = grid as RectTransform;
+            GridLayoutGroup layout =
+                grid.GetComponent<GridLayoutGroup>();
+            if (layout == null)
+            {
+                layout = grid.gameObject.AddComponent<GridLayoutGroup>();
+            }
+
+            ConfigurePhoneAppGrid(layout, gridRect);
+            if (wifiButton == null)
+            {
+                wifiButton = FindDescendant(grid, "WifiButton")
+                    ?.GetComponent<Button>();
+            }
+
+            if (wifiButton == null)
+            {
+                wifiButton = CreateAppButton(
+                    grid,
+                    "WifiButton",
+                    "Wi-Fi",
+                    "WIFI",
+                    new Color(0.08f, 0.68f, 0.94f, 1f));
+            }
+        }
+
+        private static void ConfigurePhoneAppGrid(
+            GridLayoutGroup layout,
+            RectTransform grid)
+        {
+            if (layout == null)
+            {
+                return;
+            }
+
+            layout.cellSize = new Vector2(146f, 132f);
+            layout.spacing = new Vector2(20f, 12f);
+            layout.constraint =
+                GridLayoutGroup.Constraint.FixedColumnCount;
+            layout.constraintCount = 2;
+            layout.childAlignment = TextAnchor.MiddleCenter;
+
+            if (grid != null)
+            {
+                grid.anchoredPosition = new Vector2(0f, -28f);
+                grid.sizeDelta = new Vector2(332f, 444f);
+            }
+        }
+
+        private void ShowWifiSettings()
+        {
+            SetContentText(appTitleText, "Wi-Fi");
+            SetHomeButtonAction(ShowHomeScreen);
+
+            RectTransform root = PrepareDynamicMessengerRoot();
+            ConfigureVerticalStack(
+                root,
+                wifiConnected && wifiSignalScannerAvailable ? 7f : 12f,
+                new RectOffset(14, 14, 12, 12));
+
+            TextMeshProUGUI networkLabel = CreateWifiText(
+                root,
+                "WifiNetworkName",
+                wifiNetworkName,
+                24f,
+                42f,
+                Color.white);
+            networkLabel.fontStyle = FontStyles.Bold;
+
+            CreateWifiText(
+                root,
+                "WifiConnectionStatus",
+                wifiConnected ? "Đã kết nối" : "Chưa kết nối",
+                18f,
+                34f,
+                wifiConnected
+                    ? new Color(0.24f, 0.86f, 0.53f, 1f)
+                    : new Color(0.95f, 0.62f, 0.25f, 1f));
+
+            if (wifiConnected)
+            {
+                CreateWifiText(
+                    root,
+                    "WifiConnectedHint",
+                    "Messenger hiện có thể nhận tin nhắn.",
+                    16f,
+                    wifiSignalScannerAvailable ? 42f : 62f,
+                    new Color(0.76f, 0.79f, 0.84f, 1f));
+                CreateSmallButton(
+                    root,
+                    "WifiOpenMessengerButton",
+                    "MỞ MESSENGER",
+                    OpenMessenger,
+                    wifiSignalScannerAvailable ? 46f : 54f);
+
+                if (wifiSignalScannerAvailable)
+                {
+                    TextMeshProUGUI scannerTitle = CreateWifiText(
+                        root,
+                        "WifiSignalScannerTitle",
+                        "WI-FI SIGNAL SCANNER",
+                        17f,
+                        28f,
+                        new Color(0.25f, 0.83f, 1f, 1f));
+                    scannerTitle.fontStyle = FontStyles.Bold;
+                    CreateWifiText(
+                        root,
+                        "WifiSignalScannerHint",
+                        "Dò cường độ tín hiệu để tự khoanh vùng thiết bị phát Wi-Fi.",
+                        14f,
+                        42f,
+                        new Color(0.72f, 0.77f, 0.84f, 1f));
+                    CreateSmallButton(
+                        root,
+                        "WifiStartSignalScannerButton",
+                        wifiSignalScannerActive
+                            ? "TIẾP TỤC QUÉT"
+                            : "BẬT MÁY QUÉT",
+                        wifiSignalScannerActive
+                            ? EnterScannerWalkMode
+                            : StartWifiSignalScanner,
+                        50f);
+                }
+
+                ForceMessengerLayout(root);
+                return;
+            }
+
+            if (!wifiCredentialsKnown)
+            {
+                CreateWifiText(
+                    root,
+                    "WifiCredentialsUnknown",
+                    "Chưa biết mật khẩu. Hãy kiểm tra máy tính của đồn cảnh sát.",
+                    17f,
+                    92f,
+                    new Color(0.88f, 0.79f, 0.55f, 1f));
+                ForceMessengerLayout(root);
+                return;
+            }
+
+            CreateWifiText(
+                root,
+                "WifiPasswordLabel",
+                "Mật khẩu",
+                17f,
+                30f,
+                new Color(0.82f, 0.84f, 0.88f, 1f));
+            TMP_InputField passwordInput =
+                CreateWifiPasswordInput(root);
+            TextMeshProUGUI feedbackText = CreateWifiText(
+                root,
+                "WifiFeedbackText",
+                string.Empty,
+                15f,
+                46f,
+                new Color(0.96f, 0.42f, 0.38f, 1f));
+            Button connectButton = CreateSmallButton(
+                root,
+                "WifiConnectButton",
+                "KẾT NỐI",
+                () => TryConnectWifi(passwordInput, feedbackText),
+                54f);
+            connectButton.interactable = wifiConnectCallback != null;
+
+            if (wifiConnectCallback == null)
+            {
+                feedbackText.text =
+                    "Mạng này hiện không chấp nhận kết nối.";
+            }
+
+            passwordInput.onSubmit.RemoveAllListeners();
+            passwordInput.onSubmit.AddListener(
+                _ => TryConnectWifi(passwordInput, feedbackText));
+            ForceMessengerLayout(root);
+        }
+
+        private void TryConnectWifi(
+            TMP_InputField passwordInput,
+            TextMeshProUGUI feedbackText)
+        {
+            if (wifiConnected)
+            {
+                return;
+            }
+
+            if (!wifiCredentialsKnown)
+            {
+                SetContentText(
+                    feedbackText,
+                    "Hãy tìm mật khẩu trước khi kết nối.");
+                return;
+            }
+
+            string password = passwordInput != null
+                ? passwordInput.text
+                : string.Empty;
+            if (string.IsNullOrEmpty(password))
+            {
+                SetContentText(
+                    feedbackText,
+                    "Hãy nhập mật khẩu Wi-Fi.");
+                passwordInput?.ActivateInputField();
+                return;
+            }
+
+            if (wifiConnectCallback == null)
+            {
+                SetContentText(
+                    feedbackText,
+                    "Mạng này hiện không chấp nhận kết nối.");
+                return;
+            }
+
+            bool accepted;
+            try
+            {
+                accepted = wifiConnectCallback.Invoke(password);
+            }
+            catch (Exception exception)
+            {
+                accepted = false;
+                Debug.LogError(
+                    "[PhoneUIController] Lỗi khi xác thực mật khẩu " +
+                    $"Wi-Fi: {exception.Message}",
+                    this);
+            }
+
+            if (!accepted)
+            {
+                SetContentText(feedbackText, "Mật khẩu không đúng.");
+                if (passwordInput != null)
+                {
+                    passwordInput.text = string.Empty;
+                    passwordInput.ActivateInputField();
+                }
+
+                return;
+            }
+
+            SetWifiConnected(true);
+            OpenMessenger();
+        }
+
+        private static TextMeshProUGUI CreateWifiText(
+            RectTransform parent,
+            string objectName,
+            string value,
+            float fontSize,
+            float preferredHeight,
+            Color color)
+        {
+            TextMeshProUGUI text = CreateText(
+                parent,
+                objectName,
+                value,
+                fontSize,
+                TextAlignmentOptions.Left,
+                Vector2.zero,
+                Vector2.zero,
+                Vector2.zero,
+                Vector2.zero);
+            text.color = color;
+            LayoutElement layout =
+                text.gameObject.AddComponent<LayoutElement>();
+            layout.preferredHeight = preferredHeight;
+            layout.minHeight = preferredHeight;
+            layout.flexibleHeight = 0f;
+            return text;
+        }
+
+        private static TMP_InputField CreateWifiPasswordInput(
+            RectTransform parent)
+        {
+            GameObject fieldObject = new GameObject(
+                "WifiPasswordInput",
+                typeof(RectTransform),
+                typeof(CanvasRenderer),
+                typeof(Image),
+                typeof(TMP_InputField),
+                typeof(LayoutElement));
+            fieldObject.transform.SetParent(parent, false);
+
+            Image background = fieldObject.GetComponent<Image>();
+            background.color = new Color(0.07f, 0.075f, 0.09f, 1f);
+
+            LayoutElement layout =
+                fieldObject.GetComponent<LayoutElement>();
+            layout.preferredHeight = 56f;
+            layout.minHeight = 56f;
+            layout.flexibleHeight = 0f;
+
+            RectTransform viewport = CreateEmpty(
+                fieldObject.transform,
+                "Text Area");
+            Stretch(
+                viewport,
+                new Vector2(14f, 7f),
+                new Vector2(-14f, -7f));
+            viewport.gameObject.AddComponent<RectMask2D>();
+
+            TextMeshProUGUI placeholder = CreateText(
+                viewport,
+                "Placeholder",
+                "Nhập mật khẩu",
+                18f,
+                TextAlignmentOptions.Left,
+                Vector2.zero,
+                Vector2.one,
+                Vector2.zero,
+                Vector2.zero);
+            Stretch(placeholder.rectTransform, Vector2.zero, Vector2.zero);
+            placeholder.color = new Color(0.52f, 0.54f, 0.59f, 1f);
+            placeholder.fontStyle = FontStyles.Italic;
+
+            TextMeshProUGUI inputText = CreateText(
+                viewport,
+                "Text",
+                string.Empty,
+                19f,
+                TextAlignmentOptions.Left,
+                Vector2.zero,
+                Vector2.one,
+                Vector2.zero,
+                Vector2.zero);
+            Stretch(inputText.rectTransform, Vector2.zero, Vector2.zero);
+            inputText.color = Color.white;
+
+            TMP_InputField input =
+                fieldObject.GetComponent<TMP_InputField>();
+            input.textViewport = viewport;
+            input.textComponent = inputText;
+            input.placeholder = placeholder;
+            input.lineType = TMP_InputField.LineType.SingleLine;
+            input.contentType = TMP_InputField.ContentType.Password;
+            input.inputType = TMP_InputField.InputType.Password;
+            input.asteriskChar = '\u2022';
+            input.characterLimit = 64;
+            input.targetGraphic = background;
+            return input;
+        }
+
+        private void EnsureWifiSignalScannerStructure()
+        {
+            if (compactScannerRoot == null)
+            {
+                compactScannerRoot = FindChild(CompactScannerRootName);
+            }
+
+            Transform hudParent = ResolveScannerHudParent();
+            if (compactScannerRoot == null)
+            {
+                compactScannerRoot = CreateCompactScannerHud(hudParent);
+            }
+            else if (compactScannerRoot.transform.parent != hudParent)
+            {
+                compactScannerRoot.transform.SetParent(hudParent, false);
+            }
+
+            if (ownedScannerHudCanvas != null &&
+                hudParent != ownedScannerHudCanvas.transform)
+            {
+                DestroyUiObject(ownedScannerHudCanvas);
+                ownedScannerHudCanvas = null;
+            }
+
+            compactScannerNetworkText ??=
+                FindDescendant(compactScannerRoot.transform, "ScannerNetwork")
+                    ?.GetComponent<TextMeshProUGUI>();
+            compactScannerSignalText ??=
+                FindDescendant(compactScannerRoot.transform, "ScannerSignal")
+                    ?.GetComponent<TextMeshProUGUI>();
+            ResolveScannerBarReferences(
+                compactScannerRoot.transform,
+                compactScannerBars);
+
+            if (!wifiSignalScannerActive || !scannerWalkMode ||
+                scannerSuspended)
+            {
+                compactScannerRoot.SetActive(false);
+            }
+        }
+
+        private Transform ResolveScannerHudParent()
+        {
+            GameObject phoneRoot = panelRoot != null
+                ? panelRoot
+                : gameObject;
+            Canvas parentCanvas =
+                phoneRoot.GetComponentInParent<Canvas>(true);
+            if (parentCanvas != null &&
+                parentCanvas.gameObject != phoneRoot)
+            {
+                return parentCanvas.transform;
+            }
+
+            if (ownedScannerHudCanvas == null)
+            {
+                ownedScannerHudCanvas = new GameObject(
+                    ScannerHudCanvasName,
+                    typeof(RectTransform),
+                    typeof(Canvas),
+                    typeof(CanvasScaler));
+                Canvas canvas =
+                    ownedScannerHudCanvas.GetComponent<Canvas>();
+                canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+                canvas.sortingOrder = 50;
+
+                CanvasScaler scaler =
+                    ownedScannerHudCanvas.GetComponent<CanvasScaler>();
+                scaler.uiScaleMode =
+                    CanvasScaler.ScaleMode.ScaleWithScreenSize;
+                scaler.referenceResolution = new Vector2(1920f, 1080f);
+                scaler.screenMatchMode =
+                    CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+                scaler.matchWidthOrHeight = 0.5f;
+            }
+
+            return ownedScannerHudCanvas.transform;
+        }
+
+        private GameObject CreateCompactScannerHud(Transform parent)
+        {
+            Image background = CreateImage(
+                parent,
+                CompactScannerRootName,
+                new Color(0.025f, 0.055f, 0.075f, 0.94f));
+            RectTransform root = background.rectTransform;
+            SetRect(
+                root,
+                new Vector2(0f, 1f),
+                new Vector2(0f, 1f),
+                new Vector2(24f, -24f),
+                new Vector2(350f, 200f),
+                new Vector2(0f, 1f));
+
+            CanvasGroup group = root.gameObject.AddComponent<CanvasGroup>();
+            group.interactable = false;
+            group.blocksRaycasts = false;
+
+            Image accent = CreateImage(
+                root,
+                "ScannerAccent",
+                new Color(0.06f, 0.73f, 1f, 1f));
+            SetRect(
+                accent.rectTransform,
+                new Vector2(0f, 0f),
+                new Vector2(0f, 1f),
+                new Vector2(3f, 0f),
+                new Vector2(6f, 0f),
+                new Vector2(0f, 0.5f));
+
+            TextMeshProUGUI title = CreateText(
+                root,
+                "ScannerTitle",
+                "WI-FI SIGNAL SCANNER",
+                18f,
+                TextAlignmentOptions.Center,
+                new Vector2(0.5f, 1f),
+                new Vector2(0.5f, 1f),
+                new Vector2(0f, -21f),
+                new Vector2(330f, 26f));
+            title.color = new Color(0.45f, 0.88f, 1f, 1f);
+            title.fontStyle = FontStyles.Bold;
+
+            compactScannerNetworkText = CreateText(
+                root,
+                "ScannerNetwork",
+                wifiNetworkName,
+                14f,
+                TextAlignmentOptions.Center,
+                new Vector2(0.5f, 1f),
+                new Vector2(0.5f, 1f),
+                new Vector2(0f, -49f),
+                new Vector2(330f, 22f));
+            compactScannerNetworkText.color =
+                new Color(0.72f, 0.78f, 0.84f, 1f);
+
+            RectTransform barArea = CreateEmpty(root, "ScannerBars");
+            SetRect(
+                barArea,
+                new Vector2(0.5f, 1f),
+                new Vector2(0.5f, 1f),
+                new Vector2(0f, -103f),
+                new Vector2(260f, 72f),
+                new Vector2(0.5f, 0.5f));
+            CreateScannerBars(barArea, compactScannerBars, 34f, 46f, 14f);
+
+            compactScannerSignalText = CreateText(
+                root,
+                "ScannerSignal",
+                string.Empty,
+                16f,
+                TextAlignmentOptions.Center,
+                new Vector2(0.5f, 1f),
+                new Vector2(0.5f, 1f),
+                new Vector2(0f, -151f),
+                new Vector2(338f, 28f));
+            compactScannerSignalText.fontStyle = FontStyles.Bold;
+
+            TextMeshProUGUI footer = CreateText(
+                root,
+                "ScannerFooter",
+                "[B] Mở điện thoại để tắt máy quét",
+                12f,
+                TextAlignmentOptions.Center,
+                new Vector2(0.5f, 0f),
+                new Vector2(0.5f, 0f),
+                new Vector2(0f, 17f),
+                new Vector2(340f, 22f));
+            footer.color = new Color(0.72f, 0.77f, 0.83f, 1f);
+
+            Graphic[] graphics = root.GetComponentsInChildren<Graphic>(true);
+            for (int i = 0; i < graphics.Length; i++)
+            {
+                if (graphics[i] != null)
+                {
+                    graphics[i].raycastTarget = false;
+                }
+            }
+
+            root.gameObject.SetActive(false);
+            return root.gameObject;
+        }
+
+        private void DestroyOwnedScannerHud()
+        {
+            GameObject hud = compactScannerRoot;
+            compactScannerRoot = null;
+            compactScannerNetworkText = null;
+            compactScannerSignalText = null;
+            Array.Clear(
+                compactScannerBars,
+                0,
+                compactScannerBars.Length);
+
+            if (ownedScannerHudCanvas != null)
+            {
+                GameObject canvasObject = ownedScannerHudCanvas;
+                ownedScannerHudCanvas = null;
+                DestroyUiObject(canvasObject);
+                return;
+            }
+
+            if (hud != null && !hud.transform.IsChildOf(transform))
+            {
+                DestroyUiObject(hud);
+            }
+        }
+
+        private static void DestroyUiObject(GameObject target)
+        {
+            if (target == null)
+            {
+                return;
+            }
+
+            if (Application.isPlaying)
+            {
+                UnityEngine.Object.Destroy(target);
+            }
+            else
+            {
+                UnityEngine.Object.DestroyImmediate(target);
+            }
+        }
+
+        private void ShowSignalScannerExpanded()
+        {
+            if (!wifiSignalScannerActive)
+            {
+                return;
+            }
+
+            ShowApp("Signal Scanner", string.Empty);
+            SetHomeButtonAction(OpenWifiSettings);
+
+            RectTransform root = PrepareDynamicMessengerRoot();
+            ConfigureVerticalStack(
+                root,
+                6f,
+                new RectOffset(12, 12, 10, 10));
+
+            expandedScannerNetworkText = CreateWifiText(
+                root,
+                "ExpandedScannerNetwork",
+                wifiNetworkName,
+                18f,
+                30f,
+                Color.white);
+            expandedScannerNetworkText.alignment =
+                TextAlignmentOptions.Center;
+            expandedScannerNetworkText.fontStyle = FontStyles.Bold;
+
+            expandedScannerSignalText = CreateWifiText(
+                root,
+                "ExpandedScannerSignal",
+                string.Empty,
+                18f,
+                44f,
+                new Color(0.25f, 0.83f, 1f, 1f));
+            expandedScannerSignalText.alignment =
+                TextAlignmentOptions.Center;
+            expandedScannerSignalText.fontStyle = FontStyles.Bold;
+
+            Image barsBackground = CreateImage(
+                root,
+                "ExpandedScannerBars",
+                new Color(0.035f, 0.075f, 0.1f, 0.9f));
+            LayoutElement barsLayout =
+                barsBackground.gameObject.AddComponent<LayoutElement>();
+            barsLayout.preferredHeight = 92f;
+            barsLayout.minHeight = 92f;
+            barsLayout.flexibleHeight = 0f;
+            CreateScannerBars(
+                barsBackground.rectTransform,
+                expandedScannerBars,
+                36f,
+                52f,
+                16f);
+
+            TextMeshProUGUI hint = CreateWifiText(
+                root,
+                "ExpandedScannerHint",
+                "Đi quanh đồn và theo dõi cường độ tín hiệu. Máy quét không cung cấp waypoint.",
+                14f,
+                46f,
+                new Color(0.71f, 0.76f, 0.82f, 1f));
+            hint.alignment = TextAlignmentOptions.Center;
+
+            CreateSmallButton(
+                root,
+                "ScannerCompactButton",
+                "THU GỌN & TIẾP TỤC TÌM",
+                EnterScannerWalkMode,
+                44f);
+            CreateSmallButton(
+                root,
+                "ScannerStopButton",
+                "TẮT MÁY QUÉT",
+                StopScanner,
+                40f);
+
+            ForceMessengerLayout(root);
+            RefreshWifiSignalScannerVisuals();
+        }
+
+        private static void CreateScannerBars(
+            RectTransform parent,
+            Image[] destination,
+            float barWidth,
+            float horizontalStep,
+            float minimumHeight)
+        {
+            float totalWidth = horizontalStep * 4f + barWidth;
+            float startX = -totalWidth * 0.5f + barWidth * 0.5f;
+            for (int i = 0; i < destination.Length; i++)
+            {
+                Image bar = CreateImage(
+                    parent,
+                    $"SignalBar{i + 1}",
+                    GetInactiveScannerBarColor());
+                float height = minimumHeight + i * 11f;
+                SetRect(
+                    bar.rectTransform,
+                    new Vector2(0.5f, 0f),
+                    new Vector2(0.5f, 0f),
+                    new Vector2(startX + i * horizontalStep, 8f),
+                    new Vector2(barWidth, height),
+                    new Vector2(0.5f, 0f));
+                bar.raycastTarget = false;
+                destination[i] = bar;
+            }
+        }
+
+        private static void ResolveScannerBarReferences(
+            Transform parent,
+            Image[] destination)
+        {
+            if (parent == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < destination.Length; i++)
+            {
+                if (destination[i] != null)
+                {
+                    continue;
+                }
+
+                destination[i] = FindDescendant(
+                        parent,
+                        $"SignalBar{i + 1}")
+                    ?.GetComponent<Image>();
+            }
+        }
+
+        private void UpdateWifiSignalScanner()
+        {
+            if (!wifiSignalScannerActive || scannerSuspended)
+            {
+                return;
+            }
+
+            SampleWifiSignal(false);
+            scannerPulseTime += Time.unscaledDeltaTime;
+            RefreshWifiSignalScannerVisuals();
+        }
+
+        private void SampleWifiSignal(bool force)
+        {
+            float now = Time.unscaledTime;
+            if (!force && now < nextScannerSampleTime)
+            {
+                return;
+            }
+
+            nextScannerSampleTime = now + ScannerSampleInterval;
+            int bars = 1;
+            try
+            {
+                if (wifiSignalBarsProvider != null)
+                {
+                    bars = wifiSignalBarsProvider.Invoke();
+                }
+            }
+            catch (Exception exception)
+            {
+                if (!scannerProviderFaultLogged)
+                {
+                    scannerProviderFaultLogged = true;
+                    Debug.LogError(
+                        "[PhoneUIController] Không thể đọc tín hiệu " +
+                        $"Wi-Fi: {exception.Message}",
+                        this);
+                }
+            }
+
+            int sampledBars = Mathf.Clamp(bars, 1, 5);
+            if (sampledBars != currentWifiSignalBars)
+            {
+                currentWifiSignalBars = sampledBars;
+                currentWifiSignalDisplay =
+                    $"{currentWifiSignalBars}/5  •  " +
+                    GetWifiSignalLabel(currentWifiSignalBars);
+            }
+        }
+
+        private void RefreshWifiSignalScannerVisuals()
+        {
+            SetContentText(compactScannerNetworkText, wifiNetworkName);
+            SetContentText(expandedScannerNetworkText, wifiNetworkName);
+            SetContentText(
+                compactScannerSignalText,
+                currentWifiSignalDisplay);
+            SetContentText(
+                expandedScannerSignalText,
+                currentWifiSignalDisplay);
+
+            Color signalColor = currentWifiSignalBars >= 5
+                ? new Color(0.25f, 0.93f, 0.49f, 1f)
+                : new Color(0.23f, 0.82f, 1f, 1f);
+            if (compactScannerSignalText != null)
+            {
+                compactScannerSignalText.color = signalColor;
+            }
+
+            if (expandedScannerSignalText != null)
+            {
+                expandedScannerSignalText.color = signalColor;
+            }
+
+            float pulse = 0.72f +
+                          0.28f *
+                          (0.5f + 0.5f * Mathf.Sin(scannerPulseTime * 5f));
+            RefreshScannerBarSet(
+                compactScannerBars,
+                currentWifiSignalBars,
+                signalColor,
+                pulse);
+            RefreshScannerBarSet(
+                expandedScannerBars,
+                currentWifiSignalBars,
+                signalColor,
+                pulse);
+        }
+
+        private static void RefreshScannerBarSet(
+            Image[] bars,
+            int activeCount,
+            Color activeColor,
+            float pulse)
+        {
+            for (int i = 0; i < bars.Length; i++)
+            {
+                Image bar = bars[i];
+                if (bar == null)
+                {
+                    continue;
+                }
+
+                if (i >= activeCount)
+                {
+                    bar.color = GetInactiveScannerBarColor();
+                    continue;
+                }
+
+                Color color = activeColor;
+                if (i == activeCount - 1)
+                {
+                    color.a = pulse;
+                }
+
+                bar.color = color;
+            }
+        }
+
+        public static string GetWifiSignalLabel(int bars)
+        {
+            switch (Mathf.Clamp(bars, 1, 5))
+            {
+                case 1:
+                    return "XA";
+                case 2:
+                    return "GẦN HƠN";
+                case 3:
+                    return "KHÁ GẦN";
+                case 4:
+                    return "RẤT GẦN";
+                default:
+                    return "ROUTER Ở NGAY KHU VỰC NÀY";
+            }
+        }
+
+        private static Color GetInactiveScannerBarColor()
+        {
+            return new Color(0.11f, 0.17f, 0.21f, 0.9f);
+        }
+
+        private void SetFullPhonePresentation(bool fullscreen)
+        {
+            if (panelBackgroundImage != null)
+            {
+                panelBackgroundImage.enabled = fullscreen;
+            }
+
+            if (phoneFrame != null && phoneFrame != gameObject)
+            {
+                phoneFrame.SetActive(fullscreen);
+            }
+            else if (!fullscreen)
+            {
+                SetActive(homeScreen, false);
+                SetActive(appContent, false);
+                SetLegacyPhoneUiActive(false);
+            }
+        }
+
+        private void AcquirePhoneInputLock()
+        {
+            if (phoneInputLockHeld || inputLock == null)
+            {
+                return;
+            }
+
+            inputLock.AcquireInputLock(PlayerInputLock.PhoneReason);
+            phoneInputLockHeld = true;
+        }
+
+        private void ReleasePhoneInputLock()
+        {
+            if (!phoneInputLockHeld)
+            {
+                return;
+            }
+
+            inputLock?.ReleaseInputLock(PlayerInputLock.PhoneReason);
+            phoneInputLockHeld = false;
+        }
+
+        private void NotifyWifiSignalScannerActiveChanged(bool active)
+        {
+            try
+            {
+                wifiSignalScannerActiveChanged?.Invoke(active);
+            }
+            catch (Exception exception)
+            {
+                Debug.LogError(
+                    "[PhoneUIController] Lỗi callback trạng thái máy quét " +
+                    $"Wi-Fi: {exception.Message}",
+                    this);
+            }
+        }
+
+        private void SetWifiConnected(bool connected)
+        {
+            wifiConnected = connected;
+            messengerOnline = connected;
+
+            if (!connected && wifiSignalScannerActive)
+            {
+                StopScanner();
+            }
         }
 
         private void ShowMessengerContactList()
@@ -435,8 +1723,30 @@ namespace DormitoryMystery.Chapter1
                 OpenLanConversation);
 
             CreateContactButton(root, "Dũng", GetDungContactStatus(), GetDungContactBadge(), OpenDungConversation);
-            CreateContactButton(root, "Minh", "Không có tin mới", string.Empty, () => OpenSimpleConversation("Minh"));
+            CreateContactButton(
+                root,
+                "Minh",
+                GetMinhContactStatus(),
+                minhMissionMessagesAvailable &&
+                !minhMissionMessagesRead
+                    ? "2"
+                    : string.Empty,
+                minhMissionMessagesAvailable
+                    ? OpenMinhMissionConversation
+                    : () => OpenSimpleConversation("Minh"));
             ForceMessengerLayout(root);
+        }
+
+        private string GetMinhContactStatus()
+        {
+            if (!minhMissionMessagesAvailable)
+            {
+                return "Không có tin mới";
+            }
+
+            return minhMissionMessagesRead
+                ? "Đã đọc"
+                : "2 tin nhắn mới";
         }
 
         private string GetLanContactStatus()
@@ -512,6 +1822,64 @@ namespace DormitoryMystery.Chapter1
             RectTransform content = CreateConversationScroll(root);
             CreateMessageBubble(content, contactName, "Chưa có tin nhắn mới.", false);
             ForceMessengerLayout(root);
+        }
+
+        private void OpenMinhMissionConversation()
+        {
+            activeMessengerContact = "minh";
+            SetContentText(appTitleText, "Minh");
+            SetHomeButtonAction(OpenMessenger);
+
+            RectTransform root = PrepareDynamicMessengerRoot();
+            ConfigureVerticalStack(
+                root,
+                8f,
+                new RectOffset(0, 0, 0, 0));
+
+            CreateSmallButton(
+                root,
+                "BackToContacts",
+                "< Messenger",
+                OpenMessenger,
+                ConversationBackButtonHeight);
+            RectTransform content = CreateConversationScroll(root);
+            CreateMessageBubble(
+                content,
+                "Minh",
+                MinhMissionMessageOne,
+                false,
+                96f);
+            CreateMessageBubble(
+                content,
+                "Minh",
+                MinhMissionMessageTwo,
+                false,
+                96f);
+
+            MarkMinhMissionMessagesRead();
+            ForceMessengerLayout(root);
+        }
+
+        private void MarkMinhMissionMessagesRead()
+        {
+            if (!minhMissionMessagesAvailable ||
+                minhMissionMessagesRead)
+            {
+                return;
+            }
+
+            minhMissionMessagesRead = true;
+            try
+            {
+                minhMissionMessagesReadCallback?.Invoke();
+            }
+            catch (Exception exception)
+            {
+                Debug.LogError(
+                    "[PhoneUIController] Không thể lưu trạng thái " +
+                    $"đã đọc tin nhắn của Minh. Lỗi: {exception.Message}",
+                    this);
+            }
         }
 
         private void OpenDungConversation()
@@ -837,6 +2205,7 @@ namespace DormitoryMystery.Chapter1
 
         private void ClearDynamicAppBody()
         {
+            ClearExpandedScannerReferences();
             Transform bodyPanel = appBodyText != null ? appBodyText.transform.parent : FindChild("AppBodyPanel")?.transform;
             if (bodyPanel == null)
             {
@@ -860,6 +2229,16 @@ namespace DormitoryMystery.Chapter1
                 {
                     DestroyImmediate(child.gameObject);
                 }
+            }
+        }
+
+        private void ClearExpandedScannerReferences()
+        {
+            expandedScannerSignalText = null;
+            expandedScannerNetworkText = null;
+            for (int i = 0; i < expandedScannerBars.Length; i++)
+            {
+                expandedScannerBars[i] = null;
             }
         }
 
@@ -1166,6 +2545,12 @@ namespace DormitoryMystery.Chapter1
 
             SyncFirstMissionReferences();
 
+            Chapter1SaveData phoneData = GetCurrentSaveData();
+            if (phoneData != null)
+            {
+                ApplyPersistedMessengerState(phoneData, false);
+            }
+
             if (firstMissionManager != null)
             {
                 Chapter1SaveData data = firstMissionManager.Data;
@@ -1193,6 +2578,48 @@ namespace DormitoryMystery.Chapter1
             lanRecordingDownloaded |= (int)state >= (int)LanRecordingMissionState.RecordingDownloaded;
         }
 
+        private void ApplyPersistedMessengerState(
+            Chapter1SaveData data,
+            bool replaceRuntimeState)
+        {
+            if (data == null)
+            {
+                return;
+            }
+
+            data.EnsureValidDefaults();
+            LanRecordingMissionState state =
+                data.GetPhoneLanRecordingState();
+            bool savedMotherRead =
+                (int)state >=
+                (int)LanRecordingMissionState.ReadMotherChat;
+            bool savedLanReceived =
+                (int)state >=
+                (int)LanRecordingMissionState.LanMessageReceived;
+            bool savedLanRead =
+                (int)state >=
+                (int)LanRecordingMissionState.RecordingOpened;
+            bool savedRecordingDownloaded =
+                (int)state >=
+                (int)LanRecordingMissionState.RecordingDownloaded ||
+                data.HasPhoneRecording(
+                    LanAudioRecordingCatalog.MixedRecordingId);
+
+            if (replaceRuntimeState)
+            {
+                motherChatRead = savedMotherRead;
+                lanMessageReceived = savedLanReceived;
+                lanChatRead = savedLanRead;
+                lanRecordingDownloaded = savedRecordingDownloaded;
+                return;
+            }
+
+            motherChatRead |= savedMotherRead;
+            lanMessageReceived |= savedLanReceived;
+            lanChatRead |= savedLanRead;
+            lanRecordingDownloaded |= savedRecordingDownloaded;
+        }
+
         private void AdvanceMissionState(LanRecordingMissionState state)
         {
             if (missionController == null)
@@ -1203,6 +2630,19 @@ namespace DormitoryMystery.Chapter1
             if (missionController != null)
             {
                 missionController.SetState(state);
+                return;
+            }
+
+            // Runtime-created test/UI setups may not contain the scene
+            // mission controller. Persist through the Chapter 1 manager as
+            // the authoritative fallback, but never mutate a carried Chapter
+            // 2 snapshot merely because the phone was opened.
+            Chapter1Manager chapterManager = Chapter1Manager.Instance;
+            if (carriedPhoneData == null && chapterManager != null &&
+                chapterManager.CurrentData.AdvancePhoneLanRecordingState(
+                    state))
+            {
+                chapterManager.SaveChapter();
             }
         }
 
@@ -1226,6 +2666,12 @@ namespace DormitoryMystery.Chapter1
 
         private Chapter1SaveData GetCurrentSaveData()
         {
+            if (carriedPhoneData != null)
+            {
+                carriedPhoneData.EnsureValidDefaults();
+                return carriedPhoneData;
+            }
+
             SyncFirstMissionReferences();
             Chapter1Manager chapterManager = Chapter1Manager.Instance;
             Chapter1SaveData data = firstMissionManager != null ? firstMissionManager.Data : chapterManager != null ? chapterManager.CurrentData : null;
@@ -1336,7 +2782,10 @@ namespace DormitoryMystery.Chapter1
                 missionController = FindAnyObjectByType<LanRecordingMissionController>(FindObjectsInactive.Include);
             }
 
-            return missionController != null ? missionController.LanRecordingClip : null;
+            return LanAudioRecordingCatalog.ResolveClip(
+                LanAudioRecordingCatalog.MixedRecordingId,
+                missionController,
+                mixerController);
         }
 
         private void ToggleLanVoicePlayback()
@@ -1507,6 +2956,33 @@ namespace DormitoryMystery.Chapter1
             return null;
         }
 
+        private static Transform FindDescendant(
+            Transform root,
+            string objectName)
+        {
+            if (root == null)
+            {
+                return null;
+            }
+
+            Transform[] hierarchy =
+                root.GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < hierarchy.Length; i++)
+            {
+                Transform candidate = hierarchy[i];
+                if (candidate != null &&
+                    string.Equals(
+                        candidate.name,
+                        objectName,
+                        StringComparison.Ordinal))
+                {
+                    return candidate;
+                }
+            }
+
+            return null;
+        }
+
         private T FindChildComponent<T>(string childName) where T : Component
         {
             T[] components = GetComponentsInChildren<T>(true);
@@ -1523,7 +2999,9 @@ namespace DormitoryMystery.Chapter1
 
         private void PlayClip(AudioClip clip)
         {
-            if (audioSource != null && clip != null)
+            if (audioSource != null &&
+                audioSource.isActiveAndEnabled &&
+                clip != null)
             {
                 audioSource.PlayOneShot(clip);
             }
@@ -1547,7 +3025,7 @@ namespace DormitoryMystery.Chapter1
 
         private static void SetContentText(TextMeshProUGUI text, string value)
         {
-            if (text != null)
+            if (text != null && text.text != value)
             {
                 text.text = value;
             }

@@ -1,24 +1,20 @@
-﻿# MISSION 01 AUDIO SEPARATOR VALIDATION REPORT
+﻿# MISSION 01 AUDIO SEPARATOR SETUP REPORT
 
-- INFO: Opened scene: Assets/Chapter1/Scenes/Chapter1_Dormitory.unity.
-- PASS: Chapter1Manager exists exactly once.
-- PASS: Mission01AudioSeparatorManager exists exactly once.
-- PASS: PhoneUIController exists; Messenger includes fixed Dũng contact in PhoneUIController.
-- PASS: Dũng fixed dialogue choices exist. Initial choice count check: 1.
-- PASS: No message/objective reveals 2502 or 25/02 before the door solution.
-- PASS: Mission 01 scripts do not use AI, API calls, backend, or API keys.
-- PASS: Minh interaction exists: Minh/Minh_interaction.
-- PASS: DungRoom or DungRoom_Marker exists.
-- PASS: DungRoom_Door and Mission01DungDoorInteractable exist.
-- PASS: DungRoom_Keypad exists and password check is 2502.
-- PASS: RoomDoor_Dung has RoomDoorKeypadController for physical keypad flow.
-- PASS: Physical RoomDoor_Dung NavKeypad keypadCombo is 2502.
-- PASS: WallCalendar_March25 exists and has clue interaction.
-- PASS: AudioSeparator_Device exists as a world interaction, not an inventory pickup.
-- PASS: No Missing Script components found in scene.
-- PASS: No duplicate object named Mission01AudioSeparatorManager. Count: 1.
-- PASS: No duplicate object named DungRoom. Count: 1.
-- PASS: No duplicate object named AudioSeparator_Device. Count: 1.
+- INFO: Using active scene: Assets/Chapter1/Scenes/Chapter1_Dormitory.unity.
+- PASS: Found Chapter1Manager: Chapter1_Dormitory/Managers/Chapter1Manager.
+- PASS: Found Mission01AudioSeparatorManager: Chapter1_Dormitory/Managers/Mission01AudioSeparatorManager.
+- PASS: Created/updated AudioSeparator prefab: Assets/Chapter1/Prefabs/Gameplay/AudioSeparator_Device.prefab.
+- PASS: Connected Mission 01 manager to 1 PhoneUIController component(s). Contact Dũng is hardcoded once in the existing Messenger list.
+- PASS: Connected Minh dialogue: Minh/Minh_interaction.
+- PASS: Found existing DungRoom: DungRoom.
+- PASS: Configured physical RoomDoor_Dung NavKeypad keypadCombo to 2502.
+- PASS: Placed AudioSeparator_Spawn from desk reference: Dung_desktop.
+- PASS: Found existing AudioSeparator_Device; preserved its current transform: DungRoom/AudioSeparator_Spawn/AudioSeparator_Device.
+- PASS: Ensured DungRoom structure: DungRoom_Door, DungRoom_Keypad, AudioSeparator_Spawn, DungRoom_InteriorMarker.
+- PASS: Connected calendar clue interactable: Chapter1_Dormitory/Environment/Walls/Wall_Room_Nam_South_Left/WallCalendar_March25.
+- PASS: Saved scene references: Assets/Chapter1/Scenes/Chapter1_Dormitory.unity.
+- INFO: AudioSeparator device is configured as a world interaction, not an inventory pickup.
+- INFO: Dung room placement: RoomDoor_Dung used as reference.
 
 ## Required Notes
 - Created/updated code and scene wiring for Mission 01 – Borrow the Audio Separator.
@@ -29,4 +25,4 @@
 - Manual placement may still be needed for DungRoom_Marker or AudioSeparator_Spawn if the scene could not identify Dũng's exact desk/room.
 - This mission does not use AI, API calls, backend services, or API keys.
 
-PASS: 18 | WARNING: 0 | FAIL: 0
+PASS: 12 | WARNING: 0 | FAIL: 0

@@ -6,12 +6,15 @@ namespace DormitoryMystery.Chapter2
 {
     /// <summary>
     /// Restores Chapter 2's starting inventory from the independent Chapter 2
-    /// save. No Chapter 1 save data is read or modified in Police_Station.
+    /// save. Phone contents are imported from Chapter 1 once, then owned by
+    /// the Chapter 2 save and never synchronized back.
     /// </summary>
     public static class Chapter2CarryOverBootstrap
     {
         private const string PoliceStationSceneName = "Police_Station";
         private const string PhoneItemId = "phone";
+        private const string PhoneResourcePath =
+            "Inventory/Chapter2PhoneItem";
 
         [RuntimeInitializeOnLoadMethod(
             RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -52,6 +55,7 @@ namespace DormitoryMystery.Chapter2
 
             Chapter2SaveManager manager =
                 Chapter2SaveManager.EnsureForScene(scene);
+            ImportChapter1PhoneDataOnce(manager);
             InventoryController inventory =
                 FindSceneComponent<InventoryController>(scene);
             if (inventory == null)
@@ -64,7 +68,13 @@ namespace DormitoryMystery.Chapter2
 
             Chapter2SaveData data = manager.CurrentData;
             data.EnsureValidDefaults();
+            inventory.SetStartingItems(
+                System.Array.Empty<ItemDefinition>());
             inventory.EnsureStartingItems();
+            if (IsFreshChapter2Start(data))
+            {
+                inventory.ClearItems();
+            }
 
             Mission3PoliceKeyInventorySync chapter1KeySync =
                 inventory.GetComponent<
@@ -74,15 +84,82 @@ namespace DormitoryMystery.Chapter2
                 chapter1KeySync.enabled = false;
             }
 
-            RestorePoliceKey(data, inventory);
-            VerifyPhone(data, inventory);
+            ReconcilePhone(data, inventory);
+            ReconcilePoliceKey(data, inventory);
+            ConfigurePhoneContents(scene, data);
         }
 
-        private static void RestorePoliceKey(
+        private static bool IsFreshChapter2Start(
+            Chapter2SaveData data)
+        {
+            return data != null &&
+                   !data.Mission01CrowbarCollected &&
+                   !data.Mission01ToiletPried &&
+                   !data.Mission01ServiceCardCollected &&
+                   !data.Mission02JailObstacleDisabled &&
+                   !data.Mission03ClosetUnlocked &&
+                   !data.Mission03PhoneRecovered &&
+                   !data.Mission04ComputerUnlocked &&
+                   !data.Mission05RouterInspected &&
+                   !data.Mission05SecretDocumentCollected;
+        }
+
+        private static void ImportChapter1PhoneDataOnce(
+            Chapter2SaveManager manager)
+        {
+            if (manager == null ||
+                manager.CurrentData.Chapter1PhoneDataImported)
+            {
+                return;
+            }
+
+            JsonChapter1SaveService chapter1Save =
+                new JsonChapter1SaveService();
+            if (!chapter1Save.HasSave())
+            {
+                return;
+            }
+
+            manager.ImportChapter1PhoneData(chapter1Save.Load());
+        }
+
+        private static void ConfigurePhoneContents(
+            Scene scene,
+            Chapter2SaveData data)
+        {
+            PhoneUIController phone =
+                FindSceneComponent<PhoneUIController>(scene);
+            if (phone == null)
+            {
+                BackpackPhoneInputController backpackPhone =
+                    FindSceneComponent<BackpackPhoneInputController>(
+                        scene);
+                phone = backpackPhone != null
+                    ? backpackPhone.PhoneUIController
+                    : null;
+            }
+
+            if (phone == null)
+            {
+                Debug.LogWarning(
+                    "[Chapter2CarryOver] Chưa tìm thấy PhoneUIController " +
+                    "để cấu hình dữ liệu điện thoại Chapter 2.");
+                return;
+            }
+
+            data.PhoneData ??= Chapter2PhoneData.CreateDefault();
+            phone.ConfigureCarriedPhoneData(
+                data.PhoneData.ToChapter1SaveData(),
+                data.Mission04PoliceWifiConnected);
+        }
+
+        private static void ReconcilePoliceKey(
             Chapter2SaveData data,
             InventoryController inventory)
         {
-            if (!data.HasPoliceStationKey)
+            inventory.RemoveItem(
+                Mission3PoliceKeyInventorySync.PoliceKeyItemId);
+            if (!data.Mission03PoliceKeyRecovered)
             {
                 return;
             }
@@ -96,20 +173,32 @@ namespace DormitoryMystery.Chapter2
             }
         }
 
-        private static void VerifyPhone(
+        private static void ReconcilePhone(
             Chapter2SaveData data,
             InventoryController inventory)
         {
-            if (!data.HasPhone)
+            inventory.RemoveItem(PhoneItemId);
+            if (!data.Mission03PhoneRecovered)
             {
                 return;
             }
 
-            if (!inventory.HasItem(PhoneItemId))
+            ItemDefinition phoneDefinition =
+                Resources.Load<ItemDefinition>(PhoneResourcePath);
+            if (phoneDefinition == null)
             {
                 Debug.LogError(
-                    "[Chapter2CarryOver] Player prefab không khôi phục " +
-                    "được điện thoại khởi đầu vào balo của Nam.");
+                    "[Chapter2CarryOver] Không tìm thấy ItemDefinition " +
+                    $"tại Resources/{PhoneResourcePath}.");
+                return;
+            }
+
+            if (!inventory.AddItem(phoneDefinition) &&
+                !inventory.HasItem(PhoneItemId))
+            {
+                Debug.LogError(
+                    "[Chapter2CarryOver] Không thể khôi phục điện thoại " +
+                    "vào balo Chapter 2 của Nam.");
             }
         }
 
