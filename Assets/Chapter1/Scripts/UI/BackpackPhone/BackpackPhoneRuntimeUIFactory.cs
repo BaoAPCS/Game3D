@@ -153,13 +153,13 @@ namespace DormitoryMystery.Chapter1
                 grid,
                 new Vector2(0.5f, 0.5f),
                 new Vector2(0.5f, 0.5f),
-                new Vector2(0f, -18f),
-                new Vector2(332f, 346f),
+                new Vector2(0f, -28f),
+                new Vector2(332f, 444f),
                 new Vector2(0.5f, 0.5f));
 
             GridLayoutGroup layout = grid.gameObject.AddComponent<GridLayoutGroup>();
-            layout.cellSize = new Vector2(146f, 146f);
-            layout.spacing = new Vector2(34f, 34f);
+            layout.cellSize = new Vector2(146f, 132f);
+            layout.spacing = new Vector2(20f, 12f);
             layout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
             layout.constraintCount = 2;
             layout.childAlignment = TextAnchor.MiddleCenter;
@@ -168,6 +168,7 @@ namespace DormitoryMystery.Chapter1
             CreateAppButton(grid, "RecorderButton", "Ghi \u00e2m", "REC", new Color(0.82f, 0.12f, 0.17f, 1f));
             CreateAppButton(grid, "CameraButton", "Camera", "CAM", new Color(0.13f, 0.62f, 0.37f, 1f));
             CreateAppButton(grid, "GoogleButton", "Google", "G", new Color(0.96f, 0.72f, 0.12f, 1f));
+            CreateAppButton(grid, "WifiButton", "Wi-Fi", "WIFI", new Color(0.08f, 0.68f, 0.94f, 1f));
         }
 
         private static RectTransform CreatePhoneAppContent(RectTransform parent)

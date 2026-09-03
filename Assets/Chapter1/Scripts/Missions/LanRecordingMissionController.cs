@@ -25,6 +25,22 @@ namespace DormitoryMystery.Chapter1
             }
         }
 
+        private void Start()
+        {
+            Chapter1SaveData data = Chapter1Manager.Instance?.CurrentData;
+            if (data == null)
+            {
+                return;
+            }
+
+            LanRecordingMissionState savedState =
+                data.GetPhoneLanRecordingState();
+            if ((int)savedState > (int)state)
+            {
+                state = savedState;
+            }
+        }
+
         public void ConfigureLanRecording(AudioClip clip, PhoneMessageData voiceMessage)
         {
             lanRecordingClip = clip;
@@ -41,16 +57,27 @@ namespace DormitoryMystery.Chapter1
             }
 
             state = nextState;
+            PersistState();
         }
 
         public void MarkRecordingDownloaded()
         {
-            if ((int)state < (int)LanRecordingMissionState.RecordingDownloaded)
+            SetState(LanRecordingMissionState.RecordingDownloaded);
+            NotifyLanRecordingSaved();
+        }
+
+        private void PersistState()
+        {
+            Chapter1Manager manager = Chapter1Manager.Instance;
+            if (manager == null)
             {
-                state = LanRecordingMissionState.RecordingDownloaded;
+                return;
             }
 
-            NotifyLanRecordingSaved();
+            if (manager.CurrentData.AdvancePhoneLanRecordingState(state))
+            {
+                manager.SaveChapter();
+            }
         }
 
         public void NotifyLanRecordingSaved()

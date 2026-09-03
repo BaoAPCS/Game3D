@@ -44,15 +44,18 @@ namespace DormitoryMystery.Chapter1
                 case Chapter1MissionCheckpoint.Mission3Start:
                     return CreateMission3Start(source);
                 default:
-                    return CreateMission1Start();
+                    return CreateMission1Start(source);
             }
         }
 
-        private static Chapter1SaveData CreateMission1Start()
+        private static Chapter1SaveData CreateMission1Start(
+            Chapter1SaveData source)
         {
             Chapter1SaveData snapshot = Chapter1SaveData.CreateDefault();
             snapshot.CurrentCheckpointId =
                 Chapter1MissionCheckpoint.Mission1Start;
+            CopyPhoneData(source, snapshot);
+            snapshot.EnsureValidDefaults();
             return snapshot;
         }
 
@@ -62,27 +65,13 @@ namespace DormitoryMystery.Chapter1
             Chapter1SaveData snapshot = Chapter1SaveData.CreateDefault();
             snapshot.CurrentCheckpointId =
                 Chapter1MissionCheckpoint.Mission2Start;
+            CopyPhoneData(source, snapshot);
 
             // Task 1's completed world baseline remains intact so its door,
             // dialogue and separator interactions do not respawn. Only the
             // final Minh hand-off is replayed to open Task 2 again.
-            snapshot.HasLanRecording = source.HasLanRecording;
             snapshot.Mission01MinhIntroDialoguePlayed =
                 source.Mission01MinhIntroDialoguePlayed;
-            snapshot.Mission01DungBorrowRequestSent =
-                source.Mission01DungBorrowRequestSent;
-            snapshot.Mission01DungBorrowReplyReceived =
-                source.Mission01DungBorrowReplyReceived;
-            snapshot.Mission01DungPasswordQuestionSent =
-                source.Mission01DungPasswordQuestionSent;
-            snapshot.Mission01DungPasswordHintReceived =
-                source.Mission01DungPasswordHintReceived;
-            snapshot.Mission01DungBirthdayQuestionSent =
-                source.Mission01DungBirthdayQuestionSent;
-            snapshot.Mission01DungBirthdayHintReceived =
-                source.Mission01DungBirthdayHintReceived;
-            snapshot.Mission01DungHasUnread =
-                source.Mission01DungHasUnread;
             snapshot.Mission01DungDoorDiscovered =
                 source.Mission01DungDoorDiscovered;
             snapshot.Mission01DungDoorUnlocked =
@@ -93,16 +82,8 @@ namespace DormitoryMystery.Chapter1
                 source.Mission01AudioSeparatorMixerStarted;
             snapshot.Mission01AudioSeparatorTutorialSeen =
                 source.Mission01AudioSeparatorTutorialSeen;
-            snapshot.Mission01LanVoiceRecordingListened =
-                source.Mission01LanVoiceRecordingListened;
             snapshot.Mission01CalendarViewed =
                 source.Mission01CalendarViewed;
-            snapshot.SavedPhoneRecordingIds = new List<string>(
-                source.SavedPhoneRecordingIds);
-            snapshot.SavedLanAudioStemIds = new List<string>(
-                source.SavedLanAudioStemIds);
-            snapshot.AudioSeparatorFaderValues = new List<float>(
-                source.AudioSeparatorFaderValues);
 
             // Rebuild any missing part of the committed six-stem result.
             for (int i = 0;
@@ -121,6 +102,49 @@ namespace DormitoryMystery.Chapter1
             snapshot.Mission01Completed = false;
             snapshot.EnsureValidDefaults();
             return snapshot;
+        }
+
+        /// <summary>
+        /// Phone contents belong to Nam rather than to a replayable world
+        /// checkpoint. Preserve them even when a test save rolls the current
+        /// mission back to its stable starting state.
+        /// </summary>
+        private static void CopyPhoneData(
+            Chapter1SaveData source,
+            Chapter1SaveData destination)
+        {
+            if (source == null || destination == null)
+            {
+                return;
+            }
+
+            destination.PhoneLanRecordingStateValue =
+                source.PhoneLanRecordingStateValue;
+            destination.HasLanRecording = source.HasLanRecording;
+            destination.Mission01LanVoiceRecordingListened =
+                source.Mission01LanVoiceRecordingListened;
+
+            destination.Mission01DungBorrowRequestSent =
+                source.Mission01DungBorrowRequestSent;
+            destination.Mission01DungBorrowReplyReceived =
+                source.Mission01DungBorrowReplyReceived;
+            destination.Mission01DungPasswordQuestionSent =
+                source.Mission01DungPasswordQuestionSent;
+            destination.Mission01DungPasswordHintReceived =
+                source.Mission01DungPasswordHintReceived;
+            destination.Mission01DungBirthdayQuestionSent =
+                source.Mission01DungBirthdayQuestionSent;
+            destination.Mission01DungBirthdayHintReceived =
+                source.Mission01DungBirthdayHintReceived;
+            destination.Mission01DungHasUnread =
+                source.Mission01DungHasUnread;
+
+            destination.SavedPhoneRecordingIds = new List<string>(
+                source.SavedPhoneRecordingIds ?? new List<string>());
+            destination.SavedLanAudioStemIds = new List<string>(
+                source.SavedLanAudioStemIds ?? new List<string>());
+            destination.AudioSeparatorFaderValues = new List<float>(
+                source.AudioSeparatorFaderValues ?? new List<float>());
         }
 
         private static Chapter1SaveData CreateMission3Start(

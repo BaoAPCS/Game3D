@@ -1,4 +1,5 @@
 using System.Collections;
+using DormitoryMystery.Chapter2;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -222,7 +223,24 @@ namespace DormitoryMystery.Chapter1
             // Let Chapter 2's runtime bootstrap restore save-backed items
             // while the screen is still fully black.
             yield return null;
+
+            Chapter2JailIntroController jailIntro =
+                Chapter2JailIntroController.PrepareForTransition(
+                    SceneManager.GetActiveScene());
             yield return Fade(1f, 0f);
+
+            if (jailIntro != null && jailIntro.IsPrepared)
+            {
+                yield return jailIntro.PlayShot();
+                yield return Fade(0f, 1f);
+                jailIntro.CompleteIntro();
+
+                // Keep one fully black frame between the cinematic camera
+                // and the restored third-person gameplay camera.
+                yield return null;
+                yield return Fade(1f, 0f);
+            }
+
             transitionRoutine = null;
             Destroy(gameObject);
         }

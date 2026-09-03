@@ -1,4 +1,5 @@
 using System;
+using DormitoryMystery.Chapter2;
 using UnityEngine;
 
 namespace DormitoryMystery.Chapter1
@@ -294,7 +295,8 @@ namespace DormitoryMystery.Chapter1
                 targetDistance <= 1.5f;
             bypassObstruction = bypassObstruction ||
                 interactable is HenryDialogueInteractable ||
-                interactable is JamesDialogueInteractable;
+                interactable is JamesDialogueInteractable ||
+                interactable is Chapter2DeskComputerInteractable;
             if (!bypassObstruction && IsObstructed(targetPosition))
             {
                 return;
