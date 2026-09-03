@@ -193,6 +193,24 @@ namespace DormitoryMystery.Chapter2
             SaveChapter2();
         }
 
+        public void SaveMission05RouterInspected()
+        {
+            CurrentData.Mission05RouterInspected = true;
+            SaveChapter2();
+        }
+
+        public void SaveMission05DocumentCollected()
+        {
+            CurrentData.Mission05SecretDocumentCollected = true;
+            SaveChapter2();
+        }
+
+        public void ResetMission05()
+        {
+            ResetMission05State();
+            SaveChapter2();
+        }
+
         private void ResetMission03State()
         {
             CurrentData.Mission03PhoneRecovered = false;
@@ -208,6 +226,13 @@ namespace DormitoryMystery.Chapter2
             CurrentData.Mission04WifiPasswordDiscovered = false;
             CurrentData.Mission04PoliceWifiConnected = false;
             CurrentData.Mission04MinhMessagesRead = false;
+            ResetMission05State();
+        }
+
+        private void ResetMission05State()
+        {
+            CurrentData.Mission05RouterInspected = false;
+            CurrentData.Mission05SecretDocumentCollected = false;
         }
 
         private void EnsureSaveService()

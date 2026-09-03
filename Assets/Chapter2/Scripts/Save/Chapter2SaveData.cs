@@ -20,6 +20,8 @@ namespace DormitoryMystery.Chapter2
         public bool Mission04WifiPasswordDiscovered;
         public bool Mission04PoliceWifiConnected;
         public bool Mission04MinhMessagesRead;
+        public bool Mission05RouterInspected;
+        public bool Mission05SecretDocumentCollected;
         public bool Chapter1PhoneDataImported;
         public Chapter2PhoneData PhoneData;
 
@@ -29,6 +31,9 @@ namespace DormitoryMystery.Chapter2
 
         public bool Mission04Completed =>
             Mission04PoliceWifiConnected;
+
+        public bool Mission05Completed =>
+            Mission05SecretDocumentCollected;
 
         public static Chapter2SaveData CreateDefault()
         {
@@ -42,6 +47,16 @@ namespace DormitoryMystery.Chapter2
             SaveVersion = CurrentSaveVersion;
             PhoneData ??= Chapter2PhoneData.CreateDefault();
             PhoneData.EnsureValidDefaults();
+
+            if (Mission05SecretDocumentCollected)
+            {
+                Mission05RouterInspected = true;
+            }
+
+            if (Mission05RouterInspected)
+            {
+                Mission04MinhMessagesRead = true;
+            }
 
             if (Mission04MinhMessagesRead)
             {
@@ -118,6 +133,10 @@ namespace DormitoryMystery.Chapter2
                     Mission04PoliceWifiConnected,
                 Mission04MinhMessagesRead =
                     Mission04MinhMessagesRead,
+                Mission05RouterInspected =
+                    Mission05RouterInspected,
+                Mission05SecretDocumentCollected =
+                    Mission05SecretDocumentCollected,
                 Chapter1PhoneDataImported =
                     Chapter1PhoneDataImported,
                 PhoneData = PhoneData?.DeepCopy() ??

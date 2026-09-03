@@ -296,7 +296,8 @@ namespace DormitoryMystery.Chapter1
             bypassObstruction = bypassObstruction ||
                 interactable is HenryDialogueInteractable ||
                 interactable is JamesDialogueInteractable ||
-                interactable is Chapter2DeskComputerInteractable;
+                interactable is Chapter2DeskComputerInteractable ||
+                interactable is Chapter2RouterInteractable;
             if (!bypassObstruction && IsObstructed(targetPosition))
             {
                 return;
