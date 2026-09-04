@@ -119,9 +119,16 @@ namespace DormitoryMystery.Chapter2.Editor
             data.Mission04WifiPasswordDiscovered = mission04Completed;
             data.Mission04PoliceWifiConnected = mission04Completed;
             data.Mission04MinhMessagesRead = mission04Completed;
+            data.Mission05ScannerActivated = false;
             data.Mission05RouterInspected = false;
             data.Mission05SecretDocumentCollected = false;
             data.Mission05BrokenDoorUnlocked = false;
+            data.Mission05SecretDocumentViewed = false;
+            data.Mission05MinhConversationAvailable = false;
+            data.Mission05MinhConversationOpened = false;
+            data.Mission05MinhConversationStep = 0;
+            data.Chapter2Completed = false;
+            data.ChapterEndInventory?.Clear();
             data.EnsureValidDefaults();
             return data;
         }
@@ -217,9 +224,16 @@ namespace DormitoryMystery.Chapter2.Editor
                 data.Mission04MinhMessagesRead = false;
             }
 
+            data.Mission05ScannerActivated = false;
             data.Mission05RouterInspected = false;
             data.Mission05SecretDocumentCollected = false;
             data.Mission05BrokenDoorUnlocked = false;
+            data.Mission05SecretDocumentViewed = false;
+            data.Mission05MinhConversationAvailable = false;
+            data.Mission05MinhConversationOpened = false;
+            data.Mission05MinhConversationStep = 0;
+            data.Chapter2Completed = false;
+            data.ChapterEndInventory?.Clear();
             data.EnsureValidDefaults();
             return data;
         }

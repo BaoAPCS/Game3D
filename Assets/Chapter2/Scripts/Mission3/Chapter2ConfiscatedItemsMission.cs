@@ -118,9 +118,9 @@ namespace DormitoryMystery.Chapter2
             policeKeyDefinition = confiscatedPoliceKey;
 
             ResolvePlayerReferences(null);
-            RegisterInventoryUseHandler();
             EnsureMissionUI();
             configured = ValidateRequiredReferences();
+            RegisterInventoryUseHandler();
             ApplySavedState();
         }
 
@@ -357,6 +357,7 @@ namespace DormitoryMystery.Chapter2
             }
 
             missionUI?.Hide();
+            RegisterInventoryUseHandler();
         }
 
         private void ReconcileInventoryItem(
@@ -443,7 +444,18 @@ namespace DormitoryMystery.Chapter2
                 }
             }
 
-            inventoryUI?.SetItemUseHandler(this);
+            if (configured &&
+                MissionAvailable &&
+                !ClosetUnlocked &&
+                !PhoneRecovered &&
+                !IsCompleted)
+            {
+                inventoryUI?.SetItemUseHandler(this);
+            }
+            else
+            {
+                inventoryUI?.ClearItemUseHandler(this);
+            }
         }
 
         private bool ValidateRequiredReferences()

@@ -19,6 +19,7 @@ namespace DormitoryMystery.Chapter1
         [SerializeField] private string itemId;
         [SerializeField] private string displayName;
         [SerializeField] private Sprite icon;
+        [SerializeField] private Sprite previewImage;
         [SerializeField, TextArea(2, 6)] private string description;
         [SerializeField] private ItemCategory category = ItemCategory.Other;
         [SerializeField] private bool isStackable;
@@ -29,6 +30,9 @@ namespace DormitoryMystery.Chapter1
         public string ItemId => itemId;
         public string DisplayName => displayName;
         public Sprite Icon => icon;
+        public Sprite PreviewImage => previewImage != null
+            ? previewImage
+            : icon;
         public string Description => description;
         public ItemCategory Category => category;
         public bool IsStackable => isStackable;

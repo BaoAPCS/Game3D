@@ -309,6 +309,11 @@ namespace DormitoryMystery.Chapter2
                 return;
             }
 
+            if (!saveManager.CurrentData.Mission05ScannerActivated)
+            {
+                saveManager.SaveMission05ScannerActivated();
+            }
+
             strongSignalNotificationShown = false;
             lastSignalSampleTime = -1f;
             SampleSignal(true);

@@ -11,6 +11,9 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Chapter2/Scenes/Police_Station.unity
     guid: 9341d9cea763ce04dbfe2c93fff7f6d2
+  - enabled: 1
+    path: Assets/Chapter3/Scene/Abandoned Hospital.unity
+    guid: 7d674a38d5db4c84d9bc88a7d788fbe9
   - enabled: 0
     path: Assets/Scenes/SampleScene.unity
     guid: 99c9720ab356a0642a771bea13969a05

@@ -271,6 +271,7 @@ namespace DormitoryMystery.Chapter2.Tests
                 Assert.IsFalse(mission.InteractionsAvailable);
 
                 phone.StartWifiSignalScanner();
+                data.Mission05ScannerActivated = true;
                 SynchronizeProgress(mission);
 
                 Assert.IsTrue(contractCollider.enabled);
@@ -331,9 +332,9 @@ namespace DormitoryMystery.Chapter2.Tests
 
                 phone.StopScanner();
                 SynchronizeProgress(mission);
-                Assert.IsFalse(contractCollider.enabled);
-                Assert.IsFalse(keypadCollider.enabled);
-                Assert.IsFalse(mission.InteractionsAvailable);
+                Assert.IsTrue(contractCollider.enabled);
+                Assert.IsTrue(keypadCollider.enabled);
+                Assert.IsTrue(mission.InteractionsAvailable);
 
                 phone.StartWifiSignalScanner();
                 SynchronizeProgress(mission);

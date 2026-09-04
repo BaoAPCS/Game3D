@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace DormitoryMystery.Chapter2
 {
@@ -6,6 +7,7 @@ namespace DormitoryMystery.Chapter2
     public sealed class Chapter2SaveData
     {
         public const int CurrentSaveVersion = 1;
+        public const int EndingConversationFinalStep = 4;
 
         public int SaveVersion = CurrentSaveVersion;
         public bool HasPhone;
@@ -21,12 +23,19 @@ namespace DormitoryMystery.Chapter2
         public bool Mission04WifiPasswordDiscovered;
         public bool Mission04PoliceWifiConnected;
         public bool Mission04MinhMessagesRead;
+        public bool Mission05ScannerActivated;
         public bool Mission05RouterInspected;
         public bool Mission05SecretDocumentCollected;
         public bool Mission05BrokenDoorUnlocked;
+        public bool Mission05SecretDocumentViewed;
+        public bool Mission05MinhConversationAvailable;
+        public bool Mission05MinhConversationOpened;
+        public int Mission05MinhConversationStep;
+        public bool Chapter2Completed;
         public bool Chapter1PhoneDataImported;
         public bool Chapter1CarryOverInventoryApplied;
         public Chapter2PhoneData PhoneData;
+        public List<Chapter2InventoryEntry> ChapterEndInventory;
 
         public bool Mission03Completed =>
             Mission03PhoneRecovered &&
@@ -51,6 +60,41 @@ namespace DormitoryMystery.Chapter2
             SaveVersion = CurrentSaveVersion;
             PhoneData ??= Chapter2PhoneData.CreateDefault();
             PhoneData.EnsureValidDefaults();
+            ChapterEndInventory ??= new List<Chapter2InventoryEntry>();
+            NormalizeChapterEndInventory();
+
+            Mission05MinhConversationStep = Math.Max(
+                0,
+                Math.Min(
+                    EndingConversationFinalStep,
+                    Mission05MinhConversationStep));
+
+            if (Chapter2Completed ||
+                Mission05MinhConversationStep >=
+                EndingConversationFinalStep)
+            {
+                Chapter2Completed = true;
+                Mission05MinhConversationAvailable = true;
+                Mission05MinhConversationOpened = true;
+                Mission05MinhConversationStep =
+                    EndingConversationFinalStep;
+            }
+
+            if (Mission05MinhConversationOpened ||
+                Mission05MinhConversationStep > 0)
+            {
+                Mission05MinhConversationAvailable = true;
+            }
+
+            if (Mission05MinhConversationAvailable)
+            {
+                Mission05SecretDocumentViewed = true;
+            }
+
+            if (Mission05SecretDocumentViewed)
+            {
+                Mission05SecretDocumentCollected = true;
+            }
 
             // Chapter 2 starts after James gave Nam this key. Older Chapter 2
             // saves did not preserve that carry-over item, so migrate them
@@ -66,12 +110,13 @@ namespace DormitoryMystery.Chapter2
                 Mission05RouterInspected = true;
             }
 
-            if (Mission05BrokenDoorUnlocked)
+            if (Mission05BrokenDoorUnlocked ||
+                Mission05RouterInspected)
             {
-                Mission04MinhMessagesRead = true;
+                Mission05ScannerActivated = true;
             }
 
-            if (Mission05RouterInspected)
+            if (Mission05ScannerActivated)
             {
                 Mission04MinhMessagesRead = true;
             }
@@ -160,21 +205,102 @@ namespace DormitoryMystery.Chapter2
                     Mission04PoliceWifiConnected,
                 Mission04MinhMessagesRead =
                     Mission04MinhMessagesRead,
+                Mission05ScannerActivated =
+                    Mission05ScannerActivated,
                 Mission05RouterInspected =
                     Mission05RouterInspected,
                 Mission05SecretDocumentCollected =
                     Mission05SecretDocumentCollected,
                 Mission05BrokenDoorUnlocked =
                     Mission05BrokenDoorUnlocked,
+                Mission05SecretDocumentViewed =
+                    Mission05SecretDocumentViewed,
+                Mission05MinhConversationAvailable =
+                    Mission05MinhConversationAvailable,
+                Mission05MinhConversationOpened =
+                    Mission05MinhConversationOpened,
+                Mission05MinhConversationStep =
+                    Mission05MinhConversationStep,
+                Chapter2Completed = Chapter2Completed,
                 Chapter1PhoneDataImported =
                     Chapter1PhoneDataImported,
                 Chapter1CarryOverInventoryApplied =
                     Chapter1CarryOverInventoryApplied,
                 PhoneData = PhoneData?.DeepCopy() ??
-                    Chapter2PhoneData.CreateDefault()
+                    Chapter2PhoneData.CreateDefault(),
+                ChapterEndInventory = CopyInventoryEntries(
+                    ChapterEndInventory)
             };
             copy.EnsureValidDefaults();
             return copy;
         }
+
+        private void NormalizeChapterEndInventory()
+        {
+            for (int i = 0; i < ChapterEndInventory.Count; i++)
+            {
+                Chapter2InventoryEntry entry = ChapterEndInventory[i];
+                if (entry == null ||
+                    string.IsNullOrWhiteSpace(entry.ItemId))
+                {
+                    ChapterEndInventory.RemoveAt(i--);
+                    continue;
+                }
+
+                entry.ItemId = entry.ItemId.Trim();
+                entry.Quantity = Math.Max(1, entry.Quantity);
+                for (int duplicateIndex = i + 1;
+                     duplicateIndex < ChapterEndInventory.Count;
+                     duplicateIndex++)
+                {
+                    Chapter2InventoryEntry duplicate =
+                        ChapterEndInventory[duplicateIndex];
+                    if (duplicate == null ||
+                        !string.Equals(
+                            entry.ItemId,
+                            duplicate.ItemId,
+                            StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    entry.Quantity += Math.Max(1, duplicate.Quantity);
+                    ChapterEndInventory.RemoveAt(duplicateIndex--);
+                }
+            }
+        }
+
+        private static List<Chapter2InventoryEntry> CopyInventoryEntries(
+            List<Chapter2InventoryEntry> source)
+        {
+            List<Chapter2InventoryEntry> copy =
+                new List<Chapter2InventoryEntry>();
+            if (source == null)
+            {
+                return copy;
+            }
+
+            for (int i = 0; i < source.Count; i++)
+            {
+                Chapter2InventoryEntry entry = source[i];
+                if (entry != null)
+                {
+                    copy.Add(new Chapter2InventoryEntry
+                    {
+                        ItemId = entry.ItemId,
+                        Quantity = entry.Quantity
+                    });
+                }
+            }
+
+            return copy;
+        }
+    }
+
+    [Serializable]
+    public sealed class Chapter2InventoryEntry
+    {
+        public string ItemId;
+        public int Quantity = 1;
     }
 }

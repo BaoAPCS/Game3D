@@ -1,4 +1,5 @@
 using DormitoryMystery.Chapter1;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -212,15 +213,64 @@ namespace DormitoryMystery.Chapter2
             SaveChapter2();
         }
 
+        public void SaveMission05ScannerActivated()
+        {
+            CurrentData.Mission05ScannerActivated = true;
+            SaveChapter2();
+        }
+
         public void SaveMission05DocumentCollected()
         {
             CurrentData.Mission05SecretDocumentCollected = true;
             SaveChapter2();
         }
 
+        public void SaveMission05DocumentViewed()
+        {
+            CurrentData.Mission05SecretDocumentViewed = true;
+            SaveChapter2();
+        }
+
+        public void SaveMission05MinhConversationAvailable()
+        {
+            CurrentData.Mission05MinhConversationAvailable = true;
+            SaveChapter2();
+        }
+
+        public void SaveMission05MinhConversationOpened()
+        {
+            CurrentData.Mission05MinhConversationOpened = true;
+            SaveChapter2();
+        }
+
+        public void SaveMission05MinhConversationStep(int step)
+        {
+            CurrentData.Mission05MinhConversationStep = Mathf.Clamp(
+                step,
+                0,
+                Chapter2SaveData.EndingConversationFinalStep);
+            SaveChapter2();
+        }
+
         public void SaveMission05BrokenDoorUnlocked()
         {
             CurrentData.Mission05BrokenDoorUnlocked = true;
+            SaveChapter2();
+        }
+
+        public void SaveChapter2Completed(
+            InventoryController inventory,
+            Chapter1SaveData phoneData)
+        {
+            CurrentData.Mission05MinhConversationAvailable = true;
+            CurrentData.Mission05MinhConversationOpened = true;
+            CurrentData.Mission05MinhConversationStep =
+                Chapter2SaveData.EndingConversationFinalStep;
+            CurrentData.Chapter2Completed = true;
+            CurrentData.PhoneData =
+                Chapter2PhoneData.FromChapter1(phoneData);
+            CurrentData.ChapterEndInventory =
+                CaptureInventory(inventory);
             SaveChapter2();
         }
 
@@ -252,9 +302,49 @@ namespace DormitoryMystery.Chapter2
 
         private void ResetMission05State()
         {
+            CurrentData.Mission05ScannerActivated = false;
             CurrentData.Mission05RouterInspected = false;
             CurrentData.Mission05SecretDocumentCollected = false;
             CurrentData.Mission05BrokenDoorUnlocked = false;
+            CurrentData.Mission05SecretDocumentViewed = false;
+            CurrentData.Mission05MinhConversationAvailable = false;
+            CurrentData.Mission05MinhConversationOpened = false;
+            CurrentData.Mission05MinhConversationStep = 0;
+            CurrentData.Chapter2Completed = false;
+            CurrentData.ChapterEndInventory ??=
+                new List<Chapter2InventoryEntry>();
+            CurrentData.ChapterEndInventory.Clear();
+        }
+
+        private static List<Chapter2InventoryEntry> CaptureInventory(
+            InventoryController inventory)
+        {
+            List<Chapter2InventoryEntry> entries =
+                new List<Chapter2InventoryEntry>();
+            if (inventory == null)
+            {
+                return entries;
+            }
+
+            IReadOnlyList<InventoryItem> items = inventory.Items;
+            for (int i = 0; i < items.Count; i++)
+            {
+                InventoryItem item = items[i];
+                if (item?.Definition == null ||
+                    string.IsNullOrWhiteSpace(
+                        item.Definition.ItemId))
+                {
+                    continue;
+                }
+
+                entries.Add(new Chapter2InventoryEntry
+                {
+                    ItemId = item.Definition.ItemId,
+                    Quantity = item.Quantity
+                });
+            }
+
+            return entries;
         }
 
         private void EnsureSaveService()
