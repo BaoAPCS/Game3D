@@ -54,6 +54,8 @@ namespace DormitoryMystery.Chapter3
                 return;
             }
 
+            Chapter3WoodenObstacleController.InstallForScene(scene);
+
             Chapter3CarryOverBootstrap[] existing =
                 FindObjectsByType<Chapter3CarryOverBootstrap>(
                     FindObjectsInactive.Include);
