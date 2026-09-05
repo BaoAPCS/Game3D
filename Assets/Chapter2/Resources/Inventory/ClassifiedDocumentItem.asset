@@ -15,9 +15,10 @@ MonoBehaviour:
   itemId: classified_document
   displayName: "T\u00E0i li\u1EC7u m\u1EADt"
   icon: {fileID: 21300000, guid: 98d0a5e8b42e4c76b7215735122a4f8c, type: 3}
+  previewImage: {fileID: 21300000, guid: cf60d03ec08a26c4ea3e198d208fe8e9, type: 3}
   description: "T\u00E0i li\u1EC7u m\u1EADt \u0111\u01B0\u1EE3c gi\u1EA5u b\u00EAn d\u01B0\u1EDBi thi\u1EBFt b\u1ECB Wi-Fi c\u1EE7a \u0111\u1ED3n c\u1EA3nh s\u00E1t."
   category: 1
   isStackable: 0
   maxStack: 1
   isDroppable: 0
-  isUsable: 0
+  isUsable: 1

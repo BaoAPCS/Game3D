@@ -191,6 +191,24 @@ namespace DormitoryMystery.Chapter1
             }
         }
 
+        public void ClearMessages()
+        {
+            if (queueRoutine != null)
+            {
+                StopCoroutine(queueRoutine);
+                queueRoutine = null;
+            }
+
+            messageQueue.Clear();
+            ResolveReferences();
+            if (notificationText != null)
+            {
+                notificationText.text = string.Empty;
+            }
+
+            SetVisible(false);
+        }
+
         private void ResolveReferences()
         {
             if (canvasGroup == null)

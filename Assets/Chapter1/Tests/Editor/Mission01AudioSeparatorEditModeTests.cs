@@ -441,6 +441,39 @@ namespace DormitoryMystery.Chapter1.Tests
             Assert.LessOrEqual(CountSceneObjects(scene, "AudioSeparator_Device"), 1);
         }
 
+        [Test]
+        public void AudioSeparatorPrefabContainsConfiguredMixer()
+        {
+            const string prefabPath =
+                "Assets/Chapter1/Prefabs/Gameplay/AudioSeparator_Device.prefab";
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+                prefabPath);
+
+            Assert.NotNull(prefab, "Missing AudioSeparator_Device prefab.");
+
+            AudioSeparatorMixerController mixer =
+                prefab.GetComponent<AudioSeparatorMixerController>();
+            Mission01AudioSeparatorDeviceInteractable interactable =
+                prefab.GetComponent<
+                    Mission01AudioSeparatorDeviceInteractable>();
+
+            Assert.NotNull(mixer);
+            Assert.NotNull(interactable);
+            Assert.AreSame(
+                mixer,
+                new SerializedObject(interactable)
+                    .FindProperty("mixerController")
+                    .objectReferenceValue);
+            Assert.AreEqual(
+                LanAudioRecordingCatalog.StemOrder.Length,
+                mixer.Faders.Length);
+            Assert.AreEqual(
+                3,
+                prefab.GetComponentsInChildren<
+                    AudioSeparatorMixerButton>(true).Length);
+            Assert.NotNull(FindChild(prefab, "MixerTutorialPanel"));
+        }
+
         private static void MoveToMessageDung(Mission01AudioSeparatorManager mission)
         {
             mission.NotifyLanRecordingSaved();

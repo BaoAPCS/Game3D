@@ -137,6 +137,7 @@ namespace DormitoryMystery.Chapter2.Tests
             data.Mission04WifiPasswordDiscovered = true;
             data.Mission04PoliceWifiConnected = true;
             data.Mission04MinhMessagesRead = true;
+            data.Mission05ScannerActivated = true;
             data.Mission05RouterInspected = true;
             data.Mission05SecretDocumentCollected = true;
             data.Mission05BrokenDoorUnlocked = true;
@@ -189,8 +190,14 @@ namespace DormitoryMystery.Chapter2.Tests
                 mission04Completed,
                 data.Mission04MinhMessagesRead);
             Assert.IsFalse(data.Mission05RouterInspected);
+            Assert.IsFalse(data.Mission05ScannerActivated);
             Assert.IsFalse(data.Mission05SecretDocumentCollected);
             Assert.IsFalse(data.Mission05BrokenDoorUnlocked);
+            Assert.IsFalse(data.Mission05SecretDocumentViewed);
+            Assert.IsFalse(data.Mission05MinhConversationAvailable);
+            Assert.IsFalse(data.Mission05MinhConversationOpened);
+            Assert.AreEqual(0, data.Mission05MinhConversationStep);
+            Assert.IsFalse(data.Chapter2Completed);
         }
     }
 }

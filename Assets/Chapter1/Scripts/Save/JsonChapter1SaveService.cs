@@ -7,7 +7,7 @@ namespace DormitoryMystery.Chapter1
     public sealed class JsonChapter1SaveService : IChapter1SaveService
     {
         private const string SaveFileName = "chapter1_save.json";
-        private const int MinimumCompatibleSaveVersion = 7;
+        public const int MinimumCompatibleSaveVersion = 7;
         private readonly string savePathOverride;
 
         public JsonChapter1SaveService()

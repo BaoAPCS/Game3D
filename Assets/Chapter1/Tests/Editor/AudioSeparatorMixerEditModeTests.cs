@@ -26,6 +26,50 @@ namespace DormitoryMystery.Chapter1.Tests
         }
 
         [Test]
+        public void CatalogUsesNeutralDisplayNamesInMixerOrder()
+        {
+            for (int i = 0;
+                 i < LanAudioRecordingCatalog.StemOrder.Length;
+                 i++)
+            {
+                LanAudioStemId stem =
+                    LanAudioRecordingCatalog.StemOrder[i];
+                string expectedName = $"Âm thanh {i + 1}";
+
+                Assert.AreEqual(
+                    expectedName,
+                    LanAudioRecordingCatalog.GetStemDisplayName(stem));
+                Assert.AreEqual(
+                    expectedName,
+                    LanAudioRecordingCatalog.GetRecordingDisplayName(
+                        LanAudioRecordingCatalog.GetOutputRecordingId(
+                            stem)));
+            }
+        }
+
+        [Test]
+        public void AudioSeparatorPrefabUsesNeutralFaderNames()
+        {
+            const string prefabPath =
+                "Assets/Chapter1/Prefabs/Gameplay/AudioSeparator_Device.prefab";
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+                prefabPath);
+
+            Assert.NotNull(prefab);
+
+            AudioStemFader[] faders =
+                prefab.GetComponentsInChildren<AudioStemFader>(true);
+            Assert.AreEqual(LanAudioRecordingCatalog.StemCount, faders.Length);
+            for (int i = 0; i < faders.Length; i++)
+            {
+                Assert.AreEqual(
+                    LanAudioRecordingCatalog.GetStemDisplayName(
+                        faders[i].StemId),
+                    faders[i].DisplayName);
+            }
+        }
+
+        [Test]
         public void SaveDataAddsMixedAndStemRecordingsWithoutDuplicates()
         {
             Chapter1SaveData data = Chapter1SaveData.CreateDefault();
@@ -58,6 +102,29 @@ namespace DormitoryMystery.Chapter1.Tests
             finally
             {
                 Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
+        public void MixerStatusesDoNotRaiseGameplayNotifications()
+        {
+            using MixerRig rig = new MixerRig();
+            List<string> notifications = new List<string>();
+            System.Action<string> captureNotification =
+                message => notifications.Add(message);
+            Chapter1EventBus.NotificationRequested +=
+                captureNotification;
+
+            try
+            {
+                rig.Mixer.ResetFaders();
+
+                Assert.IsEmpty(notifications);
+            }
+            finally
+            {
+                Chapter1EventBus.NotificationRequested -=
+                    captureNotification;
             }
         }
 

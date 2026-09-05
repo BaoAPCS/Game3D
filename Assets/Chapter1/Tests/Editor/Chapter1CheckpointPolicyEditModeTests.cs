@@ -39,6 +39,7 @@ namespace DormitoryMystery.Chapter1.Tests
             Assert.AreEqual(
                 Chapter1SaveData.PoliceKeyCarryOverItemId,
                 key.ItemId);
+            Assert.AreEqual("Chìa khóa", key.DisplayName);
             Assert.IsFalse(key.IsUsable);
             StringAssert.Contains(
                 "cất giấu thật kĩ",

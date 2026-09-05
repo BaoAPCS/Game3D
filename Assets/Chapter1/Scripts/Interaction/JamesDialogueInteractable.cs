@@ -370,7 +370,7 @@ namespace DormitoryMystery.Chapter1
             }
 
             Chapter1EventBus.RaiseNotification(
-                "Đã nhận chìa khóa đồn cảnh sát. Nhiệm vụ 3 hoàn thành.");
+                "Đã nhận chìa khóa từ James");
             RestoreGameplayState();
             yield return null;
             Mission3CompletionSequenceController.NotifyPoliceKeyGranted();

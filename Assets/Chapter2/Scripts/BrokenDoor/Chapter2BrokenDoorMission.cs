@@ -66,9 +66,7 @@ namespace DormitoryMystery.Chapter2
         public bool InteractionsAvailable =>
             configured &&
             saveManager != null &&
-            saveManager.CurrentData.Mission04Completed &&
-            phoneUI != null &&
-            phoneUI.IsSignalScannerActive;
+            saveManager.CurrentData.Mission05ScannerActivated;
         public bool DoorUnlocked =>
             saveManager != null &&
             saveManager.CurrentData.Mission05BrokenDoorUnlocked;
@@ -512,12 +510,7 @@ namespace DormitoryMystery.Chapter2
             Chapter2SaveData data = saveManager.CurrentData;
             int hash = 17;
             hash = hash * 31 +
-                   (data.Mission04Completed ? 1 : 0);
-            hash = hash * 31 +
-                   (phoneUI != null &&
-                    phoneUI.IsSignalScannerActive
-                       ? 1
-                       : 0);
+                   (data.Mission05ScannerActivated ? 1 : 0);
             hash = hash * 31 +
                    (data.Mission05BrokenDoorUnlocked ? 1 : 0);
             return hash;

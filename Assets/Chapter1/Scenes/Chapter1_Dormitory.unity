@@ -14999,7 +14999,7 @@ PrefabInstance:
     - target: {fileID: 8046032247626345119, guid: 32017a0cb8a11354188f7145ff901fdc, type: 3}
       propertyPath: mixerController
       value: 
-      objectReference: {fileID: 0}
+      objectReference: {fileID: 1984644581}
     - target: {fileID: 8046032247626345119, guid: 32017a0cb8a11354188f7145ff901fdc, type: 3}
       propertyPath: missionController
       value: 
@@ -25193,17 +25193,13 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 891507068}
     m_Modifications:
-    - target: {fileID: 4342047651842227429, guid: bf74d85ffaf546048a7bf92e93dd15d3, type: 3}
+    - target: {fileID: 4704750694837072587, guid: bf74d85ffaf546048a7bf92e93dd15d3, type: 3}
       propertyPath: m_AnchorMax.x
       value: 1
       objectReference: {fileID: 0}
-    - target: {fileID: 4342047651842227429, guid: bf74d85ffaf546048a7bf92e93dd15d3, type: 3}
+    - target: {fileID: 4704750694837072587, guid: bf74d85ffaf546048a7bf92e93dd15d3, type: 3}
       propertyPath: m_AnchorMax.y
       value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 5202183746556043319, guid: bf74d85ffaf546048a7bf92e93dd15d3, type: 3}
-      propertyPath: m_Layer
-      value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 5213669435120246701, guid: bf74d85ffaf546048a7bf92e93dd15d3, type: 3}
       propertyPath: missionManager
@@ -25253,19 +25249,15 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 7019646266915070584, guid: bf74d85ffaf546048a7bf92e93dd15d3, type: 3}
-      propertyPath: m_Layer
-      value: 10
-      objectReference: {fileID: 0}
     - target: {fileID: 7400973307082486995, guid: bf74d85ffaf546048a7bf92e93dd15d3, type: 3}
       propertyPath: m_Name
       value: AudioSeparator_Device
       objectReference: {fileID: 0}
-    - target: {fileID: 8021271733481358265, guid: bf74d85ffaf546048a7bf92e93dd15d3, type: 3}
+    - target: {fileID: 8352706883920558915, guid: bf74d85ffaf546048a7bf92e93dd15d3, type: 3}
       propertyPath: missionManager
       value: 
       objectReference: {fileID: 2096540189}
-    - target: {fileID: 8021271733481358265, guid: bf74d85ffaf546048a7bf92e93dd15d3, type: 3}
+    - target: {fileID: 8352706883920558915, guid: bf74d85ffaf546048a7bf92e93dd15d3, type: 3}
       propertyPath: lanRecordingController
       value: 
       objectReference: {fileID: 404986198}
@@ -25279,6 +25271,17 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 5447760588655008367, guid: bf74d85ffaf546048a7bf92e93dd15d3, type: 3}
   m_PrefabInstance: {fileID: 1984644579}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1984644581 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 8352706883920558915, guid: bf74d85ffaf546048a7bf92e93dd15d3, type: 3}
+  m_PrefabInstance: {fileID: 1984644579}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 084fc91007b44766aac666f682cbe83b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DormitoryMystery.Chapter1.AudioSeparatorMixerController
 --- !u!1 &1995101344
 GameObject:
   m_ObjectHideFlags: 0

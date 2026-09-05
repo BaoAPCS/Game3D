@@ -53,6 +53,12 @@ namespace DormitoryMystery.Chapter1
         private bool minhMissionMessagesAvailable;
         private bool minhMissionMessagesRead;
         private Action minhMissionMessagesReadCallback;
+        private bool chapter2EndingConversationAvailable;
+        private bool chapter2EndingConversationOpened;
+        private int chapter2EndingConversationStep;
+        private Action chapter2EndingConversationOpenedCallback;
+        private Action<int> chapter2EndingConversationStepChangedCallback;
+        private Action chapter2EndingConversationCompletedCallback;
         private bool wifiSignalScannerAvailable;
         private bool wifiSignalScannerActive;
         private bool scannerWalkMode;
@@ -106,6 +112,25 @@ namespace DormitoryMystery.Chapter1
             "Tài liệu mật được giấu bên dưới thiết bị wifi";
         public const string MinhMissionMessageTwo =
             "Bạn phải xác định được vị trí đặt wifi";
+        public const int Chapter2EndingConversationFinalStep = 4;
+        public const string Chapter2EndingMinhQuestion =
+            "Sao rồi, bạn đã tìm được tài liệu mật chưa?";
+        public const string Chapter2EndingNamFoundDocument =
+            "Tôi lấy được rồi.";
+        public const string Chapter2EndingNamDossier =
+            "Có hồ sơ của một người tên L.N., bị chuyển tới Cơ sở y tế số 7 – Khu C.";
+        public const string Chapter2EndingMinhConcern =
+            "Chờ chút... Nam, có chuyện không ổn.";
+        public const string Chapter2EndingNamQuestion =
+            "Sao vậy?";
+        public const string Chapter2EndingMinhHospital =
+            "Cơ sở đó chính là Saint Mary Hospital. Nó đã bị bỏ hoang từ nhiều năm trước.";
+        public const string Chapter2EndingNamAliveStatus =
+            "Nhưng trong hồ sơ ghi SUBJECT STATUS: ALIVE.";
+        public const string Chapter2EndingMinhWarning =
+            "Vậy thì càng tệ. Nếu L.N. là chị Lan... họ không đưa chị ấy tới đó để chữa trị, bạn phải mau chóng đến đó để cứu chị Lan.";
+        public const string Chapter2EndingNamFinalReply =
+            "Tôi sẽ đến Saint Mary.";
 
         public bool IsOpen => isOpen;
         public bool MessengerOnline => messengerOnline;
@@ -116,6 +141,12 @@ namespace DormitoryMystery.Chapter1
             minhMissionMessagesAvailable;
         public bool MinhMissionMessagesRead =>
             minhMissionMessagesRead;
+        public bool Chapter2EndingConversationAvailable =>
+            chapter2EndingConversationAvailable;
+        public bool Chapter2EndingConversationOpened =>
+            chapter2EndingConversationOpened;
+        public int Chapter2EndingConversationStep =>
+            chapter2EndingConversationStep;
         public bool WifiSignalScannerAvailable =>
             wifiSignalScannerAvailable;
         public bool IsSignalScannerActive =>
@@ -234,6 +265,34 @@ namespace DormitoryMystery.Chapter1
             minhMissionMessagesAvailable = available;
             minhMissionMessagesRead = available && alreadyRead;
             minhMissionMessagesReadCallback = readCallback;
+        }
+
+        /// <summary>
+        /// Configures the final Chapter 2 conversation without coupling the
+        /// reusable phone UI to Chapter 2's save implementation. Step zero
+        /// shows Minh's opening message; each of the four player replies
+        /// advances the conversation by one persisted step.
+        /// </summary>
+        public void ConfigureChapter2EndingConversation(
+            bool available,
+            bool opened,
+            int step,
+            Action onOpened,
+            Action<int> onStepChanged,
+            Action onCompleted)
+        {
+            chapter2EndingConversationAvailable = available;
+            chapter2EndingConversationOpened = available && opened;
+            chapter2EndingConversationStep = available
+                ? Mathf.Clamp(
+                    step,
+                    0,
+                    Chapter2EndingConversationFinalStep)
+                : 0;
+            chapter2EndingConversationOpenedCallback = onOpened;
+            chapter2EndingConversationStepChangedCallback =
+                onStepChanged;
+            chapter2EndingConversationCompletedCallback = onCompleted;
         }
 
         /// <summary>
@@ -1727,18 +1786,30 @@ namespace DormitoryMystery.Chapter1
                 root,
                 "Minh",
                 GetMinhContactStatus(),
-                minhMissionMessagesAvailable &&
-                !minhMissionMessagesRead
-                    ? "2"
-                    : string.Empty,
-                minhMissionMessagesAvailable
-                    ? OpenMinhMissionConversation
-                    : () => OpenSimpleConversation("Minh"));
+                GetMinhContactBadge(),
+                chapter2EndingConversationAvailable
+                    ? OpenChapter2EndingConversation
+                    : minhMissionMessagesAvailable
+                        ? OpenMinhMissionConversation
+                        : () => OpenSimpleConversation("Minh"));
             ForceMessengerLayout(root);
         }
 
         private string GetMinhContactStatus()
         {
+            if (chapter2EndingConversationAvailable)
+            {
+                if (!chapter2EndingConversationOpened)
+                {
+                    return "Tin nhắn mới";
+                }
+
+                return chapter2EndingConversationStep >=
+                       Chapter2EndingConversationFinalStep
+                    ? "Đã đọc"
+                    : "Đang trò chuyện";
+            }
+
             if (!minhMissionMessagesAvailable)
             {
                 return "Không có tin mới";
@@ -1747,6 +1818,21 @@ namespace DormitoryMystery.Chapter1
             return minhMissionMessagesRead
                 ? "Đã đọc"
                 : "2 tin nhắn mới";
+        }
+
+        private string GetMinhContactBadge()
+        {
+            if (chapter2EndingConversationAvailable)
+            {
+                return chapter2EndingConversationOpened
+                    ? string.Empty
+                    : "1";
+            }
+
+            return minhMissionMessagesAvailable &&
+                   !minhMissionMessagesRead
+                ? "2"
+                : string.Empty;
         }
 
         private string GetLanContactStatus()
@@ -1822,6 +1908,190 @@ namespace DormitoryMystery.Chapter1
             RectTransform content = CreateConversationScroll(root);
             CreateMessageBubble(content, contactName, "Chưa có tin nhắn mới.", false);
             ForceMessengerLayout(root);
+        }
+
+        private void OpenChapter2EndingConversation()
+        {
+            if (!chapter2EndingConversationAvailable)
+            {
+                OpenMinhMissionConversation();
+                return;
+            }
+
+            activeMessengerContact = "minh";
+            SetContentText(appTitleText, "Minh");
+            SetHomeButtonAction(OpenMessenger);
+
+            RectTransform root = PrepareDynamicMessengerRoot();
+            ConfigureVerticalStack(
+                root,
+                8f,
+                new RectOffset(0, 0, 0, 0));
+
+            CreateSmallButton(
+                root,
+                "BackToContacts",
+                "< Messenger",
+                OpenMessenger,
+                ConversationBackButtonHeight);
+            RectTransform content = CreateConversationScroll(root);
+            CreateMessageBubble(
+                content,
+                "Minh",
+                Chapter2EndingMinhQuestion,
+                false,
+                96f);
+
+            if (chapter2EndingConversationStep >= 1)
+            {
+                CreateMessageBubble(
+                    content,
+                    "Nam",
+                    Chapter2EndingNamFoundDocument,
+                    true);
+                CreateMessageBubble(
+                    content,
+                    "Nam",
+                    Chapter2EndingNamDossier,
+                    true,
+                    118f);
+                CreateMessageBubble(
+                    content,
+                    "Minh",
+                    Chapter2EndingMinhConcern,
+                    false,
+                    96f);
+            }
+
+            if (chapter2EndingConversationStep >= 2)
+            {
+                CreateMessageBubble(
+                    content,
+                    "Nam",
+                    Chapter2EndingNamQuestion,
+                    true);
+                CreateMessageBubble(
+                    content,
+                    "Minh",
+                    Chapter2EndingMinhHospital,
+                    false,
+                    118f);
+            }
+
+            if (chapter2EndingConversationStep >= 3)
+            {
+                CreateMessageBubble(
+                    content,
+                    "Nam",
+                    Chapter2EndingNamAliveStatus,
+                    true,
+                    96f);
+                CreateMessageBubble(
+                    content,
+                    "Minh",
+                    Chapter2EndingMinhWarning,
+                    false,
+                    158f);
+            }
+
+            if (chapter2EndingConversationStep >=
+                Chapter2EndingConversationFinalStep)
+            {
+                CreateMessageBubble(
+                    content,
+                    "Nam",
+                    Chapter2EndingNamFinalReply,
+                    true);
+            }
+            else
+            {
+                int expectedStep = chapter2EndingConversationStep;
+                CreateSmallButton(
+                    root,
+                    "Chapter2EndingReply_" + expectedStep,
+                    GetChapter2EndingReplyText(expectedStep),
+                    () => HandleChapter2EndingReply(expectedStep),
+                    58f);
+            }
+
+            if (!chapter2EndingConversationOpened)
+            {
+                chapter2EndingConversationOpened = true;
+                try
+                {
+                    chapter2EndingConversationOpenedCallback?.Invoke();
+                }
+                catch (Exception exception)
+                {
+                    Debug.LogError(
+                        "[PhoneUIController] Không thể lưu trạng thái đã mở hội thoại kết Chương 2 với Minh. " +
+                        $"Lỗi: {exception.Message}",
+                        this);
+                }
+            }
+
+            ForceMessengerLayout(root);
+        }
+
+        private static string GetChapter2EndingReplyText(int step)
+        {
+            switch (step)
+            {
+                case 0:
+                    return Chapter2EndingNamFoundDocument;
+                case 1:
+                    return Chapter2EndingNamQuestion;
+                case 2:
+                    return Chapter2EndingNamAliveStatus;
+                case 3:
+                    return Chapter2EndingNamFinalReply;
+                default:
+                    return string.Empty;
+            }
+        }
+
+        private void HandleChapter2EndingReply(int expectedStep)
+        {
+            if (!chapter2EndingConversationAvailable ||
+                expectedStep != chapter2EndingConversationStep ||
+                chapter2EndingConversationStep >=
+                    Chapter2EndingConversationFinalStep)
+            {
+                return;
+            }
+
+            chapter2EndingConversationStep++;
+            try
+            {
+                chapter2EndingConversationStepChangedCallback?.Invoke(
+                    chapter2EndingConversationStep);
+            }
+            catch (Exception exception)
+            {
+                Debug.LogError(
+                    "[PhoneUIController] Không thể lưu tiến độ hội thoại kết Chương 2 với Minh. " +
+                    $"Lỗi: {exception.Message}",
+                    this);
+            }
+
+            OpenChapter2EndingConversation();
+            if (chapter2EndingConversationStep <
+                Chapter2EndingConversationFinalStep)
+            {
+                return;
+            }
+
+            try
+            {
+                chapter2EndingConversationCompletedCallback?.Invoke();
+            }
+            catch (Exception exception)
+            {
+                Debug.LogError(
+                    "[PhoneUIController] Không thể hoàn tất hội thoại kết Chương 2 với Minh. " +
+                    $"Lỗi: {exception.Message}",
+                    this);
+            }
         }
 
         private void OpenMinhMissionConversation()

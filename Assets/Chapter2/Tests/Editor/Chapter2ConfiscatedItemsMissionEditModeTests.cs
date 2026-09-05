@@ -85,6 +85,7 @@ namespace DormitoryMystery.Chapter2.Tests
             Assert.AreEqual(
                 Chapter2ConfiscatedItemsMission.PhoneItemId,
                 phone.ItemId);
+            Assert.AreEqual(string.Empty, phone.Description);
             Assert.AreEqual(
                 Chapter2ConfiscatedItemsMission.PoliceKeyItemId,
                 policeKey.ItemId);
