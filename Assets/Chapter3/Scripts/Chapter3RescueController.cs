@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using DormitoryMystery.Chapter1;
 using DormitoryMystery.Chapter2;
+using DormitoryMystery.Menu;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
@@ -262,7 +263,10 @@ namespace DormitoryMystery.Chapter3
             State = Chapter3RescueState.Completed;
             PlayerPrefs.SetInt(CompletionPreferenceKey, 1);
             PlayerPrefs.Save();
-            // Keep the ending lock and final screen until the scene is unloaded.
+            // Leave the completed HUD visible for a full unscaled second before reset.
+            yield return new WaitForSecondsRealtime(GameSessionFlow.EndingMenuDelay);
+            if (!GameSessionFlow.TryReturnToMenuAfterCompletion(out string error))
+                Debug.LogError("[Chapter3Rescue] " + error, this);
         }
 
         private void ResolveUI()
