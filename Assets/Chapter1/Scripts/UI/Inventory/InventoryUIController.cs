@@ -28,6 +28,8 @@ namespace DormitoryMystery.Chapter1
 
         private InventoryItem selectedItem;
         private IInventoryItemUseHandler itemUseHandler;
+        private readonly List<IInventoryItemUseHandler> contextItemUseHandlers =
+            new List<IInventoryItemUseHandler>();
         private bool listenersBound;
         private bool isOpen;
 
@@ -98,6 +100,36 @@ namespace DormitoryMystery.Chapter1
 
             itemUseHandler = null;
             UpdateDetailPanel();
+        }
+
+        // Several nearby triggers may offer different uses (crowbar and key).
+        // They register independently without replacing chapter-owned handlers.
+        public void RegisterContextItemUseHandler(IInventoryItemUseHandler handler)
+        {
+            if (handler == null || contextItemUseHandlers.Contains(handler)) return;
+            contextItemUseHandlers.Add(handler);
+            UpdateDetailPanel();
+        }
+
+        public void UnregisterContextItemUseHandler(IInventoryItemUseHandler handler)
+        {
+            if (contextItemUseHandlers.Remove(handler)) UpdateDetailPanel();
+        }
+
+        private IInventoryItemUseHandler FindItemUseHandler(InventoryItem item)
+        {
+            for (int i = contextItemUseHandlers.Count - 1; i >= 0; i--)
+            {
+                IInventoryItemUseHandler handler = contextItemUseHandlers[i];
+                if (handler is Object owner && owner == null)
+                {
+                    contextItemUseHandlers.RemoveAt(i);
+                    continue;
+                }
+                if (handler.CanUseInventoryItem(item)) return handler;
+            }
+            return itemUseHandler != null && itemUseHandler.CanUseInventoryItem(item)
+                ? itemUseHandler : null;
         }
 
         public void OpenInventory()
@@ -190,9 +222,8 @@ namespace DormitoryMystery.Chapter1
                 return;
             }
 
-            if (itemUseHandler != null &&
-                itemUseHandler.CanUseInventoryItem(selectedItem) &&
-                itemUseHandler.TryUseInventoryItem(selectedItem))
+            IInventoryItemUseHandler handler = FindItemUseHandler(selectedItem);
+            if (handler != null && handler.TryUseInventoryItem(selectedItem))
             {
                 PlayClip(useClip);
                 CloseInventory(true);
@@ -258,8 +289,7 @@ namespace DormitoryMystery.Chapter1
             if (useButton != null)
             {
                 bool handledUse = hasSelection &&
-                    itemUseHandler != null &&
-                    itemUseHandler.CanUseInventoryItem(selectedItem);
+                    FindItemUseHandler(selectedItem) != null;
                 useButton.interactable = hasSelection &&
                     (definition.IsUsable || handledUse);
             }

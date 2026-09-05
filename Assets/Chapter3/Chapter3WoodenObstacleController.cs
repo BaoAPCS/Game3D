@@ -32,6 +32,7 @@ namespace DormitoryMystery.Chapter3
             new HashSet<Collider>();
 
         private SphereCollider triggerZone;
+        private Chapter2MissionTriggerZone preciseZone;
         private Chapter1InputReader playerInputReader;
         private PlayerInputLock inputLock;
         private BackpackPhoneInputController backpackInput;
@@ -49,7 +50,8 @@ namespace DormitoryMystery.Chapter3
         public float PryProgress => pryProgress;
         public bool IsPrying => isPrying;
         public bool IsCompleted => completed;
-        public bool ContainsPlayer => playerColliders.Count > 0;
+        public bool ContainsPlayer => preciseZone != null
+            ? preciseZone.ContainsPlayer : playerColliders.Count > 0;
 
         internal static void InstallForScene(Scene scene)
         {
@@ -102,6 +104,11 @@ namespace DormitoryMystery.Chapter3
                 triggerZone.enabled = true;
             }
 
+            ResolveRuntimeReferences();
+            preciseZone = GetComponent<Chapter2MissionTriggerZone>();
+            if (preciseZone == null)
+                preciseZone = gameObject.AddComponent<Chapter2MissionTriggerZone>();
+            preciseZone.Configure(triggerZone, playerInputReader);
             EnsureHUD();
         }
 
@@ -153,6 +160,8 @@ namespace DormitoryMystery.Chapter3
             ReleaseModalState();
             obstacleHUD?.HideAll();
             playerColliders.Clear();
+            isPrying = false;
+            if (!completed) pryProgress = 0f;
         }
 
         private void OnValidate()
@@ -204,7 +213,12 @@ namespace DormitoryMystery.Chapter3
             return !completed &&
                    !isPrying &&
                    ContainsPlayer &&
+                   !HasExternalInputLock(allowInventory: true) &&
                    item != null &&
+                   playerInputReader != null &&
+                   playerInputReader.GetComponent<InventoryController>() != null &&
+                   ReferenceEquals(playerInputReader.GetComponent<InventoryController>()
+                       .GetItem(CrowbarItemId), item) &&
                    string.Equals(
                        item.ItemId,
                        CrowbarItemId,
@@ -330,7 +344,7 @@ namespace DormitoryMystery.Chapter3
             }
 
             ClearInventoryHandler();
-            inventoryUI.SetItemUseHandler(this);
+            inventoryUI.RegisterContextItemUseHandler(this);
             registeredInventoryUI = inventoryUI;
         }
 
@@ -341,7 +355,7 @@ namespace DormitoryMystery.Chapter3
                 return;
             }
 
-            registeredInventoryUI.ClearItemUseHandler(this);
+            registeredInventoryUI.UnregisterContextItemUseHandler(this);
             registeredInventoryUI = null;
         }
 
@@ -355,7 +369,7 @@ namespace DormitoryMystery.Chapter3
             }
 
             ResolveRuntimeReferences();
-            if (inventoryUI != null && inventoryUI.IsOpen)
+            if (HasExternalInputLock(allowInventory: false))
             {
                 obstacleHUD?.HideAll();
                 return;
@@ -381,6 +395,14 @@ namespace DormitoryMystery.Chapter3
 
         private void UpdatePryChallenge()
         {
+            Keyboard keyboard = Keyboard.current;
+            if (!ContainsPlayer || HasExternalInputLock(allowInventory: false) ||
+                (keyboard != null && keyboard.escapeKey.wasPressedThisFrame))
+            {
+                CancelPryChallenge();
+                return;
+            }
+
             if (WasEnterPressedThisFrame())
             {
                 pryProgress = ApplyPryPress(
@@ -497,7 +519,21 @@ namespace DormitoryMystery.Chapter3
         private void RemoveMissingPlayerColliders()
         {
             playerColliders.RemoveWhere(
-                candidate => candidate == null);
+                candidate => candidate == null || !candidate.enabled ||
+                             !candidate.gameObject.activeInHierarchy);
+        }
+
+        private bool HasExternalInputLock(bool allowInventory)
+        {
+            if (Time.timeScale <= 0f) return true;
+            if (inputLock == null) return false;
+            foreach (string reason in inputLock.ActiveLocks)
+            {
+                if (reason == InputLockReason) continue;
+                if (allowInventory && reason == PlayerInputLock.InventoryReason) continue;
+                return true;
+            }
+            return false;
         }
 
         private static bool WasEnterPressedThisFrame()
