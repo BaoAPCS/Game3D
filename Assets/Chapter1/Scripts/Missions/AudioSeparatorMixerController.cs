@@ -158,6 +158,7 @@ namespace DormitoryMystery.Chapter1
             firstHintShown = false;
             secondHintShown = false;
 
+            ClearGameplayNotifications();
             CaptureAndLockInput(context);
             CaptureAndMoveCamera(context);
             EnsureUi();
@@ -909,7 +910,12 @@ namespace DormitoryMystery.Chapter1
                 RectTransform channel = CreateImageRect(channelRoot, "Channel_" + stem, new Color(0.12f, 0.13f, 0.145f, 0.96f));
                 SetRect(channel, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(x, 0f), new Vector2(132f, 308f), new Vector2(0.5f, 0.5f));
 
-                TextMeshProUGUI label = CreateText(channel, "Label", GetShortStemLabel(stem), 15f, TextAlignmentOptions.Center);
+                TextMeshProUGUI label = CreateText(
+                    channel,
+                    "Label",
+                    LanAudioRecordingCatalog.GetStemDisplayName(stem),
+                    15f,
+                    TextAlignmentOptions.Center);
                 SetRect(label.rectTransform, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -28f), new Vector2(-14f, 42f), new Vector2(0.5f, 0.5f));
                 label.color = Color.white;
                 label.textWrappingMode = TextWrappingModes.Normal;
@@ -967,32 +973,14 @@ namespace DormitoryMystery.Chapter1
             {
                 statusText.text = message ?? string.Empty;
             }
-
-            if (!string.IsNullOrWhiteSpace(message))
-            {
-                Chapter1EventBus.RaiseNotification(message);
-            }
         }
 
-        private static string GetShortStemLabel(LanAudioStemId stem)
+        private static void ClearGameplayNotifications()
         {
-            switch (stem)
-            {
-                case LanAudioStemId.Voice:
-                    return "Giọng\nChị Lan";
-                case LanAudioStemId.Police:
-                    return "Còi\ncảnh sát";
-                case LanAudioStemId.Rain:
-                    return "Mưa";
-                case LanAudioStemId.Horns:
-                    return "Còi xe";
-                case LanAudioStemId.Wind:
-                    return "Gió";
-                case LanAudioStemId.Thunder:
-                    return "Sấm sét";
-                default:
-                    return stem.ToString();
-            }
+            NotificationUI notificationUI =
+                FindAnyObjectByType<NotificationUI>(
+                    FindObjectsInactive.Include);
+            notificationUI?.ClearMessages();
         }
 
         private static RectTransform CreateEmptyRect(Transform parent, string name)

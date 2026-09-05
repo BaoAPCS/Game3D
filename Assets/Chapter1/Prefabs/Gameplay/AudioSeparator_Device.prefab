@@ -601,7 +601,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DormitoryMystery.Chapter1.AudioStemFader
   stemId: 2
-  displayName: "Ti\u1EBFng m\u01B0a"
+  displayName: "\xC2m thanh 3"
   handleTransform: {fileID: 7073580350240010197}
   audioSource: {fileID: 8898592853019407105}
   localMinPosition: {x: 0, y: 0.028, z: -0.075}
@@ -680,7 +680,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DormitoryMystery.Chapter1.AudioStemFader
   stemId: 4
-  displayName: "Ti\u1EBFng gi\xF3"
+  displayName: "\xC2m thanh 5"
   handleTransform: {fileID: 2061064472272103081}
   audioSource: {fileID: 7212819215551533925}
   localMinPosition: {x: 0, y: 0.028, z: -0.075}
@@ -1938,7 +1938,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DormitoryMystery.Chapter1.AudioStemFader
   stemId: 1
-  displayName: "Ti\u1EBFng c\xF2i xe c\u1EA3nh s\xE1t"
+  displayName: "\xC2m thanh 2"
   handleTransform: {fileID: 869959364190222568}
   audioSource: {fileID: 8789357051745090279}
   localMinPosition: {x: 0, y: 0.028, z: -0.075}
@@ -2460,7 +2460,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DormitoryMystery.Chapter1.AudioStemFader
   stemId: 0
-  displayName: "Gi\u1ECDng ch\u1ECB Lan"
+  displayName: "\xC2m thanh 1"
   handleTransform: {fileID: 4170756648532819142}
   audioSource: {fileID: 6145147938617475026}
   localMinPosition: {x: 0, y: 0.028, z: -0.075}
@@ -2807,7 +2807,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DormitoryMystery.Chapter1.AudioStemFader
   stemId: 3
-  displayName: "Ti\u1EBFng c\xF2i xe xung quanh"
+  displayName: "\xC2m thanh 4"
   handleTransform: {fileID: 2891046919718828355}
   audioSource: {fileID: 8310682506013374706}
   localMinPosition: {x: 0, y: 0.028, z: -0.075}
@@ -3526,7 +3526,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DormitoryMystery.Chapter1.AudioStemFader
   stemId: 5
-  displayName: "Ti\u1EBFng s\u1EA5m s\xE9t"
+  displayName: "\xC2m thanh 6"
   handleTransform: {fileID: 2407522899949021051}
   audioSource: {fileID: 3492311974273475049}
   localMinPosition: {x: 0, y: 0.028, z: -0.075}

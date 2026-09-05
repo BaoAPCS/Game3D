@@ -60,23 +60,15 @@ namespace DormitoryMystery.Chapter1
 
         public static string GetStemDisplayName(LanAudioStemId stem)
         {
-            switch (stem)
+            for (int i = 0; i < StemOrder.Length; i++)
             {
-                case LanAudioStemId.Voice:
-                    return "Giọng chị Lan";
-                case LanAudioStemId.Police:
-                    return "Tiếng còi xe cảnh sát";
-                case LanAudioStemId.Rain:
-                    return "Tiếng mưa";
-                case LanAudioStemId.Horns:
-                    return "Tiếng còi xe xung quanh";
-                case LanAudioStemId.Wind:
-                    return "Tiếng gió";
-                case LanAudioStemId.Thunder:
-                    return "Tiếng sấm sét";
-                default:
-                    return stem.ToString();
+                if (StemOrder[i] == stem)
+                {
+                    return $"Âm thanh {i + 1}";
+                }
             }
+
+            return stem.ToString();
         }
 
         public static string GetOutputRecordingId(LanAudioStemId stem)
