@@ -22,6 +22,7 @@ namespace DormitoryMystery.Chapter3
         public const string KeyItemId = Mission3PoliceKeyInventorySync.PoliceKeyItemId;
         public const string CompletionPreferenceKey = "DormitoryMystery.Chapter3.Completed";
         private const string EndingLockReason = "Chapter3.RescueLan.Ending";
+        private const string DoorKnockAudioResourcePath = "heavyknock";
 
         private static readonly string[] Speakers = { "Lan", "Nam", "Lan" };
         private static readonly string[] Lines =
@@ -43,6 +44,7 @@ namespace DormitoryMystery.Chapter3
         private Chapter2MissionTriggerZone doorZone;
         private Chapter2MissionTriggerZone lanZone;
         private Chapter3HingedDoor door;
+        private AudioSource doorKnockAudio;
         private Camera lanCamera;
         private Chapter3RescueHUD hud;
         private readonly Dictionary<Behaviour, bool> capturedBehaviours =
@@ -128,6 +130,7 @@ namespace DormitoryMystery.Chapter3
             door = GetOrAdd<Chapter3HingedDoor>(doorRoot.gameObject);
             if (!door.Configure(lan))
                 return false;
+            ConfigureDoorKnockAudio(doorRoot);
 
             hud = Chapter3RescueHUD.Create(transform);
             ResolveUI();
@@ -141,6 +144,7 @@ namespace DormitoryMystery.Chapter3
                 return;
 
             ResolveUI();
+            UpdateDoorKnockAudio();
             if (State == Chapter3RescueState.OpeningDoor && door.IsOpen)
                 State = Chapter3RescueState.DoorOpen;
 
@@ -202,6 +206,7 @@ namespace DormitoryMystery.Chapter3
                 !door.TryOpen())
                 return false;
             State = Chapter3RescueState.OpeningDoor;
+            StopDoorKnockAudio();
             hud.SetDoorVoice(false);
             hud.SetDoorPrompt(false);
             return true;
@@ -265,6 +270,64 @@ namespace DormitoryMystery.Chapter3
             if (backpack == null) return;
             if (inventoryUI == null) inventoryUI = backpack.InventoryUIController;
             if (phoneUI == null) phoneUI = backpack.PhoneUIController;
+        }
+
+        private void ConfigureDoorKnockAudio(Transform doorRoot)
+        {
+            AudioClip clip = Resources.Load<AudioClip>(
+                DoorKnockAudioResourcePath);
+            if (clip == null)
+            {
+                Debug.LogError(
+                    "[Chapter3Rescue] Không tìm thấy Resources/heavyknock.mp3.",
+                    this);
+                return;
+            }
+
+            doorKnockAudio = doorRoot.GetComponent<AudioSource>();
+            if (doorKnockAudio == null)
+            {
+                doorKnockAudio = doorRoot.gameObject.AddComponent<AudioSource>();
+            }
+
+            if (doorKnockAudio.isPlaying)
+            {
+                doorKnockAudio.Stop();
+            }
+
+            doorKnockAudio.clip = clip;
+            doorKnockAudio.playOnAwake = false;
+            doorKnockAudio.loop = true;
+            doorKnockAudio.spatialBlend = 1f;
+            doorKnockAudio.minDistance = 1f;
+            doorKnockAudio.maxDistance = 8f;
+            doorKnockAudio.dopplerLevel = 0f;
+        }
+
+        private void UpdateDoorKnockAudio()
+        {
+            bool shouldPlay = doorKnockAudio != null &&
+                doorKnockAudio.clip != null &&
+                IsInsideDoorZone &&
+                State <= Chapter3RescueState.Unlocked;
+            if (!shouldPlay)
+            {
+                StopDoorKnockAudio();
+                return;
+            }
+
+            if (!doorKnockAudio.isPlaying)
+            {
+                doorKnockAudio.Play();
+            }
+        }
+
+        private void StopDoorKnockAudio()
+        {
+            if (doorKnockAudio != null && doorKnockAudio.isPlaying)
+            {
+                doorKnockAudio.Stop();
+            }
         }
 
         private void UpdateInventoryRegistration(bool register)
@@ -336,6 +399,7 @@ namespace DormitoryMystery.Chapter3
         private void OnDisable()
         {
             StopAllCoroutines();
+            StopDoorKnockAudio();
             UpdateInventoryRegistration(false);
             hud?.HideAll();
             if (!endingCaptured) return;

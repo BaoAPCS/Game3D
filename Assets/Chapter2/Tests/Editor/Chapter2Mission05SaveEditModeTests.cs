@@ -219,6 +219,15 @@ namespace DormitoryMystery.Chapter2.Tests
                 previewImporter.textureType);
         }
 
+        [Test]
+        public void ClassifiedDocumentCollectionUsesConciseNotification()
+        {
+            Assert.AreEqual(
+                "Đã lấy được tài liệu mật",
+                Chapter2WifiSignalScannerMission
+                    .CompletionNotification);
+        }
+
         private static void SetPrivateField(
             Chapter2SaveManager manager,
             string fieldName,

@@ -19,7 +19,7 @@ namespace DormitoryMystery.Chapter2
         public const string StrongSignalNotification =
             "Tín hiệu cực mạnh — hãy kiểm tra khu vực xung quanh.";
         public const string CompletionNotification =
-            "Đã lấy được tài liệu mật. Nhiệm vụ 5 hoàn thành.";
+            "Đã lấy được tài liệu mật";
 
         private readonly Chapter2WifiSignalModel signalModel =
             new Chapter2WifiSignalModel();

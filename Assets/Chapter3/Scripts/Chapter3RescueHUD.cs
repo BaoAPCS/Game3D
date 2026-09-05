@@ -250,7 +250,7 @@ namespace DormitoryMystery.Chapter3
 
             TextMeshProUGUI completion = CreateText(
                 endingRoot.transform, "ChapterComplete", 22f, TextAlignmentOptions.Center);
-            completion.text = "CHAPTER 3 HOÀN THÀNH • HẾT GAME";
+            completion.text = "CHAPTER 3 HOÀN THÀNH";
             completion.color = new Color(0.64f, 0.65f, 0.69f);
             completion.characterSpacing = 2f;
             SetPosition(completion.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(1000f, 60f), new Vector2(0f, -64f));

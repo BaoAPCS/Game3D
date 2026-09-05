@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: PoliceStationKeyItem
   m_EditorClassIdentifier: Assembly-CSharp::DormitoryMystery.Chapter1.ItemDefinition
   itemId: police_station_key
-  displayName: "Ch\xECa kh\xF3a \u0111\u1ED3n c\u1EA3nh s\xE1t"
+  displayName: "Ch\xECa kh\xF3a"
   icon: {fileID: 21300000, guid: dfa46840ae304e7f8a79a665eca83147, type: 3}
   description: "Ch\xECa kh\xF3a James \u0111\u01B0a cho Nam v\xE0 d\u1EB7n ph\u1EA3i c\u1EA5t gi\u1EA5u th\u1EADt k\u0129. James n\xF3i n\xF3 s\u1EBD gi\xFAp \xEDch v\u1EC1 sau."
   category: 2

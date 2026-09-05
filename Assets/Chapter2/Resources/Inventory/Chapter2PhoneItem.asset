@@ -15,7 +15,7 @@ MonoBehaviour:
   itemId: phone
   displayName: "\u0110i\u1EC7n tho\u1EA1i"
   icon: {fileID: 21300000, guid: ad7dc77b54ebd944088ac0ff5509e763, type: 3}
-  description: "\u0110i\u1EC7n tho\u1EA1i c\u1EE7a Nam, \u0111\xE3 b\u1ECB c\xF4ng an t\u1ECBch thu khi \u0111\u01B0a v\xE0o ph\xF2ng giam."
+  description: ""
   category: 0
   isStackable: 0
   maxStack: 1
